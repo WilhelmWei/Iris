@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 操作库：处理方案、执行（前置检查 → 备份 → 执行 → 重新检测 → 失败回滚）、撤销、操作记录。
+       跨平台：所有对 Windows 的读写都通过 IWinSystem，测试里换成模拟实现。 -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Pcdoctor.Ops</RootNamespace>
+  </PropertyGroup>
+</Project>

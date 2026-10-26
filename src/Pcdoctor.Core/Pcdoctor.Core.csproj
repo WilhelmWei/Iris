@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Pcdoctor.Core</RootNamespace>
+  </PropertyGroup>
+
+  <!-- 与 Python 版共用同一份数据：链接仓库里的原文件，不复制 -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\kb\seed.json" LogicalName="seed.json" Link="Resources\seed.json" />
+    <EmbeddedResource Include="..\..\prompts\judge-prompt.md" LogicalName="judge-prompt.md" Link="Resources\judge-prompt.md" />
+    <EmbeddedResource Include="..\..\collector\pcdoctor-collect.ps1" LogicalName="pcdoctor-collect.ps1" Link="Resources\pcdoctor-collect.ps1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pcdoctor.Core.Tests" />
+  </ItemGroup>
+
+</Project>

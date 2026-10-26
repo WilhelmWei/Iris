@@ -1,0 +1,94 @@
+# 打 tag（v 开头，例如 v1.0.0 或 v1.0.0-beta.1）时：在 Windows 上从源码构建，生成免安装版 zip 和安装程序，
+# 上传到 GitHub Releases（草稿，作者检查后手动发布）。构建全部由仓库里的 tools/build_app.py 完成，可以在本地复现：
+#   python tools/build_app.py --version 1.0.0 --installer
+# 目前还没有代码签名，用户第一次运行会看到 SmartScreen 提示（README 里有说明）。
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # 创建 Release、上传文件
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装 Inno Setup 6（生成安装程序用，开源）
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          (Get-Item "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe").VersionInfo.ProductVersion
+
+      - name: 测试
+        run: dotnet test pcdoctor.sln -c Release
+
+      - name: 从源码构建（免安装版 + 安装程序）
+        # Iris 服务器地址取自仓库变量（Settings → Variables）；没设置时构建出的程序不联系服务器
+        env:
+          IRIS_FEEDBACK_URL: ${{ vars.IRIS_FEEDBACK_URL }}
+          IRIS_LATEST_URL: ${{ vars.IRIS_LATEST_URL }}
+        run: python tools/build_app.py --version "${{ github.ref_name }}" --installer --out dist
+
+      - name: 保存未签名的构建产物
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: iris-${{ github.ref_name }}-unsigned
+          path: |
+            dist/*.zip
+            dist/*.exe
+          if-no-files-found: error
+
+      # ---------------------------------------------------------------------------------------------
+      # 代码签名（SignPath Foundation 批准后启用）
+      #
+      # SignPath 会从上一步上传的构建产物里取文件签名，签名后的文件再放进 Release。启用步骤：
+      #   1. 在 SignPath 里建好项目，配置 artifact configuration（签 zip 里的 Iris.exe 和 Iris-Setup-*.exe）
+      #   2. 在仓库 Settings → Secrets 里添加 SIGNPATH_API_TOKEN，在 Variables 里添加 SIGNPATH_ORGANIZATION_ID
+      #   3. 去掉下面的注释，并把"发布"那一步的文件路径改成 signed/ 目录
+      #
+      # - name: 提交 SignPath 签名
+      #   uses: signpath/github-action-submit-signing-request@v1
+      #   with:
+      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+      #     organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      #     project-slug: pcdoctor
+      #     signing-policy-slug: release-signing
+      #     artifact-configuration-slug: windows
+      #     github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+      #     wait-for-completion: true
+      #     output-artifact-directory: signed
+      # ---------------------------------------------------------------------------------------------
+
+      - name: 发布到 GitHub Releases（草稿）
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $notes = @"
+          从源码自动构建（tools/build_app.py）。校验码见 SHA256SUMS.txt。
+
+          - 安装版：Iris-Setup-*.exe（装到当前用户目录，不需要管理员，自带卸载程序）
+          - 免安装版：Iris-*-win-x64.zip（解压即用）
+
+          这一版还没有代码签名：Windows 出现"Windows 已保护你的电脑"时，点"更多信息"→"仍要运行"。
+          隐私政策：PRIVACY.md。协议：AGPL-3.0。
+          "@
+          $files = @(Get-ChildItem dist -Include *.zip, *.exe, SHA256SUMS.txt -Recurse | ForEach-Object FullName)
+          $opts = @('--draft', '--title', "Iris $tag", '--notes', $notes)
+          if ($tag -match '-') { $opts += '--prerelease' }   # v1.0.0-beta.1 这类是预发布
+          gh release create $tag @files @opts

@@ -1,0 +1,183 @@
+{
+ "name": "appendix_a_13",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "browserNetwork",
+     "rule": "edge-preload",
+     "severity": "low",
+     "object": "Microsoft Edge",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "browserNetwork",
+     "rule": "edge-preload",
+     "severity": "low",
+     "object": "Microsoft Edge",
+     "evidence": "证据",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "browserNetwork",
+     "rule": "edge-preload",
+     "severity": "low",
+     "object": "Microsoft Edge",
+     "evidence": "证据",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"browserNetwork\", \"rule\": \"edge-preload\", \"severity\": \"low\", \"object\": \"Microsoft Edge\", \"evidence\": \"证据\", \"context\": {}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "Microsoft Edge",
+     "verdict": "bloat",
+     "confidence": 0.7,
+     "evidence": "F001 证据",
+     "proposedAction": "browser.disable_background",
+     "userExplanation": "Edge 开机就在后台预加载，即使不用也占内存",
+     "questionForUser": null
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 99,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 97,
+      "deductions": [
+       {
+        "rule": "edge-preload",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "Microsoft Edge"
+        ],
+        "points": 3
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 100,
+      "deductions": []
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "Microsoft Edge",
+      "verdict": "bloat",
+      "confidence": 0.7,
+      "evidence": "F001 证据",
+      "proposedAction": "browser.disable_background",
+      "actionName": "关闭浏览器后台运行 / 启动增强",
+      "risk": "green",
+      "userExplanation": "Edge 开机就在后台预加载，即使不用也占内存",
+      "questionForUser": null,
+      "needsUser": false
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 99 / 100**　纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| Microsoft Edge | 捆绑 / 流氓 | 0.70 | 关闭浏览器后台运行 / 启动增强 | 绿 | Edge 开机就在后台预加载，即使不用也占内存 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：97 分\n  - −3　edge-preload：Microsoft Edge（F001）\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：100 分\n\n## 证据（专业模式）\n\n- **Microsoft Edge**（F001，建议 `browser.disable_background`）：F001 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,Microsoft Edge,捆绑 / 流氓,模型,0.70,关闭浏览器后台运行 / 启动增强,Edge 开机就在后台预加载，即使不用也占内存,,,\r\n"
+ }
+}

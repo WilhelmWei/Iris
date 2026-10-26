@@ -1,0 +1,1356 @@
+{
+ "name": "messy_model",
+ "note": "模型输出各种不守规矩的写法",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "0.2.2",
+    "isAdmin": true,
+    "quick": false,
+    "incomplete": []
+   },
+   "machine": {
+    "manufacturer": "HUAWEI",
+    "model": "TEST"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "high",
+     "object": "Defender 排除项",
+     "evidence": "证据"
+    },
+    {
+     "id": "F002",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据"
+    },
+    {
+     "id": "F003",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据"
+    },
+    {
+     "id": "F004",
+     "section": "processes",
+     "rule": "runs-from-user-folder",
+     "severity": "low",
+     "object": "wps.exe",
+     "evidence": "证据"
+    },
+    {
+     "id": "F005",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "证据"
+    },
+    {
+     "id": "F006",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据"
+    },
+    {
+     "id": "F007",
+     "section": "drivers",
+     "rule": "seed-bank-security",
+     "severity": "medium",
+     "object": "msfilter",
+     "evidence": "证据"
+    },
+    {
+     "id": "F008",
+     "section": "software",
+     "rule": "duplicate-category",
+     "severity": "info",
+     "object": "音乐",
+     "evidence": "证据"
+    },
+    {
+     "id": "F009",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PECKP",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "resources": {
+     "os": {
+      "caption": "Windows 11"
+     },
+     "memory": {
+      "totalGB": 16,
+      "usedPct": 54
+     }
+    },
+    "processes": {
+     "items": [
+      {
+       "name": "wps.exe",
+       "path": "C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12\\office6\\wps.exe",
+       "company": "Zhuhai Kingsoft Office Software Co.,Ltd",
+       "signature": "Valid"
+      }
+     ]
+    },
+    "drivers": {
+     "kernelDrivers": {
+      "items": [
+       {
+        "name": "XLWFP",
+        "state": "Running",
+        "startMode": "Auto",
+        "path": "C:\\Windows\\System32\\drivers\\xlwfp.sys",
+        "company": "",
+        "signer": "ShenZhen Thunder Networking Technologies Ltd."
+       },
+       {
+        "name": "PECKP",
+        "state": "Running",
+        "startMode": "Manual",
+        "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+        "company": "Bank",
+        "signer": "Bank Ltd"
+       },
+       {
+        "name": "msfilter",
+        "state": "Running",
+        "startMode": "Manual",
+        "path": "C:\\Windows\\System32\\drivers\\msf.sys",
+        "company": "Microsoft Corporation",
+        "signer": "Microsoft Windows"
+       }
+      ]
+     },
+     "classFilters": [
+      {
+       "className": "Keyboard",
+       "kind": "UpperFilters",
+       "driver": "PECKP",
+       "thirdParty": true
+      }
+     ],
+     "packages": {
+      "items": []
+     }
+    },
+    "software": {
+     "items": [
+      {
+       "name": "WPS Office",
+       "publisher": "Kingsoft Corp.",
+       "location": null
+      },
+      {
+       "name": "迅雷",
+       "publisher": "迅雷网络技术有限公司",
+       "location": "D:\\迅雷\\Thunder"
+      },
+      {
+       "name": "Edge",
+       "publisher": "Microsoft Corporation",
+       "location": null
+      }
+     ],
+     "duplicateCategories": {
+      "音乐": [
+       "QQ音乐",
+       "网易云音乐"
+      ]
+     }
+    },
+    "security": {
+     "defenderExclusions": {
+      "paths": [
+       "D:\\quickvpn"
+      ],
+      "processes": [
+       "Update.exe",
+       "uninst.exe"
+      ],
+      "extensions": []
+     },
+     "defender": {
+      "realTimeProtection": true
+     }
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": {
+   "headline": null,
+   "malwareSuspected": 0,
+   "malwareReasoning": 123,
+   "top3": [
+    "一",
+    {
+     "a": 1,
+     "b": [
+      true,
+      null,
+      1.5
+     ]
+    },
+    2.0,
+    "四"
+   ],
+   "findings": [
+    "不是对象",
+    {
+     "flagIds": [
+      "F001",
+      "F999",
+      7
+     ],
+     "object": "x",
+     "verdict": "normal",
+     "confidence": "0.75",
+     "evidence": "e",
+     "proposedAction": "registry.delete",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "x",
+     "verdict": "危险",
+     "confidence": 1.7,
+     "evidence": "e",
+     "proposedAction": "driver.remove_after_reboot",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F003"
+     ],
+     "object": null,
+     "verdict": "suspicious",
+     "confidence": null,
+     "evidence": "e",
+     "proposedAction": "defender.review",
+     "userExplanation": null,
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F004"
+     ],
+     "object": "x",
+     "verdict": "bloat",
+     "confidence": 0.3,
+     "evidence": "e",
+     "proposedAction": "startup.disable",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F005"
+     ],
+     "object": "x",
+     "verdict": "leftover",
+     "confidence": 0.125,
+     "evidence": "e",
+     "proposedAction": "service.delete_orphan",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F006"
+     ],
+     "object": "x",
+     "verdict": "leftover",
+     "confidence": -2,
+     "evidence": "e",
+     "proposedAction": "service.delete_orphan",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [],
+     "object": "x",
+     "verdict": "leftover",
+     "confidence": 0.9,
+     "evidence": "e",
+     "proposedAction": "none",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F007"
+     ],
+     "object": "x",
+     "verdict": "problem",
+     "confidence": true,
+     "evidence": "e",
+     "proposedAction": "driver.delete_old_version",
+     "userExplanation": "说明",
+     "questionForUser": null,
+     "kbId": "made-up"
+    },
+    {
+     "flagIds": "F008",
+     "object": "x",
+     "verdict": "normal",
+     "confidence": 0.9,
+     "evidence": "e",
+     "proposedAction": "none",
+     "userExplanation": "说明",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F009"
+     ],
+     "verdict": "uncertain",
+     "confidence": "abc",
+     "proposedAction": 123,
+     "questionForUser": ""
+    }
+   ],
+   "tips": [
+    {
+     "title": "t1",
+     "body": "b1",
+     "relatedFlagIds": [
+      "F001",
+      "F404"
+     ]
+    },
+    "str",
+    {
+     "title": "",
+     "body": "x"
+    },
+    {
+     "title": 2,
+     "body": 3.0
+    }
+   ],
+   "notCollected": "ab"
+  },
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "0.2.2",
+    "isAdmin": true,
+    "quick": false,
+    "incomplete": []
+   },
+   "machine": {
+    "manufacturer": "HUAWEI",
+    "model": "TEST",
+    "os": {
+     "caption": "Windows 11"
+    },
+    "memory": {
+     "totalGB": 16,
+     "usedPct": 54
+    },
+    "defender": {
+     "realTimeProtection": true
+    }
+   },
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "high",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F002",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F003",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F004",
+     "section": "processes",
+     "rule": "runs-from-user-folder",
+     "severity": "low",
+     "object": "wps.exe",
+     "evidence": "证据",
+     "context": {
+      "name": "wps.exe",
+      "path": "C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12\\office6\\wps.exe",
+      "company": "Zhuhai Kingsoft Office Software Co.,Ltd",
+      "signature": "Valid"
+     },
+     "ownerSoftware": "WPS Office",
+     "knowledge": {
+      "kbId": "wps-user-folder",
+      "product": "WPS Office",
+      "verdict": "normal",
+      "proposedAction": "none",
+      "explanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+      "certainty": "confirmed",
+      "direct": true
+     }
+    },
+    {
+     "flagId": "F005",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "证据",
+     "context": {
+      "name": "XLWFP",
+      "state": "Running",
+      "startMode": "Auto",
+      "path": "C:\\Windows\\System32\\drivers\\xlwfp.sys",
+      "signer": "ShenZhen Thunder Networking Technologies Ltd."
+     }
+    },
+    {
+     "flagId": "F006",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-peckp",
+      "product": "网银键盘保护驱动",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在用需要这个键盘保护控件的网银吗？"
+     },
+     "contextRef": "C2"
+    },
+    {
+     "flagId": "F007",
+     "section": "drivers",
+     "rule": "seed-bank-security",
+     "severity": "medium",
+     "object": "msfilter",
+     "evidence": "证据",
+     "context": {
+      "name": "msfilter",
+      "state": "Running",
+      "startMode": "Manual",
+      "path": "C:\\Windows\\System32\\drivers\\msf.sys",
+      "company": "Microsoft Corporation",
+      "signer": "Microsoft Windows"
+     }
+    },
+    {
+     "flagId": "F008",
+     "section": "software",
+     "rule": "duplicate-category",
+     "severity": "info",
+     "object": "音乐",
+     "evidence": "证据",
+     "context": {
+      "apps": [
+       "QQ音乐",
+       "网易云音乐"
+      ]
+     }
+    },
+    {
+     "flagId": "F009",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PECKP",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-peckp",
+      "product": "网银键盘保护驱动",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在用需要这个键盘保护控件的网银吗？"
+     },
+     "contextRef": "C2"
+    }
+   ],
+   "sharedContext": {
+    "C1": {
+     "exclusions": {
+      "paths": [
+       "D:\\quickvpn"
+      ],
+      "processes": [
+       "Update.exe",
+       "uninst.exe"
+      ]
+     }
+    },
+    "C2": {
+     "name": "PECKP",
+     "state": "Running",
+     "startMode": "Manual",
+     "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+     "company": "Bank",
+     "signer": "Bank Ltd",
+     "classFilters": [
+      {
+       "className": "Keyboard",
+       "kind": "UpperFilters"
+      }
+     ]
+    }
+   },
+   "installedSoftware": [
+    "WPS Office | Kingsoft Corp.",
+    "迅雷 | 迅雷网络技术有限公司",
+    "Edge | Microsoft Corporation"
+   ]
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "0.2.2",
+    "isAdmin": true,
+    "quick": false,
+    "incomplete": []
+   },
+   "machine": {
+    "manufacturer": "HUAWEI",
+    "model": "TEST",
+    "os": {
+     "caption": "Windows 11"
+    },
+    "memory": {
+     "totalGB": 16,
+     "usedPct": 54
+    },
+    "defender": {
+     "realTimeProtection": true
+    }
+   },
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "high",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F002",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F003",
+     "section": "security",
+     "rule": "defender-exclusion",
+     "severity": "medium",
+     "object": "Defender 排除项",
+     "evidence": "证据",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F005",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "证据",
+     "context": {
+      "name": "XLWFP",
+      "state": "Running",
+      "startMode": "Auto",
+      "path": "C:\\Windows\\System32\\drivers\\xlwfp.sys",
+      "signer": "ShenZhen Thunder Networking Technologies Ltd."
+     }
+    },
+    {
+     "flagId": "F006",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-peckp",
+      "product": "网银键盘保护驱动",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在用需要这个键盘保护控件的网银吗？"
+     },
+     "contextRef": "C2"
+    },
+    {
+     "flagId": "F007",
+     "section": "drivers",
+     "rule": "seed-bank-security",
+     "severity": "medium",
+     "object": "msfilter",
+     "evidence": "证据",
+     "context": {
+      "name": "msfilter",
+      "state": "Running",
+      "startMode": "Manual",
+      "path": "C:\\Windows\\System32\\drivers\\msf.sys",
+      "company": "Microsoft Corporation",
+      "signer": "Microsoft Windows"
+     }
+    },
+    {
+     "flagId": "F008",
+     "section": "software",
+     "rule": "duplicate-category",
+     "severity": "info",
+     "object": "音乐",
+     "evidence": "证据",
+     "context": {
+      "apps": [
+       "QQ音乐",
+       "网易云音乐"
+      ]
+     }
+    },
+    {
+     "flagId": "F009",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PECKP",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-peckp",
+      "product": "网银键盘保护驱动",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在用需要这个键盘保护控件的网银吗？"
+     },
+     "contextRef": "C2"
+    }
+   ],
+   "sharedContext": {
+    "C1": {
+     "exclusions": {
+      "paths": [
+       "D:\\quickvpn"
+      ],
+      "processes": [
+       "Update.exe",
+       "uninst.exe"
+      ]
+     }
+    },
+    "C2": {
+     "name": "PECKP",
+     "state": "Running",
+     "startMode": "Manual",
+     "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+     "company": "Bank",
+     "signer": "Bank Ltd",
+     "classFilters": [
+      {
+       "className": "Keyboard",
+       "kind": "UpperFilters"
+      }
+     ]
+    }
+   },
+   "installedSoftware": [
+    "WPS Office | Kingsoft Corp.",
+    "迅雷 | 迅雷网络技术有限公司",
+    "Edge | Microsoft Corporation"
+   ],
+   "handledByKnowledgeBase": [
+    {
+     "flagIds": [
+      "F004"
+     ],
+     "object": "WPS Office：wps.exe",
+     "verdict": "normal",
+     "proposedAction": "none"
+    }
+   ]
+  },
+  "kbFindings": [
+   {
+    "flagIds": [
+     "F004"
+    ],
+    "object": "WPS Office：wps.exe",
+    "verdict": "normal",
+    "confidence": 0.9,
+    "evidence": "F004 证据（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））",
+    "proposedAction": "none",
+    "userExplanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+    "questionForUser": null,
+    "kbId": "wps-user-folder"
+   }
+  ],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"0.2.2\", \"isAdmin\": true, \"quick\": false, \"incomplete\": []}, \"machine\": {\"manufacturer\": \"HUAWEI\", \"model\": \"TEST\", \"os\": {\"caption\": \"Windows 11\"}, \"memory\": {\"totalGB\": 16, \"usedPct\": 54}, \"defender\": {\"realTimeProtection\": true}}, \"items\": [{\"flagId\": \"F001\", \"section\": \"security\", \"rule\": \"defender-exclusion\", \"severity\": \"high\", \"object\": \"Defender 排除项\", \"evidence\": \"证据\", \"contextRef\": \"C1\"}, {\"flagId\": \"F002\", \"section\": \"security\", \"rule\": \"defender-exclusion\", \"severity\": \"medium\", \"object\": \"Defender 排除项\", \"evidence\": \"证据\", \"contextRef\": \"C1\"}, {\"flagId\": \"F003\", \"section\": \"security\", \"rule\": \"defender-exclusion\", \"severity\": \"medium\", \"object\": \"Defender 排除项\", \"evidence\": \"证据\", \"contextRef\": \"C1\"}, {\"flagId\": \"F005\", \"section\": \"drivers\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"XLWFP\", \"evidence\": \"证据\", \"context\": {\"name\": \"XLWFP\", \"state\": \"Running\", \"startMode\": \"Auto\", \"path\": \"C:\\\\Windows\\\\System32\\\\drivers\\\\xlwfp.sys\", \"signer\": \"ShenZhen Thunder Networking Technologies Ltd.\"}}, {\"flagId\": \"F006\", \"section\": \"drivers\", \"rule\": \"third-party-class-filter\", \"severity\": \"medium\", \"object\": \"PECKP\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"bank-peckp\", \"product\": \"网银键盘保护驱动\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在用需要这个键盘保护控件的网银吗？\"}, \"contextRef\": \"C2\"}, {\"flagId\": \"F007\", \"section\": \"drivers\", \"rule\": \"seed-bank-security\", \"severity\": \"medium\", \"object\": \"msfilter\", \"evidence\": \"证据\", \"context\": {\"name\": \"msfilter\", \"state\": \"Running\", \"startMode\": \"Manual\", \"path\": \"C:\\\\Windows\\\\System32\\\\drivers\\\\msf.sys\", \"company\": \"Microsoft Corporation\", \"signer\": \"Microsoft Windows\"}}, {\"flagId\": \"F008\", \"section\": \"software\", \"rule\": \"duplicate-category\", \"severity\": \"info\", \"object\": \"音乐\", \"evidence\": \"证据\", \"context\": {\"apps\": [\"QQ音乐\", \"网易云音乐\"]}}, {\"flagId\": \"F009\", \"section\": \"drivers\", \"rule\": \"binary-missing\", \"severity\": \"low\", \"object\": \"PECKP\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"bank-peckp\", \"product\": \"网银键盘保护驱动\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在用需要这个键盘保护控件的网银吗？\"}, \"contextRef\": \"C2\"}], \"sharedContext\": {\"C1\": {\"exclusions\": {\"paths\": [\"D:\\\\quickvpn\"], \"processes\": [\"Update.exe\", \"uninst.exe\"]}}, \"C2\": {\"name\": \"PECKP\", \"state\": \"Running\", \"startMode\": \"Manual\", \"path\": \"C:\\\\Windows\\\\System32\\\\drivers\\\\PECKP_x64.sys\", \"company\": \"Bank\", \"signer\": \"Bank Ltd\", \"classFilters\": [{\"className\": \"Keyboard\", \"kind\": \"UpperFilters\"}]}}, \"installedSoftware\": [\"WPS Office | Kingsoft Corp.\", \"迅雷 | 迅雷网络技术有限公司\", \"Edge | Microsoft Corporation\"], \"handledByKnowledgeBase\": [{\"flagIds\": [\"F004\"], \"object\": \"WPS Office：wps.exe\", \"verdict\": \"normal\", \"proposedAction\": \"none\"}]}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：0 项建议处理，5 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [],
+   "findings": [
+    {
+     "flagIds": [
+      "F001",
+      "F002",
+      "F003"
+     ],
+     "object": "Defender 排除项",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F001 证据；F002 证据；F003 证据",
+     "proposedAction": "defender.review",
+     "userExplanation": "Defender 有排除项（不扫描的位置或程序），需要确认都是你自己加的",
+     "questionForUser": "这些排除项都是你自己加的吗？对应的软件还在用吗？"
+    },
+    {
+     "flagIds": [
+      "F005"
+     ],
+     "object": "XLWFP",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F005 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "XLWFP 像是游戏反作弊、加速器或下载器的组件，需要你确认还在用对应的软件",
+     "questionForUser": "你还在用对应的游戏、加速器或下载软件吗？"
+    },
+    {
+     "flagIds": [
+      "F006"
+     ],
+     "object": "PECKP",
+     "verdict": "uncertain",
+     "confidence": 0.7,
+     "evidence": "F006 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+     "questionForUser": "你还在用需要这个键盘保护控件的网银吗？"
+    },
+    {
+     "flagIds": [
+      "F007"
+     ],
+     "object": "msfilter",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F007 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "msfilter 像是网银安全控件，需要你确认还在用这家银行的网银",
+     "questionForUser": "你还在用需要这个安全控件的网银吗？"
+    },
+    {
+     "flagIds": [
+      "F008"
+     ],
+     "object": "音乐",
+     "verdict": "normal",
+     "confidence": 0.6,
+     "evidence": "F008 证据",
+     "proposedAction": "none",
+     "userExplanation": "同类软件装了好几个（音乐），不常用的可以卸载",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F009"
+     ],
+     "object": "PECKP",
+     "verdict": "uncertain",
+     "confidence": 0.7,
+     "evidence": "F009 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+     "questionForUser": "你还在用需要这个键盘保护控件的网银吗？"
+    }
+   ],
+   "tips": [
+    {
+     "title": "卸载软件后，Defender 排除项不会自动删除",
+     "body": "有些软件安装时会让 Defender 不扫描自己的目录或进程名，卸载后这些排除项还在。按进程名的排除（比如 Update.exe）对任何同名程序都生效，等于留了一个口子。",
+     "relatedFlagIds": [
+      "F001",
+      "F002",
+      "F003"
+     ]
+    }
+   ],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "0.2.2",
+   "score": {
+    "total": 86,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 63.3,
+      "deductions": [
+       {
+        "rule": "defender-exclusion",
+        "flagIds": [
+         "F001",
+         "F002",
+         "F003"
+        ],
+        "objects": [
+         "Defender 排除项"
+        ],
+        "points": 36.7
+       }
+      ]
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": [
+       {
+        "rule": "runs-from-user-folder",
+        "flagIds": [
+         "F004"
+        ],
+        "objects": [
+         "wps.exe"
+        ],
+        "points": 0,
+        "note": "研判为正常，不扣分"
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 67,
+      "deductions": [
+       {
+        "rule": "seed-anticheat-accel",
+        "flagIds": [
+         "F005"
+        ],
+        "objects": [
+         "XLWFP"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "third-party-class-filter",
+        "flagIds": [
+         "F006"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "seed-bank-security",
+        "flagIds": [
+         "F007"
+        ],
+        "objects": [
+         "msfilter"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "binary-missing",
+        "flagIds": [
+         "F009"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 3
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，5 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001",
+       "F002",
+       "F003"
+      ],
+      "object": "Defender 排除项",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F001 证据；F002 证据；F003 证据",
+      "proposedAction": "defender.review",
+      "actionName": "引导用户在 Windows 安全中心复核并删除不需要的排除项或\"允许的威胁\"",
+      "risk": "green",
+      "userExplanation": "Defender 有排除项（不扫描的位置或程序），需要确认都是你自己加的",
+      "questionForUser": "这些排除项都是你自己加的吗？对应的软件还在用吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F005"
+      ],
+      "object": "XLWFP",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F005 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "XLWFP 像是游戏反作弊、加速器或下载器的组件，需要你确认还在用对应的软件",
+      "questionForUser": "你还在用对应的游戏、加速器或下载软件吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F006"
+      ],
+      "object": "PECKP",
+      "verdict": "uncertain",
+      "confidence": 0.7,
+      "evidence": "F006 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "questionForUser": "你还在用需要这个键盘保护控件的网银吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F007"
+      ],
+      "object": "msfilter",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F007 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "msfilter 像是网银安全控件，需要你确认还在用这家银行的网银",
+      "questionForUser": "你还在用需要这个安全控件的网银吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F008"
+      ],
+      "object": "音乐",
+      "verdict": "normal",
+      "confidence": 0.6,
+      "evidence": "F008 证据",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "同类软件装了好几个（音乐），不常用的可以卸载",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F009"
+      ],
+      "object": "PECKP",
+      "verdict": "uncertain",
+      "confidence": 0.7,
+      "evidence": "F009 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+      "questionForUser": "你还在用需要这个键盘保护控件的网银吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F004"
+      ],
+      "object": "WPS Office：wps.exe",
+      "verdict": "normal",
+      "confidence": 0.9,
+      "evidence": "F004 证据（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+      "questionForUser": null,
+      "needsUser": false,
+      "kbId": "wps-user-folder"
+     }
+    ],
+    "tips": [
+     {
+      "title": "卸载软件后，Defender 排除项不会自动删除",
+      "body": "有些软件安装时会让 Defender 不扫描自己的目录或进程名，卸载后这些排除项还在。按进程名的排除（比如 Update.exe）对任何同名程序都生效，等于留了一个口子。",
+      "relatedFlagIds": [
+       "F001",
+       "F002",
+       "F003"
+      ]
+     }
+    ],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [
+    "F004"
+   ],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 86 / 100**　纯规则模式（没有调用 AI）：0 项建议处理，5 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 0.2.2　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 需要你确认的问题\n\n- **Defender 排除项**：这些排除项都是你自己加的吗？对应的软件还在用吗？\n- **XLWFP**：你还在用对应的游戏、加速器或下载软件吗？\n- **PECKP**：你还在用需要这个键盘保护控件的网银吗？\n- **msfilter**：你还在用需要这个安全控件的网银吗？\n- **PECKP**：你还在用需要这个键盘保护控件的网银吗？\n\n> 有 1 项是已经弄清楚的常见软件组件，由知识库直接给出结论（表格里标\"知识库\"），没有交给模型\n\n## 小知识\n\n**卸载软件后，Defender 排除项不会自动删除**\n\n有些软件安装时会让 Defender 不扫描自己的目录或进程名，卸载后这些排除项还在。按进程名的排除（比如 Update.exe）对任何同名程序都生效，等于留了一个口子。\n\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| Defender 排除项 | 拿不准 | 0.50 | 引导用户在 Windows 安全中心复核并删除不需要的排除项或\"允许的威胁\" | 绿 | Defender 有排除项（不扫描的位置或程序），需要确认都是你自己加的 |\n| XLWFP | 拿不准 | 0.50 | 需要先问用户 | — | XLWFP 像是游戏反作弊、加速器或下载器的组件，需要你确认还在用对应的软件 |\n| PECKP | 拿不准 | 0.70 | 需要先问用户 | — | 网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。 |\n| msfilter | 拿不准 | 0.50 | 需要先问用户 | — | msfilter 像是网银安全控件，需要你确认还在用这家银行的网银 |\n| PECKP | 拿不准 | 0.70 | 需要先问用户 | — | 网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。 |\n| 音乐 | 正常 | 0.60 | 不需要处理 | — | 同类软件装了好几个（音乐），不常用的可以卸载 |\n| WPS Office：wps.exe | 正常 | 0.90（知识库） | 不需要处理 | — | WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：63.3 分\n  - −36.7　defender-exclusion：Defender 排除项（F001、F002、F003）\n- **性能与后台**（权重 25%）：100 分\n  - −0　runs-from-user-folder：wps.exe（F004，研判为正常，不扣分）\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：67 分\n  - −10　seed-anticheat-accel：XLWFP（F005）\n  - −10　third-party-class-filter：PECKP（F006）\n  - −10　seed-bank-security：msfilter（F007）\n  - −3　binary-missing：PECKP（F009）\n\n## 证据（专业模式）\n\n- **Defender 排除项**（F001、F002、F003，建议 `defender.review`）：F001 证据；F002 证据；F003 证据\n- **XLWFP**（F005，建议 `ask_user`）：F005 证据\n- **PECKP**（F006，建议 `ask_user`）：F006 证据\n- **msfilter**（F007，建议 `ask_user`）：F007 证据\n- **音乐**（F008，建议 `none`）：F008 证据\n- **PECKP**（F009，建议 `ask_user`）：F009 证据\n- **WPS Office：wps.exe**（F004，建议 `none`）：F004 证据（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001、F002、F003,Defender 排除项,拿不准,模型,0.50,\"引导用户在 Windows 安全中心复核并删除不需要的排除项或\"\"允许的威胁\"\"\",Defender 有排除项（不扫描的位置或程序），需要确认都是你自己加的,,,\r\nF005,XLWFP,拿不准,模型,0.50,需要先问用户,XLWFP 像是游戏反作弊、加速器或下载器的组件，需要你确认还在用对应的软件,,,\r\nF006,PECKP,拿不准,模型,0.70,需要先问用户,网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。,,,\r\nF007,msfilter,拿不准,模型,0.50,需要先问用户,msfilter 像是网银安全控件，需要你确认还在用这家银行的网银,,,\r\nF008,音乐,正常,模型,0.60,不需要处理,同类软件装了好几个（音乐），不常用的可以卸载,,,\r\nF009,PECKP,拿不准,模型,0.70,需要先问用户,网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。,,,\r\nF004,WPS Office：wps.exe,正常,知识库 wps-user-folder,0.90,不需要处理,WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。,,,\r\n",
+  "modelResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "test-model",
+   "collectorVersion": "0.2.2",
+   "score": {
+    "total": 86,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 63.3,
+      "deductions": [
+       {
+        "rule": "defender-exclusion",
+        "flagIds": [
+         "F001",
+         "F002",
+         "F003"
+        ],
+        "objects": [
+         "Defender 排除项"
+        ],
+        "points": 36.7
+       }
+      ]
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": [
+       {
+        "rule": "runs-from-user-folder",
+        "flagIds": [
+         "F004"
+        ],
+        "objects": [
+         "wps.exe"
+        ],
+        "points": 0,
+        "note": "研判为正常，不扣分"
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 67,
+      "deductions": [
+       {
+        "rule": "seed-anticheat-accel",
+        "flagIds": [
+         "F005"
+        ],
+        "objects": [
+         "XLWFP"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "third-party-class-filter",
+        "flagIds": [
+         "F006"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "seed-bank-security",
+        "flagIds": [
+         "F007"
+        ],
+        "objects": [
+         "msfilter"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "binary-missing",
+        "flagIds": [
+         "F009"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 3
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "",
+    "malwareSuspected": false,
+    "malwareReasoning": "123",
+    "top3": [
+     "一",
+     "{'a': 1, 'b': [True, None, 1.5]}",
+     "2.0"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "x",
+      "verdict": "uncertain",
+      "confidence": 0.75,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "说明",
+      "questionForUser": "规则认为这一项风险较高（规则判为高风险），但 AI 判断为正常。这是你认识、自己安装的东西吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F002"
+      ],
+      "object": "x",
+      "verdict": "uncertain",
+      "confidence": 1.0,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "说明",
+      "questionForUser": "这一项需要你确认：x（说明）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F003"
+      ],
+      "object": null,
+      "verdict": "suspicious",
+      "confidence": 0.0,
+      "evidence": "e",
+      "proposedAction": "defender.review",
+      "actionName": "引导用户在 Windows 安全中心复核并删除不需要的排除项或\"允许的威胁\"",
+      "risk": "green",
+      "userExplanation": null,
+      "questionForUser": "这一项需要你确认：None（原因见证据）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F005"
+      ],
+      "object": "x",
+      "verdict": "leftover",
+      "confidence": 0.125,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "说明",
+      "questionForUser": "这一项需要你确认：x（说明）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F006"
+      ],
+      "object": "x",
+      "verdict": "leftover",
+      "confidence": 0.0,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "说明",
+      "questionForUser": "这一项需要你确认：x（说明）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F007"
+      ],
+      "object": "x",
+      "verdict": "problem",
+      "confidence": 1.0,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "说明",
+      "questionForUser": "这一项需要你确认：x（说明）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F009"
+      ],
+      "object": null,
+      "verdict": "uncertain",
+      "confidence": 0.0,
+      "evidence": null,
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": null,
+      "questionForUser": "这一项需要你确认：None（原因见证据）",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F004"
+      ],
+      "object": "WPS Office：wps.exe",
+      "verdict": "normal",
+      "confidence": 0.9,
+      "evidence": "F004 证据（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+      "questionForUser": null,
+      "needsUser": false,
+      "kbId": "wps-user-folder"
+     }
+    ],
+    "tips": [
+     {
+      "title": "t1",
+      "body": "b1",
+      "relatedFlagIds": [
+       "F001"
+      ]
+     }
+    ],
+    "notCollected": [
+     "a",
+     "b"
+    ],
+    "unjudgedFlagIds": [
+     "F008"
+    ]
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [
+    "F004"
+   ],
+   "issues": [
+    "x：['F004'] 已由知识库下结论，模型的这部分已忽略",
+    "第 1 条 finding 不是对象，已丢弃",
+    "x：引用了不存在的 flagId ['F999', 7]，已忽略",
+    "x：操作 'registry.delete' 不在操作库里，改为先问用户",
+    "x：规则判为高风险，模型却判为正常，改为拿不准并请用户确认",
+    "x：结论 '危险' 不合法，改为 uncertain",
+    "x：操作 driver.remove_after_reboot 不适用于 ['security']，改为先问用户",
+    "x：需要问用户但没给问题，已补默认问题",
+    "None：需要问用户但没给问题，已补默认问题",
+    "x：操作 service.delete_orphan 只能用于 ['binary-missing'] 规则命中的对象，改为先问用户",
+    "x：需要问用户但没给问题，已补默认问题",
+    "x：操作 service.delete_orphan 只能用于 ['binary-missing'] 规则命中的对象，改为先问用户",
+    "x：需要问用户但没给问题，已补默认问题",
+    "x：没有有效的 flagId，整条丢弃",
+    "x：操作 driver.delete_old_version 只能用于 ['duplicate-versions'] 规则命中的对象，改为先问用户",
+    "x：需要问用户但没给问题，已补默认问题",
+    "x：引用了不存在的 flagId ['F', '0', '0', '8']，已忽略",
+    "x：没有有效的 flagId，整条丢弃",
+    "None：操作 123 不在操作库里，改为先问用户",
+    "None：需要问用户但没给问题，已补默认问题",
+    "结论里有\"可疑\"，但整体判断为\"没有中毒迹象\"，前后不一致（未修改，留给人工复核）",
+    "有 1 条预筛结果没有被研判：['F008']"
+   ]
+  },
+  "modelMarkdown": "# 电脑体检报告\n\n**健康分 86 / 100**　\n\n> 生成时间 2026-01-01 00:00 · 模型 test-model · 采集器 0.2.2　健康分由代码按规则计算，模型只负责判断和解释\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 123\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. 一\n2. {'a': 1, 'b': [True, None, 1.5]}\n3. 2.0\n\n## 需要你确认的问题\n\n- **x**：规则认为这一项风险较高（规则判为高风险），但 AI 判断为正常。这是你认识、自己安装的东西吗？\n- **x**：这一项需要你确认：x（说明）\n- ****：这一项需要你确认：None（原因见证据）\n- **x**：这一项需要你确认：x（说明）\n- **x**：这一项需要你确认：x（说明）\n- **x**：这一项需要你确认：x（说明）\n- ****：这一项需要你确认：None（原因见证据）\n\n> 有 1 项是已经弄清楚的常见软件组件，由知识库直接给出结论（表格里标\"知识库\"），没有交给模型\n\n## 小知识\n\n**t1**\n\nb1\n\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n|  | 可疑 | 0.00 | 引导用户在 Windows 安全中心复核并删除不需要的排除项或\"允许的威胁\" | 绿 |  |\n| x | 需处理 | 1.00 | 需要先问用户 | — | 说明 |\n| x | 卸载残留 | 0.12 | 需要先问用户 | — | 说明 |\n| x | 卸载残留 | 0.00 | 需要先问用户 | — | 说明 |\n| x | 拿不准 | 0.75 | 需要先问用户 | — | 说明 |\n| x | 拿不准 | 1.00 | 需要先问用户 | — | 说明 |\n|  | 拿不准 | 0.00 | 需要先问用户 | — |  |\n| WPS Office：wps.exe | 正常 | 0.90（知识库） | 不需要处理 | — | WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：63.3 分\n  - −36.7　defender-exclusion：Defender 排除项（F001、F002、F003）\n- **性能与后台**（权重 25%）：100 分\n  - −0　runs-from-user-folder：wps.exe（F004，研判为正常，不扣分）\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：67 分\n  - −10　seed-anticheat-accel：XLWFP（F005）\n  - −10　third-party-class-filter：PECKP（F006）\n  - −10　seed-bank-security：msfilter（F007）\n  - −3　binary-missing：PECKP（F009）\n\n## 证据（专业模式）\n\n- **x**（F001，建议 `ask_user`）：e\n- **x**（F002，建议 `ask_user`）：e\n- ****（F003，建议 `defender.review`）：e\n- **x**（F005，建议 `ask_user`）：e\n- **x**（F006，建议 `ask_user`）：e\n- **x**（F007，建议 `ask_user`）：e\n- ****（F009，建议 `ask_user`）：None\n- **WPS Office：wps.exe**（F004，建议 `none`）：F004 证据（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））\n\n## 没能检查的方面\n\n- a\n- b\n\n## 校验记录\n\n模型输出中被代码修正的地方（用于复核误判率）：\n\n- x：['F004'] 已由知识库下结论，模型的这部分已忽略\n- 第 1 条 finding 不是对象，已丢弃\n- x：引用了不存在的 flagId ['F999', 7]，已忽略\n- x：操作 'registry.delete' 不在操作库里，改为先问用户\n- x：规则判为高风险，模型却判为正常，改为拿不准并请用户确认\n- x：结论 '危险' 不合法，改为 uncertain\n- x：操作 driver.remove_after_reboot 不适用于 ['security']，改为先问用户\n- x：需要问用户但没给问题，已补默认问题\n- None：需要问用户但没给问题，已补默认问题\n- x：操作 service.delete_orphan 只能用于 ['binary-missing'] 规则命中的对象，改为先问用户\n- x：需要问用户但没给问题，已补默认问题\n- x：操作 service.delete_orphan 只能用于 ['binary-missing'] 规则命中的对象，改为先问用户\n- x：需要问用户但没给问题，已补默认问题\n- x：没有有效的 flagId，整条丢弃\n- x：操作 driver.delete_old_version 只能用于 ['duplicate-versions'] 规则命中的对象，改为先问用户\n- x：需要问用户但没给问题，已补默认问题\n- x：引用了不存在的 flagId ['F', '0', '0', '8']，已忽略\n- x：没有有效的 flagId，整条丢弃\n- None：操作 123 不在操作库里，改为先问用户\n- None：需要问用户但没给问题，已补默认问题\n- 结论里有\"可疑\"，但整体判断为\"没有中毒迹象\"，前后不一致（未修改，留给人工复核）\n- 有 1 条预筛结果没有被研判：['F008']\n",
+  "modelReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,x,拿不准,模型,0.75,需要先问用户,说明,,,\r\nF002,x,拿不准,模型,1.00,需要先问用户,说明,,,\r\nF003,,可疑,模型,0.00,\"引导用户在 Windows 安全中心复核并删除不需要的排除项或\"\"允许的威胁\"\"\",,,,\r\nF005,x,卸载残留,模型,0.12,需要先问用户,说明,,,\r\nF006,x,卸载残留,模型,0.00,需要先问用户,说明,,,\r\nF007,x,需处理,模型,1.00,需要先问用户,说明,,,\r\nF009,,拿不准,模型,0.00,需要先问用户,,,,\r\nF004,WPS Office：wps.exe,正常,知识库 wps-user-folder,0.90,不需要处理,WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。,,,\r\n"
+ }
+}

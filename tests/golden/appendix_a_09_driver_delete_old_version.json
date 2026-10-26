@@ -1,0 +1,348 @@
+{
+ "name": "appendix_a_09_driver_delete_old_version",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    },
+    "drivers": {
+     "kernelDrivers": {
+      "items": [
+       {
+        "name": "PECKP",
+        "state": "Running",
+        "startMode": "Manual",
+        "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+        "company": "Bank",
+        "signer": "Bank Ltd",
+        "signature": "Valid"
+       },
+       {
+        "name": "storahci",
+        "state": "Running",
+        "startMode": "Boot",
+        "path": "C:\\Windows\\System32\\drivers\\storahci.sys",
+        "company": "Microsoft Corporation",
+        "signer": "Microsoft Windows",
+        "signature": "Valid"
+       },
+       {
+        "name": "vendorboot",
+        "state": "Running",
+        "startMode": "Boot",
+        "path": "C:\\Windows\\System32\\drivers\\vb.sys",
+        "company": "Vendor",
+        "signer": "Vendor Ltd",
+        "signature": "Valid"
+       }
+      ]
+     },
+     "classFilters": [
+      {
+       "className": "Keyboard",
+       "kind": "UpperFilters",
+       "driver": "PECKP",
+       "thirdParty": true
+      }
+     ]
+    }
+   }
+  },
+  "known": [],
+  "useKb": false,
+  "raw": {
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "x",
+     "verdict": "leftover",
+     "confidence": 0.9,
+     "evidence": "e",
+     "proposedAction": "driver.delete_old_version",
+     "userExplanation": "u",
+     "questionForUser": null
+    }
+   ]
+  },
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据",
+     "context": {
+      "name": "PECKP",
+      "state": "Running",
+      "startMode": "Manual",
+      "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+      "company": "Bank",
+      "signer": "Bank Ltd",
+      "signature": "Valid",
+      "classFilters": [
+       {
+        "className": "Keyboard",
+        "kind": "UpperFilters"
+       }
+      ]
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "third-party-class-filter",
+     "severity": "medium",
+     "object": "PECKP",
+     "evidence": "证据",
+     "context": {
+      "name": "PECKP",
+      "state": "Running",
+      "startMode": "Manual",
+      "path": "C:\\Windows\\System32\\drivers\\PECKP_x64.sys",
+      "company": "Bank",
+      "signer": "Bank Ltd",
+      "signature": "Valid",
+      "classFilters": [
+       {
+        "className": "Keyboard",
+        "kind": "UpperFilters"
+       }
+      ]
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"third-party-class-filter\", \"severity\": \"medium\", \"object\": \"PECKP\", \"evidence\": \"证据\", \"context\": {\"name\": \"PECKP\", \"state\": \"Running\", \"startMode\": \"Manual\", \"path\": \"C:\\\\Windows\\\\System32\\\\drivers\\\\PECKP_x64.sys\", \"company\": \"Bank\", \"signer\": \"Bank Ltd\", \"signature\": \"Valid\", \"classFilters\": [{\"className\": \"Keyboard\", \"kind\": \"UpperFilters\"}]}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：0 项建议处理，1 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "PECKP",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F001 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "PECKP 挂在设备的过滤器上，处理不当会让键盘、USB 等设备失灵，需要确认它属于哪个软件",
+     "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？"
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 99,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "third-party-class-filter",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 10
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，1 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "PECKP",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F001 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "PECKP 挂在设备的过滤器上，处理不当会让键盘、USB 等设备失灵，需要确认它属于哪个软件",
+      "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？",
+      "needsUser": true
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 99 / 100**　纯规则模式（没有调用 AI）：0 项建议处理，1 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 需要你确认的问题\n\n- **PECKP**：这是你自己安装或设置的吗？现在还在用吗？\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| PECKP | 拿不准 | 0.50 | 需要先问用户 | — | PECKP 挂在设备的过滤器上，处理不当会让键盘、USB 等设备失灵，需要确认它属于哪个软件 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：90 分\n  - −10　third-party-class-filter：PECKP（F001）\n\n## 证据（专业模式）\n\n- **PECKP**（F001，建议 `ask_user`）：F001 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,PECKP,拿不准,模型,0.50,需要先问用户,PECKP 挂在设备的过滤器上，处理不当会让键盘、USB 等设备失灵，需要确认它属于哪个软件,,,\r\n",
+  "modelResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "test-model",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 99,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "third-party-class-filter",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "PECKP"
+        ],
+        "points": 10
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "",
+    "malwareSuspected": false,
+    "malwareReasoning": "",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "x",
+      "verdict": "leftover",
+      "confidence": 0.9,
+      "evidence": "e",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "u",
+      "questionForUser": "这一项需要你确认：x（u）",
+      "needsUser": true
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [
+    "x：操作 driver.delete_old_version 只能用于 ['duplicate-versions'] 规则命中的对象，改为先问用户",
+    "x：需要问用户但没给问题，已补默认问题"
+   ]
+  },
+  "modelMarkdown": "# 电脑体检报告\n\n**健康分 99 / 100**　\n\n> 生成时间 2026-01-01 00:00 · 模型 test-model · 采集器 appendix-a　健康分由代码按规则计算，模型只负责判断和解释\n\n## 有没有中毒\n\n**没有发现中毒迹象。** \n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 需要你确认的问题\n\n- **x**：这一项需要你确认：x（u）\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| x | 卸载残留 | 0.90 | 需要先问用户 | — | u |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：90 分\n  - −10　third-party-class-filter：PECKP（F001）\n\n## 证据（专业模式）\n\n- **x**（F001，建议 `ask_user`）：e\n\n## 校验记录\n\n模型输出中被代码修正的地方（用于复核误判率）：\n\n- x：操作 driver.delete_old_version 只能用于 ['duplicate-versions'] 规则命中的对象，改为先问用户\n- x：需要问用户但没给问题，已补默认问题\n",
+  "modelReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,x,卸载残留,模型,0.90,需要先问用户,u,,,\r\n"
+ }
+}

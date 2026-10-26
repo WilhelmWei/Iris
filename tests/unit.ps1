@@ -1,0 +1,86 @@
+﻿# 单元测试：路径解析、用户可写目录规则、隐私打码
+# 运行：pwsh -NoProfile -File tests/unit.ps1（Windows 或 Linux 均可）
+$src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
+if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf' }, $true)
+foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
+$env:windir = 'C:\Windows'
+$cases = @(
+ @('"C:\Program Files\Huawei\PCManager\HwMdcUI.exe" /start', 'C:\Program Files\Huawei\PCManager\HwMdcUI.exe'),
+ @('C:\Windows\system32\svchost.exe -k netsvcs -p', 'C:\Windows\system32\svchost.exe'),
+ @('\SystemRoot\System32\drivers\PECKP_x64.SYS', 'C:\Windows\System32\drivers\PECKP_x64.SYS'),
+ @('system32\drivers\UniFairy_x64.sys', 'C:\Windows\system32\drivers\UniFairy_x64.sys'),
+ @('\??\C:\Program Files\Huawei\PCManager\dokan2a.sys', 'C:\Program Files\Huawei\PCManager\dokan2a.sys'),
+ @('"C:\Users\Alice\AppData\Local\Temp\bwp19e9081b\UnInstDaemon.exe" --daily-app-recovery', 'C:\Users\Alice\AppData\Local\Temp\bwp19e9081b\UnInstDaemon.exe'),
+ @('"C:\Program Files (x86)\EasyAntiCheat_EOS\EasyAntiCheat_EOS.exe"', 'C:\Program Files (x86)\EasyAntiCheat_EOS\EasyAntiCheat_EOS.exe'),
+ @('"C:\broken path\no closing quote.exe', 'C:\broken path\no closing quote.exe')
+)
+$pass=0; foreach ($c in $cases) { $r = Resolve-ExePath $c[0]; if ($r -eq $c[1]) { $pass++ } else { "FAIL resolve: [$($c[0])] -> [$r] expected [$($c[1])]" } }
+"resolve: $pass/$($cases.Count) passed"
+$uw = @(@('C:\Users\Alice\AppData\Local\Temp\x.exe',$true), @('C:\ProgramData\evil.exe',$true), @('C:\ProgramData\Microsoft\Windows Defender\MsMpEng.exe',$false), @('C:\Program Files\Google\Chrome\chrome.exe',$false), @('C:\Users\Public\a.exe',$true))
+$p2=0; foreach ($c in $uw) { if ((Test-UserWritablePath $c[0]) -eq $c[1]) { $p2++ } else { "FAIL userpath: $($c[0])" } }
+"userpath: $p2/$($uw.Count) passed"
+# 打码（测试脚本里真实的 Hide-Private）
+$red = @(
+ @('C:\Users\Alice\AppData\x', 'Alice', 'LAPTOP-TEST01', 'C:\Users\[用户]\AppData\x'),
+ @('Author LAPTOP-TEST01\Alice', 'Alice', 'LAPTOP-TEST01', 'Author [计算机名]\[用户]'),
+ @('Alicery app', 'Alice', 'LAPTOP-TEST01', 'Alicery app'),
+ @('mail bob@test.de', 'Alice', 'LAPTOP-TEST01', 'mail [邮箱]'),
+ @('31.0.101.5522', 'Alice', 'LAPTOP-TEST01', '31.0.101.5522'),
+ @('{"a": "内存完整性"}', '', '', '{"a": "内存完整性"}'),
+ @('C:\Users\Alice\x', 'Alice', $null, 'C:\Users\[用户]\x')
+)
+$p3=0; foreach ($c in $red) { $r = Hide-Private $c[0] $c[1] $c[2]; if ($r -eq $c[3]) { $p3++ } else { "FAIL redact: [$($c[0])] -> [$r] expected [$($c[3])]" } }
+"redact: $p3/$($red.Count) passed"
+
+# Defender 排除项风险
+$ex = @(
+ @('path','C:\','high'), @('path','D:','high'), @('path','C:\Users\Alice\AppData\Local\Temp','high'), @('path','C:\ProgramData','high'),
+ @('path','C:\Users\Alice','high'), @('path','D:\Projects\build','low'), @('path','C:\Program Files\Docker','low'),
+ @('extension','.exe','high'), @('extension','*.ps1','high'), @('extension','log','low'),
+ @('process','C:\Users\Alice\AppData\Local\x\a.exe','high'), @('process','node.exe','medium'),
+ @('process','Update.exe','high'), @('process','uninst.exe','high'), @('process','unins000.exe','high'), @('process','LetsPRO.exe','medium'),
+ @('path','C:\Users\Alice\AppData\Local\JetBrains\PyCharmCE2023.3','low'), @('path','C:\Users\Alice\.conda','low'),
+ @('path','C:\Users\Alice\AppData\Local\Evil','high'),
+ @('path','N/A: Must be an administrator to view exclusions',$null)
+)
+$p4=0; foreach ($c in $ex) { $r = Get-ExclusionRisk $c[0] $c[1]; if ($r -eq $c[2]) { $p4++ } else { "FAIL exclusion: [$($c[0]) $($c[1])] -> [$r] expected [$($c[2])]" } }
+"exclusion: $p4/$($ex.Count) passed"
+
+# 文件夹分类与按时间分桶：Image 下一个 100 天前的文件，Cache 下一个新文件，根目录一个 400 天前的文件
+$root = Join-Path ([IO.Path]::GetTempPath()) ('pcd-test-' + [guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path (Join-Path $root 'wxid_a/FileStorage/Image/2025-01') -Force
+$null = New-Item -ItemType Directory -Path (Join-Path $root 'wxid_a/FileStorage/Cache') -Force
+function New-TestFile($rel, $bytes, $daysAgo) {
+    $f = Join-Path $root $rel
+    [IO.File]::WriteAllBytes($f, (New-Object byte[] $bytes))
+    (Get-Item -LiteralPath $f).LastWriteTime = (Get-Date).AddDays(-$daysAgo)
+}
+New-TestFile 'wxid_a/FileStorage/Image/2025-01/a.dat' (32MB) 100
+New-TestFile 'wxid_a/FileStorage/Cache/b.tmp' (21MB) 1
+New-TestFile 'old.bin' (11MB) 400
+$m = Measure-Folder $root 10 -Breakdown
+Remove-Item -LiteralPath $root -Recurse -Force
+$checks = @(
+ @('files', $m.files, 3),
+ @('sizeGB', $m.sizeGB, 0.06),
+ @('图片', $m.byCategoryGB['图片'], 0.03),
+ @('缓存与日志', $m.byCategoryGB['缓存与日志'], 0.02),
+ @('其他', $m.byCategoryGB['其他'], 0.01),
+ @('older 7d', $m.olderThanGB['7d'], 0.04),
+ @('older 90d', $m.olderThanGB['90d'], 0.04),
+ @('older 180d', $m.olderThanGB['180d'], 0.01),
+ @('older 365d', $m.olderThanGB['365d'], 0.01)
+)
+$p5=0; foreach ($c in $checks) { if ([string]$c[1] -eq [string]$c[2]) { $p5++ } else { "FAIL folder $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+"folder: $p5/$($checks.Count) passed"
+
+# 查询失败必须被吞掉并返回空，不能抛出去拖垮整节（曾因 finally 放在 catch 前导致 catch 失效）
+$Perf = [ordered]@{}; $CollectErrors = New-Object System.Collections.ArrayList
+$p6=0
+try { $r = Get-Cim 'Pcdoctor_NoSuchClass'; if ($null -eq $r) { $p6++ } else { 'FAIL cim: 返回了非空' } } catch { "FAIL cim: 抛出异常 $($_.Exception.Message)" }
+try { $r = Safe 'boom' { throw 'x' }; if ($null -eq $r -and $CollectErrors.Count -eq 1) { $p6++ } else { 'FAIL safe: 未记录错误' } } catch { "FAIL safe: 抛出异常" }
+if ($Perf.Contains('cim Pcdoctor_NoSuchClass')) { $p6++ } else { 'FAIL perf: 没有记录 cim 耗时' }
+"error-handling: $p6/3 passed"
+

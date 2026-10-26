@@ -1,0 +1,276 @@
+{
+ "name": "appendix_a_04",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "W3SVC",
+     "evidence": "证据"
+    },
+    {
+     "id": "F002",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "FTPSVC",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "W3SVC",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "server-services",
+      "product": "IIS / FTP 服务器",
+      "verdict": "problem",
+      "proposedAction": "service.set_manual",
+      "explanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "certainty": "confirmed",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F002",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "FTPSVC",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "server-services",
+      "product": "IIS / FTP 服务器",
+      "verdict": "problem",
+      "proposedAction": "service.set_manual",
+      "explanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "certainty": "confirmed",
+      "direct": false
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "W3SVC",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "server-services",
+      "product": "IIS / FTP 服务器",
+      "verdict": "problem",
+      "proposedAction": "service.set_manual",
+      "explanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "certainty": "confirmed",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F002",
+     "section": "services",
+     "rule": "server-service-running",
+     "severity": "medium",
+     "object": "FTPSVC",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "server-services",
+      "product": "IIS / FTP 服务器",
+      "verdict": "problem",
+      "proposedAction": "service.set_manual",
+      "explanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "certainty": "confirmed",
+      "direct": false
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"services\", \"rule\": \"server-service-running\", \"severity\": \"medium\", \"object\": \"W3SVC\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"server-services\", \"product\": \"IIS / FTP 服务器\", \"verdict\": \"problem\", \"proposedAction\": \"service.set_manual\", \"explanation\": \"Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。\", \"certainty\": \"confirmed\", \"direct\": false}}, {\"flagId\": \"F002\", \"section\": \"services\", \"rule\": \"server-service-running\", \"severity\": \"medium\", \"object\": \"FTPSVC\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"server-services\", \"product\": \"IIS / FTP 服务器\", \"verdict\": \"problem\", \"proposedAction\": \"service.set_manual\", \"explanation\": \"Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。\", \"certainty\": \"confirmed\", \"direct\": false}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：2 项建议处理，0 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [
+    "W3SVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+    "FTPSVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "W3SVC",
+     "verdict": "problem",
+     "confidence": 0.7,
+     "evidence": "F001 证据",
+     "proposedAction": "service.set_manual",
+     "userExplanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "FTPSVC",
+     "verdict": "problem",
+     "confidence": 0.7,
+     "evidence": "F002 证据",
+     "proposedAction": "service.set_manual",
+     "userExplanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+     "questionForUser": null
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 97,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 86.7,
+      "deductions": [
+       {
+        "rule": "server-service-running",
+        "flagIds": [
+         "F001",
+         "F002"
+        ],
+        "objects": [
+         "FTPSVC",
+         "W3SVC"
+        ],
+        "points": 13.3
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 100,
+      "deductions": []
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：2 项建议处理，0 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [
+     "W3SVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+     "FTPSVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "W3SVC",
+      "verdict": "problem",
+      "confidence": 0.7,
+      "evidence": "F001 证据",
+      "proposedAction": "service.set_manual",
+      "actionName": "第三方服务改为手动启动",
+      "risk": "yellow",
+      "userExplanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F002"
+      ],
+      "object": "FTPSVC",
+      "verdict": "problem",
+      "confidence": 0.7,
+      "evidence": "F002 证据",
+      "proposedAction": "service.set_manual",
+      "actionName": "第三方服务改为手动启动",
+      "risk": "yellow",
+      "userExplanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+      "questionForUser": null,
+      "needsUser": false
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 97 / 100**　纯规则模式（没有调用 AI）：2 项建议处理，0 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. W3SVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。\n2. FTPSVC：Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| W3SVC | 需处理 | 0.70 | 第三方服务改为手动启动 | 黄 | Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。 |\n| FTPSVC | 需处理 | 0.70 | 第三方服务改为手动启动 | 黄 | Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：86.7 分\n  - −13.3　server-service-running：FTPSVC、W3SVC（F001、F002）\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：100 分\n\n## 证据（专业模式）\n\n- **W3SVC**（F001，建议 `service.set_manual`）：F001 证据\n- **FTPSVC**（F002，建议 `service.set_manual`）：F002 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,W3SVC,需处理,模型,0.70,第三方服务改为手动启动,Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。,,,\r\nF002,FTPSVC,需处理,模型,0.70,第三方服务改为手动启动,Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。,,,\r\n"
+ }
+}

@@ -1,0 +1,283 @@
+{
+ "name": "appendix_a_08",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "EasyAntiCheat",
+     "evidence": "证据"
+    },
+    {
+     "id": "F002",
+     "section": "services",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "UniFairy",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "EasyAntiCheat",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "anticheat-leftovers",
+      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在玩需要这个反作弊程序的游戏吗？"
+     }
+    },
+    {
+     "flagId": "F002",
+     "section": "services",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "UniFairy",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "anticheat-leftovers",
+      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在玩需要这个反作弊程序的游戏吗？"
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "EasyAntiCheat",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "anticheat-leftovers",
+      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在玩需要这个反作弊程序的游戏吗？"
+     }
+    },
+    {
+     "flagId": "F002",
+     "section": "services",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "UniFairy",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "anticheat-leftovers",
+      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "verdict": "uncertain",
+      "proposedAction": "ask_user",
+      "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "certainty": "confirmed",
+      "direct": false,
+      "question": "你还在玩需要这个反作弊程序的游戏吗？"
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"EasyAntiCheat\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}, {\"flagId\": \"F002\", \"section\": \"services\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"UniFairy\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：0 项建议处理，2 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "EasyAntiCheat",
+     "verdict": "uncertain",
+     "confidence": 0.7,
+     "evidence": "F001 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+     "questionForUser": "你还在玩需要这个反作弊程序的游戏吗？"
+    },
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "UniFairy",
+     "verdict": "uncertain",
+     "confidence": 0.7,
+     "evidence": "F002 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+     "questionForUser": "你还在玩需要这个反作弊程序的游戏吗？"
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 96,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "seed-anticheat-accel",
+        "flagIds": [
+         "F002"
+        ],
+        "objects": [
+         "UniFairy"
+        ],
+        "points": 10
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "seed-anticheat-accel",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "EasyAntiCheat"
+        ],
+        "points": 10
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，2 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "EasyAntiCheat",
+      "verdict": "uncertain",
+      "confidence": 0.7,
+      "evidence": "F001 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "questionForUser": "你还在玩需要这个反作弊程序的游戏吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F002"
+      ],
+      "object": "UniFairy",
+      "verdict": "uncertain",
+      "confidence": 0.7,
+      "evidence": "F002 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+      "questionForUser": "你还在玩需要这个反作弊程序的游戏吗？",
+      "needsUser": true
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 96 / 100**　纯规则模式（没有调用 AI）：0 项建议处理，2 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 需要你确认的问题\n\n- **EasyAntiCheat**：你还在玩需要这个反作弊程序的游戏吗？\n- **UniFairy**：你还在玩需要这个反作弊程序的游戏吗？\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| EasyAntiCheat | 拿不准 | 0.70 | 需要先问用户 | — | 游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。 |\n| UniFairy | 拿不准 | 0.70 | 需要先问用户 | — | 游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：90 分\n  - −10　seed-anticheat-accel：UniFairy（F002）\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：90 分\n  - −10　seed-anticheat-accel：EasyAntiCheat（F001）\n\n## 证据（专业模式）\n\n- **EasyAntiCheat**（F001，建议 `ask_user`）：F001 证据\n- **UniFairy**（F002，建议 `ask_user`）：F002 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,EasyAntiCheat,拿不准,模型,0.70,需要先问用户,游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。,,,\r\nF002,UniFairy,拿不准,模型,0.70,需要先问用户,游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。,,,\r\n"
+ }
+}

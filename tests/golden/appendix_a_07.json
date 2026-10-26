@@ -1,0 +1,410 @@
+{
+ "name": "appendix_a_07",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "drivers",
+     "rule": "memory-integrity-off",
+     "severity": "medium",
+     "object": "内存完整性",
+     "evidence": "证据"
+    },
+    {
+     "id": "F002",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PassGuard",
+     "evidence": "证据"
+    },
+    {
+     "id": "F003",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "TESMON",
+     "evidence": "证据"
+    },
+    {
+     "id": "F004",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "ew_usbccgpfilter",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "memory-integrity-off",
+     "severity": "medium",
+     "object": "内存完整性",
+     "evidence": "证据"
+    },
+    {
+     "flagId": "F002",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PassGuard",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-passguard",
+      "product": "网银密码控件 PassGuard",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F003",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "TESMON",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "tencent-tesmon",
+      "product": "腾讯 TesMon",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F004",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "ew_usbccgpfilter",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "huawei-ew-usb",
+      "product": "华为旧 USB / 移动宽带驱动",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。",
+      "certainty": "likely",
+      "direct": false
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "memory-integrity-off",
+     "severity": "medium",
+     "object": "内存完整性",
+     "evidence": "证据"
+    },
+    {
+     "flagId": "F002",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "PassGuard",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "bank-passguard",
+      "product": "网银密码控件 PassGuard",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F003",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "TESMON",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "tencent-tesmon",
+      "product": "腾讯 TesMon",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F004",
+     "section": "drivers",
+     "rule": "binary-missing",
+     "severity": "low",
+     "object": "ew_usbccgpfilter",
+     "evidence": "证据",
+     "knowledge": {
+      "kbId": "huawei-ew-usb",
+      "product": "华为旧 USB / 移动宽带驱动",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。",
+      "certainty": "likely",
+      "direct": false
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"memory-integrity-off\", \"severity\": \"medium\", \"object\": \"内存完整性\", \"evidence\": \"证据\"}, {\"flagId\": \"F002\", \"section\": \"drivers\", \"rule\": \"binary-missing\", \"severity\": \"low\", \"object\": \"PassGuard\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"bank-passguard\", \"product\": \"网银密码控件 PassGuard\", \"verdict\": \"leftover\", \"proposedAction\": \"ask_user\", \"explanation\": \"PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。\", \"certainty\": \"likely\", \"direct\": false}}, {\"flagId\": \"F003\", \"section\": \"drivers\", \"rule\": \"binary-missing\", \"severity\": \"low\", \"object\": \"TESMON\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"tencent-tesmon\", \"product\": \"腾讯 TesMon\", \"verdict\": \"leftover\", \"proposedAction\": \"ask_user\", \"explanation\": \"腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。\", \"certainty\": \"likely\", \"direct\": false}}, {\"flagId\": \"F004\", \"section\": \"drivers\", \"rule\": \"binary-missing\", \"severity\": \"low\", \"object\": \"ew_usbccgpfilter\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"huawei-ew-usb\", \"product\": \"华为旧 USB / 移动宽带驱动\", \"verdict\": \"leftover\", \"proposedAction\": \"ask_user\", \"explanation\": \"ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。\", \"certainty\": \"likely\", \"direct\": false}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：4 项建议处理，3 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [
+    "内存完整性：内存完整性没有开启，常见原因是装过不兼容的旧驱动",
+    "PassGuard：PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+    "TESMON：腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "内存完整性",
+     "verdict": "problem",
+     "confidence": 0.7,
+     "evidence": "F001 证据",
+     "proposedAction": "none",
+     "userExplanation": "内存完整性没有开启，常见原因是装过不兼容的旧驱动",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "PassGuard",
+     "verdict": "leftover",
+     "confidence": 0.7,
+     "evidence": "F002 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+     "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？"
+    },
+    {
+     "flagIds": [
+      "F003"
+     ],
+     "object": "TESMON",
+     "verdict": "leftover",
+     "confidence": 0.7,
+     "evidence": "F003 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。",
+     "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？"
+    },
+    {
+     "flagIds": [
+      "F004"
+     ],
+     "object": "ew_usbccgpfilter",
+     "verdict": "leftover",
+     "confidence": 0.7,
+     "evidence": "F004 证据",
+     "proposedAction": "ask_user",
+     "userExplanation": "ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。",
+     "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？"
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 99,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 85.5,
+      "deductions": [
+       {
+        "rule": "memory-integrity-off",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "内存完整性"
+        ],
+        "points": 10
+       },
+       {
+        "rule": "binary-missing",
+        "flagIds": [
+         "F002",
+         "F003",
+         "F004"
+        ],
+        "objects": [
+         "PassGuard",
+         "TESMON",
+         "ew_usbccgpfilter"
+        ],
+        "points": 4.5
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：4 项建议处理，3 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [
+     "内存完整性：内存完整性没有开启，常见原因是装过不兼容的旧驱动",
+     "PassGuard：PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+     "TESMON：腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "内存完整性",
+      "verdict": "problem",
+      "confidence": 0.7,
+      "evidence": "F001 证据",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "内存完整性没有开启，常见原因是装过不兼容的旧驱动",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F002"
+      ],
+      "object": "PassGuard",
+      "verdict": "leftover",
+      "confidence": 0.7,
+      "evidence": "F002 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+      "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F003"
+      ],
+      "object": "TESMON",
+      "verdict": "leftover",
+      "confidence": 0.7,
+      "evidence": "F003 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。",
+      "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F004"
+      ],
+      "object": "ew_usbccgpfilter",
+      "verdict": "leftover",
+      "confidence": 0.7,
+      "evidence": "F004 证据",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。",
+      "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？",
+      "needsUser": true
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 99 / 100**　纯规则模式（没有调用 AI）：4 项建议处理，3 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. 内存完整性：内存完整性没有开启，常见原因是装过不兼容的旧驱动\n2. PassGuard：PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。\n3. TESMON：腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。\n\n## 需要你确认的问题\n\n- **PassGuard**：这是你自己安装或设置的吗？现在还在用吗？\n- **TESMON**：这是你自己安装或设置的吗？现在还在用吗？\n- **ew_usbccgpfilter**：这是你自己安装或设置的吗？现在还在用吗？\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| 内存完整性 | 需处理 | 0.70 | 不需要处理 | — | 内存完整性没有开启，常见原因是装过不兼容的旧驱动 |\n| PassGuard | 卸载残留 | 0.70 | 需要先问用户 | — | PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。 |\n| TESMON | 卸载残留 | 0.70 | 需要先问用户 | — | 腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。 |\n| ew_usbccgpfilter | 卸载残留 | 0.70 | 需要先问用户 | — | ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：85.5 分\n  - −10　memory-integrity-off：内存完整性（F001）\n  - −4.5　binary-missing：PassGuard、TESMON、ew_usbccgpfilter（F002、F003、F004）\n\n## 证据（专业模式）\n\n- **内存完整性**（F001，建议 `none`）：F001 证据\n- **PassGuard**（F002，建议 `ask_user`）：F002 证据\n- **TESMON**（F003，建议 `ask_user`）：F003 证据\n- **ew_usbccgpfilter**（F004，建议 `ask_user`）：F004 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,内存完整性,需处理,模型,0.70,不需要处理,内存完整性没有开启，常见原因是装过不兼容的旧驱动,,,\r\nF002,PassGuard,卸载残留,模型,0.70,需要先问用户,PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。,,,\r\nF003,TESMON,卸载残留,模型,0.70,需要先问用户,腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。,,,\r\nF004,ew_usbccgpfilter,卸载残留,模型,0.70,需要先问用户,ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。,,,\r\n"
+ }
+}

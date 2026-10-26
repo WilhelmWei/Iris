@@ -1,0 +1,1421 @@
+{
+ "name": "scoring",
+ "note": "算分边界",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "scoring"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F002",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F003",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 2"
+    },
+    {
+     "id": "F004",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 3"
+    },
+    {
+     "id": "F005",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 4"
+    },
+    {
+     "id": "F006",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 5"
+    },
+    {
+     "id": "F007",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F008",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F009",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 2"
+    },
+    {
+     "id": "F010",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 3"
+    },
+    {
+     "id": "F011",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F012",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F013",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F014",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F015",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 2"
+    },
+    {
+     "id": "F016",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 3"
+    },
+    {
+     "id": "F017",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 4"
+    },
+    {
+     "id": "F018",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 5"
+    },
+    {
+     "id": "F019",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 6"
+    },
+    {
+     "id": "F020",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "system-drive-low-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F021",
+     "section": "power",
+     "rule": "fast-startup-on",
+     "severity": "low",
+     "object": "fast-startup-on-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F022",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F023",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F024",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 2"
+    },
+    {
+     "id": "F025",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F026",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-1",
+     "evidence": "证据 1"
+    },
+    {
+     "id": "F027",
+     "section": "processes",
+     "rule": "system-name-outside-windows",
+     "severity": "high",
+     "object": "system-name-outside-windows-0",
+     "evidence": "证据 0"
+    },
+    {
+     "id": "F028",
+     "section": "processes",
+     "rule": "unsigned",
+     "severity": "weird",
+     "object": "unsigned-0",
+     "evidence": "证据 0"
+    }
+   ],
+   "sections": {}
+  },
+  "known": [],
+  "useKb": false,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "scoring",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F002",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F003",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 2",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F004",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 3",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F005",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 4",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F006",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 5",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F007",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F008",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F009",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 2",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F010",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 3",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F011",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F012",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F013",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F014",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F015",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 2"
+    },
+    {
+     "flagId": "F016",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 3"
+    },
+    {
+     "flagId": "F017",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 4"
+    },
+    {
+     "flagId": "F018",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 5"
+    },
+    {
+     "flagId": "F019",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 6"
+    },
+    {
+     "flagId": "F020",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "system-drive-low-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F021",
+     "section": "power",
+     "rule": "fast-startup-on",
+     "severity": "low",
+     "object": "fast-startup-on-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F022",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F023",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F024",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 2"
+    },
+    {
+     "flagId": "F025",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F026",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F027",
+     "section": "processes",
+     "rule": "system-name-outside-windows",
+     "severity": "high",
+     "object": "system-name-outside-windows-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F028",
+     "section": "processes",
+     "rule": "unsigned",
+     "severity": "weird",
+     "object": "unsigned-0",
+     "evidence": "证据 0"
+    }
+   ],
+   "sharedContext": {
+    "C1": {}
+   },
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "scoring",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F002",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F003",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 2",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F004",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 3",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F005",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-0",
+     "evidence": "证据 4",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F006",
+     "section": "security",
+     "rule": "uac-off",
+     "severity": "high",
+     "object": "uac-off-1",
+     "evidence": "证据 5",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F007",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F008",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F009",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-0",
+     "evidence": "证据 2",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F010",
+     "section": "security",
+     "rule": "firewall-off",
+     "severity": "medium",
+     "object": "firewall-off-1",
+     "evidence": "证据 3",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F011",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F012",
+     "section": "security",
+     "rule": "defender-rtp-off",
+     "severity": "high",
+     "object": "defender-rtp-off-1",
+     "evidence": "证据 1",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F013",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F014",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F015",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 2"
+    },
+    {
+     "flagId": "F016",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 3"
+    },
+    {
+     "flagId": "F017",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 4"
+    },
+    {
+     "flagId": "F018",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-1",
+     "evidence": "证据 5"
+    },
+    {
+     "flagId": "F019",
+     "section": "storage",
+     "rule": "temp-large",
+     "severity": "low",
+     "object": "temp-large-0",
+     "evidence": "证据 6"
+    },
+    {
+     "flagId": "F020",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "system-drive-low-0",
+     "evidence": "证据 0",
+     "contextRef": "C1"
+    },
+    {
+     "flagId": "F021",
+     "section": "power",
+     "rule": "fast-startup-on",
+     "severity": "low",
+     "object": "fast-startup-on-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F022",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F023",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F024",
+     "section": "startup",
+     "rule": "seed-bundle",
+     "severity": "medium",
+     "object": "seed-bundle-0",
+     "evidence": "证据 2"
+    },
+    {
+     "flagId": "F025",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F026",
+     "section": "scheduledTasks",
+     "rule": "frequent",
+     "severity": "info",
+     "object": "frequent-1",
+     "evidence": "证据 1"
+    },
+    {
+     "flagId": "F027",
+     "section": "processes",
+     "rule": "system-name-outside-windows",
+     "severity": "high",
+     "object": "system-name-outside-windows-0",
+     "evidence": "证据 0"
+    },
+    {
+     "flagId": "F028",
+     "section": "processes",
+     "rule": "unsigned",
+     "severity": "weird",
+     "object": "unsigned-0",
+     "evidence": "证据 0"
+    }
+   ],
+   "sharedContext": {
+    "C1": {}
+   },
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"scoring\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-0\", \"evidence\": \"证据 0\", \"contextRef\": \"C1\"}, {\"flagId\": \"F002\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-1\", \"evidence\": \"证据 1\", \"contextRef\": \"C1\"}, {\"flagId\": \"F003\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-0\", \"evidence\": \"证据 2\", \"contextRef\": \"C1\"}, {\"flagId\": \"F004\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-1\", \"evidence\": \"证据 3\", \"contextRef\": \"C1\"}, {\"flagId\": \"F005\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-0\", \"evidence\": \"证据 4\", \"contextRef\": \"C1\"}, {\"flagId\": \"F006\", \"section\": \"security\", \"rule\": \"uac-off\", \"severity\": \"high\", \"object\": \"uac-off-1\", \"evidence\": \"证据 5\", \"contextRef\": \"C1\"}, {\"flagId\": \"F007\", \"section\": \"security\", \"rule\": \"firewall-off\", \"severity\": \"medium\", \"object\": \"firewall-off-0\", \"evidence\": \"证据 0\", \"contextRef\": \"C1\"}, {\"flagId\": \"F008\", \"section\": \"security\", \"rule\": \"firewall-off\", \"severity\": \"medium\", \"object\": \"firewall-off-1\", \"evidence\": \"证据 1\", \"contextRef\": \"C1\"}, {\"flagId\": \"F009\", \"section\": \"security\", \"rule\": \"firewall-off\", \"severity\": \"medium\", \"object\": \"firewall-off-0\", \"evidence\": \"证据 2\", \"contextRef\": \"C1\"}, {\"flagId\": \"F010\", \"section\": \"security\", \"rule\": \"firewall-off\", \"severity\": \"medium\", \"object\": \"firewall-off-1\", \"evidence\": \"证据 3\", \"contextRef\": \"C1\"}, {\"flagId\": \"F011\", \"section\": \"security\", \"rule\": \"defender-rtp-off\", \"severity\": \"high\", \"object\": \"defender-rtp-off-0\", \"evidence\": \"证据 0\", \"contextRef\": \"C1\"}, {\"flagId\": \"F012\", \"section\": \"security\", \"rule\": \"defender-rtp-off\", \"severity\": \"high\", \"object\": \"defender-rtp-off-1\", \"evidence\": \"证据 1\", \"contextRef\": \"C1\"}, {\"flagId\": \"F013\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-0\", \"evidence\": \"证据 0\"}, {\"flagId\": \"F014\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-1\", \"evidence\": \"证据 1\"}, {\"flagId\": \"F015\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-0\", \"evidence\": \"证据 2\"}, {\"flagId\": \"F016\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-1\", \"evidence\": \"证据 3\"}, {\"flagId\": \"F017\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-0\", \"evidence\": \"证据 4\"}, {\"flagId\": \"F018\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-1\", \"evidence\": \"证据 5\"}, {\"flagId\": \"F019\", \"section\": \"storage\", \"rule\": \"temp-large\", \"severity\": \"low\", \"object\": \"temp-large-0\", \"evidence\": \"证据 6\"}, {\"flagId\": \"F020\", \"section\": \"storage\", \"rule\": \"system-drive-low\", \"severity\": \"medium\", \"object\": \"system-drive-low-0\", \"evidence\": \"证据 0\", \"contextRef\": \"C1\"}, {\"flagId\": \"F021\", \"section\": \"power\", \"rule\": \"fast-startup-on\", \"severity\": \"low\", \"object\": \"fast-startup-on-0\", \"evidence\": \"证据 0\"}, {\"flagId\": \"F022\", \"section\": \"startup\", \"rule\": \"seed-bundle\", \"severity\": \"medium\", \"object\": \"seed-bundle-0\", \"evidence\": \"证据 0\"}, {\"flagId\": \"F023\", \"section\": \"startup\", \"rule\": \"seed-bundle\", \"severity\": \"medium\", \"object\": \"seed-bundle-1\", \"evidence\": \"证据 1\"}, {\"flagId\": \"F024\", \"section\": \"startup\", \"rule\": \"seed-bundle\", \"severity\": \"medium\", \"object\": \"seed-bundle-0\", \"evidence\": \"证据 2\"}, {\"flagId\": \"F025\", \"section\": \"scheduledTasks\", \"rule\": \"frequent\", \"severity\": \"info\", \"object\": \"frequent-0\", \"evidence\": \"证据 0\"}, {\"flagId\": \"F026\", \"section\": \"scheduledTasks\", \"rule\": \"frequent\", \"severity\": \"info\", \"object\": \"frequent-1\", \"evidence\": \"证据 1\"}, {\"flagId\": \"F027\", \"section\": \"processes\", \"rule\": \"system-name-outside-windows\", \"severity\": \"high\", \"object\": \"system-name-outside-windows-0\", \"evidence\": \"证据 0\"}, {\"flagId\": \"F028\", \"section\": \"processes\", \"rule\": \"unsigned\", \"severity\": \"weird\", \"object\": \"unsigned-0\", \"evidence\": \"证据 0\"}], \"sharedContext\": {\"C1\": {}}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：11 项建议处理，3 项需要你确认",
+   "malwareSuspected": true,
+   "malwareReasoning": "规则发现了需要核实的迹象：system-name-outside-windows-0（证据 0）",
+   "top3": [
+    "uac-off-0：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+    "uac-off-1：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+    "defender-rtp-off-0：Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F001",
+      "F003",
+      "F005"
+     ],
+     "object": "uac-off-0",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F001 证据 0；F003 证据 2；F005 证据 4",
+     "proposedAction": "none",
+     "userExplanation": "用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F002",
+      "F004",
+      "F006"
+     ],
+     "object": "uac-off-1",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F002 证据 1；F004 证据 3；F006 证据 5",
+     "proposedAction": "none",
+     "userExplanation": "用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F007",
+      "F009"
+     ],
+     "object": "firewall-off-0",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F007 证据 0；F009 证据 2",
+     "proposedAction": "none",
+     "userExplanation": "防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F008",
+      "F010"
+     ],
+     "object": "firewall-off-1",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F008 证据 1；F010 证据 3",
+     "proposedAction": "none",
+     "userExplanation": "防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F011"
+     ],
+     "object": "defender-rtp-off-0",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F011 证据 0",
+     "proposedAction": "none",
+     "userExplanation": "Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F012"
+     ],
+     "object": "defender-rtp-off-1",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F012 证据 1",
+     "proposedAction": "none",
+     "userExplanation": "Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F013",
+      "F015",
+      "F017",
+      "F019"
+     ],
+     "object": "temp-large-0",
+     "verdict": "problem",
+     "confidence": 0.8,
+     "evidence": "F013 证据 0；F015 证据 2；F017 证据 4；F019 证据 6",
+     "proposedAction": "cache.clean",
+     "userExplanation": "临时文件占用较大，可以清理",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F014",
+      "F016",
+      "F018"
+     ],
+     "object": "temp-large-1",
+     "verdict": "problem",
+     "confidence": 0.8,
+     "evidence": "F014 证据 1；F016 证据 3；F018 证据 5",
+     "proposedAction": "cache.clean",
+     "userExplanation": "临时文件占用较大，可以清理",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F020"
+     ],
+     "object": "system-drive-low-0",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F020 证据 0",
+     "proposedAction": "cache.clean",
+     "userExplanation": "C 盘空间不足，会影响系统更新和运行速度",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F021"
+     ],
+     "object": "fast-startup-on-0",
+     "verdict": "problem",
+     "confidence": 0.6,
+     "evidence": "F021 证据 0",
+     "proposedAction": "power.disable_fast_startup",
+     "userExplanation": "开着快速启动：点\"关机\"其实是半休眠，长期不重启会积累内存占用和小毛病",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F022",
+      "F024"
+     ],
+     "object": "seed-bundle-0",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F022 证据 0；F024 证据 2",
+     "proposedAction": "ask_user",
+     "userExplanation": "seed-bundle-0 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用",
+     "questionForUser": "这是你主动安装、现在还在用的软件吗？"
+    },
+    {
+     "flagIds": [
+      "F023"
+     ],
+     "object": "seed-bundle-1",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F023 证据 1",
+     "proposedAction": "ask_user",
+     "userExplanation": "seed-bundle-1 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用",
+     "questionForUser": "这是你主动安装、现在还在用的软件吗？"
+    },
+    {
+     "flagIds": [
+      "F025"
+     ],
+     "object": "frequent-0",
+     "verdict": "normal",
+     "confidence": 0.6,
+     "evidence": "F025 证据 0",
+     "proposedAction": "none",
+     "userExplanation": "frequent-0 频繁定时运行，多数是软件的自动更新",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F026"
+     ],
+     "object": "frequent-1",
+     "verdict": "normal",
+     "confidence": 0.6,
+     "evidence": "F026 证据 1",
+     "proposedAction": "none",
+     "userExplanation": "frequent-1 频繁定时运行，多数是软件的自动更新",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F027"
+     ],
+     "object": "system-name-outside-windows-0",
+     "verdict": "suspicious",
+     "confidence": 0.7,
+     "evidence": "F027 证据 0",
+     "proposedAction": "defender.scan",
+     "userExplanation": "system-name-outside-windows-0 用了系统程序的名字，却不在 Windows 目录里，这是恶意程序常用的伪装手法，建议交给 Defender 扫描",
+     "questionForUser": null
+    },
+    {
+     "flagIds": [
+      "F028"
+     ],
+     "object": "unsigned-0",
+     "verdict": "uncertain",
+     "confidence": 0.5,
+     "evidence": "F028 证据 0",
+     "proposedAction": "ask_user",
+     "userExplanation": "unsigned-0 没有有效的数字签名，需要你确认是不是自己装的、来源可靠的软件",
+     "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？"
+    }
+   ],
+   "tips": [
+    {
+     "title": "点\"关机\"不等于重启",
+     "body": "Windows 默认开着快速启动，关机时把系统内核存进休眠文件，下次开机直接恢复。所以长期\"关机\"也会积累内存占用和小毛病，真正清空要点\"重启\"。",
+     "relatedFlagIds": [
+      "F021"
+     ]
+    },
+    {
+     "title": "装软件时留意捆绑勾选",
+     "body": "国产软件安装界面常默认勾选\"顺便安装\"其他软件；\"全家桶\"卸载后也常留下计划任务、服务和驱动。安装时选\"自定义安装\"，把不需要的勾去掉。",
+     "relatedFlagIds": [
+      "F022",
+      "F023",
+      "F024"
+     ]
+    }
+   ],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "scoring",
+   "score": {
+    "total": 65,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 0,
+      "deductions": [
+       {
+        "rule": "uac-off",
+        "flagIds": [
+         "F001",
+         "F002",
+         "F003",
+         "F004",
+         "F005",
+         "F006"
+        ],
+        "objects": [
+         "uac-off-0",
+         "uac-off-1"
+        ],
+        "points": 45.0
+       },
+       {
+        "rule": "firewall-off",
+        "flagIds": [
+         "F007",
+         "F008",
+         "F009",
+         "F010"
+        ],
+        "objects": [
+         "firewall-off-0",
+         "firewall-off-1"
+        ],
+        "points": 15.0
+       },
+       {
+        "rule": "defender-rtp-off",
+        "flagIds": [
+         "F011",
+         "F012"
+        ],
+        "objects": [
+         "defender-rtp-off-0",
+         "defender-rtp-off-1"
+        ],
+        "points": 40.0
+       },
+       {
+        "rule": "system-name-outside-windows",
+        "flagIds": [
+         "F027"
+        ],
+        "objects": [
+         "system-name-outside-windows-0"
+        ],
+        "points": 30
+       }
+      ]
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 85.5,
+      "deductions": [
+       {
+        "rule": "temp-large",
+        "flagIds": [
+         "F013",
+         "F014",
+         "F015",
+         "F016",
+         "F017",
+         "F018",
+         "F019"
+        ],
+        "objects": [
+         "temp-large-0",
+         "temp-large-1"
+        ],
+        "points": 4.5
+       },
+       {
+        "rule": "system-drive-low",
+        "flagIds": [
+         "F020"
+        ],
+        "objects": [
+         "system-drive-low-0"
+        ],
+        "points": 10
+       }
+      ]
+     },
+     "启动": {
+      "weight": 15,
+      "score": 85.0,
+      "deductions": [
+       {
+        "rule": "seed-bundle",
+        "flagIds": [
+         "F022",
+         "F023",
+         "F024"
+        ],
+        "objects": [
+         "seed-bundle-0",
+         "seed-bundle-1"
+        ],
+        "points": 15.0
+       }
+      ]
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 97,
+      "deductions": [
+       {
+        "rule": "fast-startup-on",
+        "flagIds": [
+         "F021"
+        ],
+        "objects": [
+         "fast-startup-on-0"
+        ],
+        "points": 3
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：11 项建议处理，3 项需要你确认",
+    "malwareSuspected": true,
+    "malwareReasoning": "规则发现了需要核实的迹象：system-name-outside-windows-0（证据 0）",
+    "top3": [
+     "uac-off-0：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+     "uac-off-1：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+     "defender-rtp-off-0：Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F001",
+       "F003",
+       "F005"
+      ],
+      "object": "uac-off-0",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F001 证据 0；F003 证据 2；F005 证据 4",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F002",
+       "F004",
+       "F006"
+      ],
+      "object": "uac-off-1",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F002 证据 1；F004 证据 3；F006 证据 5",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F007",
+       "F009"
+      ],
+      "object": "firewall-off-0",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F007 证据 0；F009 证据 2",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F008",
+       "F010"
+      ],
+      "object": "firewall-off-1",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F008 证据 1；F010 证据 3",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F011"
+      ],
+      "object": "defender-rtp-off-0",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F011 证据 0",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F012"
+      ],
+      "object": "defender-rtp-off-1",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F012 证据 1",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F013",
+       "F015",
+       "F017",
+       "F019"
+      ],
+      "object": "temp-large-0",
+      "verdict": "problem",
+      "confidence": 0.8,
+      "evidence": "F013 证据 0；F015 证据 2；F017 证据 4；F019 证据 6",
+      "proposedAction": "cache.clean",
+      "actionName": "清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理",
+      "risk": "green",
+      "userExplanation": "临时文件占用较大，可以清理",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F014",
+       "F016",
+       "F018"
+      ],
+      "object": "temp-large-1",
+      "verdict": "problem",
+      "confidence": 0.8,
+      "evidence": "F014 证据 1；F016 证据 3；F018 证据 5",
+      "proposedAction": "cache.clean",
+      "actionName": "清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理",
+      "risk": "green",
+      "userExplanation": "临时文件占用较大，可以清理",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F020"
+      ],
+      "object": "system-drive-low-0",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F020 证据 0",
+      "proposedAction": "cache.clean",
+      "actionName": "清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理",
+      "risk": "green",
+      "userExplanation": "C 盘空间不足，会影响系统更新和运行速度",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F021"
+      ],
+      "object": "fast-startup-on-0",
+      "verdict": "problem",
+      "confidence": 0.6,
+      "evidence": "F021 证据 0",
+      "proposedAction": "power.disable_fast_startup",
+      "actionName": "关闭快速启动（保留休眠）",
+      "risk": "yellow",
+      "userExplanation": "开着快速启动：点\"关机\"其实是半休眠，长期不重启会积累内存占用和小毛病",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F022",
+       "F024"
+      ],
+      "object": "seed-bundle-0",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F022 证据 0；F024 证据 2",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "seed-bundle-0 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用",
+      "questionForUser": "这是你主动安装、现在还在用的软件吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F023"
+      ],
+      "object": "seed-bundle-1",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F023 证据 1",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "seed-bundle-1 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用",
+      "questionForUser": "这是你主动安装、现在还在用的软件吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F025"
+      ],
+      "object": "frequent-0",
+      "verdict": "normal",
+      "confidence": 0.6,
+      "evidence": "F025 证据 0",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "frequent-0 频繁定时运行，多数是软件的自动更新",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F026"
+      ],
+      "object": "frequent-1",
+      "verdict": "normal",
+      "confidence": 0.6,
+      "evidence": "F026 证据 1",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "frequent-1 频繁定时运行，多数是软件的自动更新",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F027"
+      ],
+      "object": "system-name-outside-windows-0",
+      "verdict": "suspicious",
+      "confidence": 0.7,
+      "evidence": "F027 证据 0",
+      "proposedAction": "defender.scan",
+      "actionName": "交给 Defender 扫描或隔离",
+      "risk": "green",
+      "userExplanation": "system-name-outside-windows-0 用了系统程序的名字，却不在 Windows 目录里，这是恶意程序常用的伪装手法，建议交给 Defender 扫描",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F028"
+      ],
+      "object": "unsigned-0",
+      "verdict": "uncertain",
+      "confidence": 0.5,
+      "evidence": "F028 证据 0",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "unsigned-0 没有有效的数字签名，需要你确认是不是自己装的、来源可靠的软件",
+      "questionForUser": "这是你自己安装或设置的吗？现在还在用吗？",
+      "needsUser": true
+     }
+    ],
+    "tips": [
+     {
+      "title": "点\"关机\"不等于重启",
+      "body": "Windows 默认开着快速启动，关机时把系统内核存进休眠文件，下次开机直接恢复。所以长期\"关机\"也会积累内存占用和小毛病，真正清空要点\"重启\"。",
+      "relatedFlagIds": [
+       "F021"
+      ]
+     },
+     {
+      "title": "装软件时留意捆绑勾选",
+      "body": "国产软件安装界面常默认勾选\"顺便安装\"其他软件；\"全家桶\"卸载后也常留下计划任务、服务和驱动。安装时选\"自定义安装\"，把不需要的勾去掉。",
+      "relatedFlagIds": [
+       "F022",
+       "F023",
+       "F024"
+      ]
+     }
+    ],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 65 / 100**　纯规则模式（没有调用 AI）：11 项建议处理，3 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 scoring　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**发现可疑迹象，需要进一步核实。** 规则发现了需要核实的迹象：system-name-outside-windows-0（证据 0）\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. uac-off-0：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开\n2. uac-off-1：用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开\n3. defender-rtp-off-0：Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开\n\n## 需要你确认的问题\n\n- **seed-bundle-0**：这是你主动安装、现在还在用的软件吗？\n- **seed-bundle-1**：这是你主动安装、现在还在用的软件吗？\n- **unsigned-0**：这是你自己安装或设置的吗？现在还在用吗？\n\n## 小知识\n\n**点\"关机\"不等于重启**\n\nWindows 默认开着快速启动，关机时把系统内核存进休眠文件，下次开机直接恢复。所以长期\"关机\"也会积累内存占用和小毛病，真正清空要点\"重启\"。\n\n**装软件时留意捆绑勾选**\n\n国产软件安装界面常默认勾选\"顺便安装\"其他软件；\"全家桶\"卸载后也常留下计划任务、服务和驱动。安装时选\"自定义安装\"，把不需要的勾去掉。\n\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| system-name-outside-windows-0 | 可疑 | 0.70 | 交给 Defender 扫描或隔离 | 绿 | system-name-outside-windows-0 用了系统程序的名字，却不在 Windows 目录里，这是恶意程序常用的伪装手法，建议交给 Defender 扫描 |\n| uac-off-0 | 需处理 | 0.90 | 不需要处理 | — | 用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开 |\n| uac-off-1 | 需处理 | 0.90 | 不需要处理 | — | 用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开 |\n| firewall-off-0 | 需处理 | 0.90 | 不需要处理 | — | 防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开 |\n| firewall-off-1 | 需处理 | 0.90 | 不需要处理 | — | 防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开 |\n| defender-rtp-off-0 | 需处理 | 0.90 | 不需要处理 | — | Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开 |\n| defender-rtp-off-1 | 需处理 | 0.90 | 不需要处理 | — | Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开 |\n| temp-large-0 | 需处理 | 0.80 | 清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理 | 绿 | 临时文件占用较大，可以清理 |\n| temp-large-1 | 需处理 | 0.80 | 清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理 | 绿 | 临时文件占用较大，可以清理 |\n| system-drive-low-0 | 需处理 | 0.90 | 清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理 | 绿 | C 盘空间不足，会影响系统更新和运行速度 |\n| fast-startup-on-0 | 需处理 | 0.60 | 关闭快速启动（保留休眠） | 黄 | 开着快速启动：点\"关机\"其实是半休眠，长期不重启会积累内存占用和小毛病 |\n| seed-bundle-0 | 拿不准 | 0.50 | 需要先问用户 | — | seed-bundle-0 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用 |\n| seed-bundle-1 | 拿不准 | 0.50 | 需要先问用户 | — | seed-bundle-1 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用 |\n| unsigned-0 | 拿不准 | 0.50 | 需要先问用户 | — | unsigned-0 没有有效的数字签名，需要你确认是不是自己装的、来源可靠的软件 |\n| frequent-0 | 正常 | 0.60 | 不需要处理 | — | frequent-0 频繁定时运行，多数是软件的自动更新 |\n| frequent-1 | 正常 | 0.60 | 不需要处理 | — | frequent-1 频繁定时运行，多数是软件的自动更新 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：0 分\n  - −45.0　uac-off：uac-off-0、uac-off-1（F001、F002、F003、F004、F005、F006）\n  - −15.0　firewall-off：firewall-off-0、firewall-off-1（F007、F008、F009、F010）\n  - −40.0　defender-rtp-off：defender-rtp-off-0、defender-rtp-off-1（F011、F012）\n  - −30　system-name-outside-windows：system-name-outside-windows-0（F027）\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：85.5 分\n  - −4.5　temp-large：temp-large-0、temp-large-1（F013、F014、F015、F016、F017、F018、F019）\n  - −10　system-drive-low：system-drive-low-0（F020）\n- **启动**（权重 15%）：85.0 分\n  - −15.0　seed-bundle：seed-bundle-0、seed-bundle-1（F022、F023、F024）\n- **驱动与系统设置**（权重 10%）：97 分\n  - −3　fast-startup-on：fast-startup-on-0（F021）\n\n## 证据（专业模式）\n\n- **uac-off-0**（F001、F003、F005，建议 `none`）：F001 证据 0；F003 证据 2；F005 证据 4\n- **uac-off-1**（F002、F004、F006，建议 `none`）：F002 证据 1；F004 证据 3；F006 证据 5\n- **firewall-off-0**（F007、F009，建议 `none`）：F007 证据 0；F009 证据 2\n- **firewall-off-1**（F008、F010，建议 `none`）：F008 证据 1；F010 证据 3\n- **defender-rtp-off-0**（F011，建议 `none`）：F011 证据 0\n- **defender-rtp-off-1**（F012，建议 `none`）：F012 证据 1\n- **temp-large-0**（F013、F015、F017、F019，建议 `cache.clean`）：F013 证据 0；F015 证据 2；F017 证据 4；F019 证据 6\n- **temp-large-1**（F014、F016、F018，建议 `cache.clean`）：F014 证据 1；F016 证据 3；F018 证据 5\n- **system-drive-low-0**（F020，建议 `cache.clean`）：F020 证据 0\n- **fast-startup-on-0**（F021，建议 `power.disable_fast_startup`）：F021 证据 0\n- **seed-bundle-0**（F022、F024，建议 `ask_user`）：F022 证据 0；F024 证据 2\n- **seed-bundle-1**（F023，建议 `ask_user`）：F023 证据 1\n- **frequent-0**（F025，建议 `none`）：F025 证据 0\n- **frequent-1**（F026，建议 `none`）：F026 证据 1\n- **system-name-outside-windows-0**（F027，建议 `defender.scan`）：F027 证据 0\n- **unsigned-0**（F028，建议 `ask_user`）：F028 证据 0\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001、F003、F005,uac-off-0,需处理,模型,0.90,不需要处理,用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开,,,\r\nF002、F004、F006,uac-off-1,需处理,模型,0.90,不需要处理,用户账户控制（UAC）被关闭了，程序可以不经确认获得管理员权限。建议在控制面板里打开,,,\r\nF007、F009,firewall-off-0,需处理,模型,0.90,不需要处理,防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开,,,\r\nF008、F010,firewall-off-1,需处理,模型,0.90,不需要处理,防火墙是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开,,,\r\nF011,defender-rtp-off-0,需处理,模型,0.90,不需要处理,Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开,,,\r\nF012,defender-rtp-off-1,需处理,模型,0.90,不需要处理,Defender 实时保护是关着的。本工具不修改安全设置，建议你在 Windows 安全中心里打开,,,\r\nF013、F015、F017、F019,temp-large-0,需处理,模型,0.80,清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理,临时文件占用较大，可以清理,,,\r\nF014、F016、F018,temp-large-1,需处理,模型,0.80,清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理,临时文件占用较大，可以清理,,,\r\nF020,system-drive-low-0,需处理,模型,0.90,清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理,C 盘空间不足，会影响系统更新和运行速度,,,\r\nF021,fast-startup-on-0,需处理,模型,0.60,关闭快速启动（保留休眠）,\"开着快速启动：点\"\"关机\"\"其实是半休眠，长期不重启会积累内存占用和小毛病\",,,\r\nF022、F024,seed-bundle-0,拿不准,模型,0.50,需要先问用户,seed-bundle-0 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用,,,\r\nF023,seed-bundle-1,拿不准,模型,0.50,需要先问用户,seed-bundle-1 属于常见的捆绑 / 全家桶软件，需要你确认是不是主动安装、还在用,,,\r\nF025,frequent-0,正常,模型,0.60,不需要处理,frequent-0 频繁定时运行，多数是软件的自动更新,,,\r\nF026,frequent-1,正常,模型,0.60,不需要处理,frequent-1 频繁定时运行，多数是软件的自动更新,,,\r\nF027,system-name-outside-windows-0,可疑,模型,0.70,交给 Defender 扫描或隔离,system-name-outside-windows-0 用了系统程序的名字，却不在 Windows 目录里，这是恶意程序常用的伪装手法，建议交给 Defender 扫描,,,\r\nF028,unsigned-0,拿不准,模型,0.50,需要先问用户,unsigned-0 没有有效的数字签名，需要你确认是不是自己装的、来源可靠的软件,,,\r\n"
+ }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iris</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="iris-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" style="stop-color: var(--g1)"/><stop offset=".6" style="stop-color: var(--g2)"/><stop offset="1" style="stop-color: var(--g3)"/></linearGradient></defs>
+        <circle cx="16" cy="16" r="12.5" fill="none" stroke="url(#iris-g)" stroke-width="3"/>
+        <circle cx="16" cy="16" r="5.2" fill="url(#iris-g)"/>
+        <circle cx="17.9" cy="14.1" r="1.5" style="fill: var(--bg)"/>
+      </svg>
+      <div><b>IRIS</b><span>看清这台电脑</span></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <button data-nav="home"><span data-ico="home"></span><span>概览</span></button>
+      <button data-nav="report"><span data-ico="doc"></span><span>报告</span></button>
+      <button data-nav="plan"><span data-ico="list"></span><span>处理</span><span class="count" id="plan-count" hidden></span></button>
+      <button data-nav="settings"><span data-ico="gear"></span><span>设置</span></button>
+    </nav>
+    <div class="rail-foot">
+      <div class="demo-badge" id="demo-badge" hidden><span data-ico="eyeoff"></span>演示模式：已遮住个人信息</div>
+      <button class="kbd-hint" data-act="palette"><span data-ico="search"></span><span class="grow">搜索和命令</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
+      <div class="ver" id="version">只读体检 · 不常驻 · 可撤销</div>
+    </div>
+  </aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div id="layer"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ring-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" style="stop-color: var(--g1)"/><stop offset=".55" style="stop-color: var(--g2)"/><stop offset="1" style="stop-color: var(--g3)"/></linearGradient>
+    <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color: var(--accent); stop-opacity: .28"/><stop offset="1" style="stop-color: var(--accent); stop-opacity: 0"/></linearGradient>
+  </defs>
+</svg>
+<script src="bridge.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

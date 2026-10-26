@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 桌面程序：WinForms 窗口 + WebView2 界面（web/ 下的文件作为嵌入资源）。
+       同一个 exe 带 helper 参数时是管理员辅助进程：只负责采集和执行操作，做完就退出，不常驻。 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Pcdoctor.App</RootNamespace>
+    <AssemblyName>Iris</AssemblyName>
+    <Version>1.0.0</Version>
+    <InformationalVersion>1.0.0-beta.4</InformationalVersion>
+    <Product>Iris</Product>
+    <Company>pcdoctor</Company>
+    <Copyright>Wilhelm</Copyright>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- 发布：单文件、自包含（用户不需要装 .NET）、压缩 -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <!-- Iris 服务器地址（内测反馈、检查更新）：由 tools/build_app.py 传入；没传时程序完全不联系 Iris 服务器，反馈改为导出文件 -->
+  <ItemGroup>
+    <AssemblyMetadata Include="IrisFeedbackUrl" Value="$(IrisFeedbackUrl)" />
+    <AssemblyMetadata Include="IrisLatestUrl" Value="$(IrisLatestUrl)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Pcdoctor.Core\Pcdoctor.Core.csproj" />
+    <ProjectReference Include="..\Pcdoctor.Ops\Pcdoctor.Ops.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="web\*.*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="web\fonts\*.woff2" LogicalName="web/fonts/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\PRIVACY.md" LogicalName="PRIVACY.md" />
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE" />
+  </ItemGroup>
+</Project>

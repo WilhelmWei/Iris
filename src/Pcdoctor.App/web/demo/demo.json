@@ -1,0 +1,544 @@
+{
+ "result": {
+  "schema": "pcdoctor.judge/0.1",
+  "generatedAt": "2026-10-25 08:30",
+  "model": "deepseek-chat",
+  "collectorVersion": "0.2.7",
+  "score": {
+   "total": 72,
+   "categories": {
+    "安全": {
+     "weight": 30,
+     "score": 58,
+     "deductions": [
+      {
+       "rule": "defender-exclusion-orphan",
+       "flagIds": [
+        "F041",
+        "F042"
+       ],
+       "objects": [
+        "Defender 排除项"
+       ],
+       "points": 25
+      },
+      {
+       "rule": "remote-unattended",
+       "flagIds": [
+        "F021"
+       ],
+       "objects": [
+        "TeamViewer"
+       ],
+       "points": 10
+      },
+      {
+       "rule": "defender-allowed-threat",
+       "flagIds": [
+        "F044"
+       ],
+       "objects": [
+        "PUA:Win32/Presenoker"
+       ],
+       "points": 7
+      }
+     ]
+    },
+    "性能与后台": {
+     "weight": 25,
+     "score": 76,
+     "deductions": [
+      {
+       "rule": "svchost-third-party-dll",
+       "flagIds": [
+        "F011"
+       ],
+       "objects": [
+        "XLServicePlatform"
+       ],
+       "points": 10
+      },
+      {
+       "rule": "fast-startup-long-uptime",
+       "flagIds": [
+        "F005"
+       ],
+       "objects": [
+        "快速启动"
+       ],
+       "points": 6
+      },
+      {
+       "rule": "browser-background",
+       "flagIds": [
+        "F019"
+       ],
+       "objects": [
+        "Microsoft Edge"
+       ],
+       "points": 4
+      },
+      {
+       "rule": "autostart-bloat",
+       "flagIds": [
+        "F012",
+        "F017"
+       ],
+       "objects": [
+        "Thunder",
+        "WpsUpdateTask_Lin"
+       ],
+       "points": 4
+      }
+     ]
+    },
+    "存储": {
+     "weight": 20,
+     "score": 70,
+     "deductions": [
+      {
+       "rule": "system-drive-low",
+       "flagIds": [
+        "F025"
+       ],
+       "objects": [
+        "C:"
+       ],
+       "points": 20
+      },
+      {
+       "rule": "cache-large",
+       "flagIds": [
+        "F024"
+       ],
+       "objects": [
+        "临时文件"
+       ],
+       "points": 10
+      }
+     ]
+    },
+    "启动": {
+     "weight": 15,
+     "score": 94,
+     "deductions": [
+      {
+       "rule": "target-missing",
+       "flagIds": [
+        "F013"
+       ],
+       "objects": [
+        "ramboplay-uac"
+       ],
+       "points": 6
+      }
+     ]
+    },
+    "驱动与系统设置": {
+     "weight": 10,
+     "score": 72,
+     "deductions": [
+      {
+       "rule": "bsod",
+       "flagIds": [
+        "F033"
+       ],
+       "objects": [
+        "蓝屏 0xCE"
+       ],
+       "points": 20
+      },
+      {
+       "rule": "binary-missing",
+       "flagIds": [
+        "F031"
+       ],
+       "objects": [
+        "PassGuard"
+       ],
+       "points": 8
+      }
+     ]
+    }
+   }
+  },
+  "judgement": {
+   "headline": "没有中毒迹象。有 2 条失效的 Defender 排除项和一个开启了无人值守的远控软件值得先看，C 盘也快满了。",
+   "malwareSuspected": false,
+   "malwareReasoning": "Defender 实时保护正常，没有未处理的威胁；进程和自启动里没有伪装成系统程序的项目。被手动放行过的 1 条威胁和无人值守的远控软件需要你确认。",
+   "top3": [
+    "删除两条失效的 Defender 排除项（在 Windows 安全中心里操作）",
+    "确认 TeamViewer 是不是你自己装的",
+    "把微信文件移出 C 盘，再清理 6.4 GB 缓存"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F041"
+     ],
+     "object": "排除项 D:\\Tools\\QuickVPN",
+     "verdict": "leftover",
+     "confidence": 0.92,
+     "evidence": "Defender 排除了目录 D:\\Tools\\QuickVPN，但这个目录已经不存在。已装软件里也没有 QuickVPN。",
+     "proposedAction": "defender.review",
+     "actionName": "在 Windows 安全中心里删除这条排除项",
+     "risk": "green",
+     "userExplanation": "某个 VPN 软件卸载后留下的 Defender 排除项。排除项还在，这个位置以后放进任何文件都不会被扫描。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F042"
+     ],
+     "object": "按进程名排除：Update.exe",
+     "verdict": "problem",
+     "confidence": 0.88,
+     "evidence": "Defender 按进程名排除了 Update.exe。这条排除对任何名叫 Update.exe 的程序都生效，不论它在哪个文件夹。",
+     "proposedAction": "defender.review",
+     "actionName": "在 Windows 安全中心里删除这条排除项",
+     "risk": "green",
+     "userExplanation": "Update.exe 是很常见的名字。按名字排除，等于让所有同名程序都不被扫描，恶意软件很容易借这个名字躲过检查。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F044"
+     ],
+     "object": "PUA:Win32/Presenoker",
+     "verdict": "uncertain",
+     "confidence": 0.55,
+     "evidence": "Defender 曾检测到这个威胁，之后被手动设为“允许”。对应文件：C:\\Users\\Lin\\Downloads\\pdf-converter-setup.exe",
+     "proposedAction": "ask_user",
+     "actionName": "需要先问你",
+     "risk": null,
+     "userExplanation": "这是 Defender 归为“可能不需要的软件”的安装包，常见的问题是捆绑安装和弹广告。它被手动放行过，之后不会再提醒。",
+     "questionForUser": "这是你自己在 Windows 安全中心点了“允许”的吗？这个 PDF 转换工具现在还在用吗？",
+     "needsUser": true
+    },
+    {
+     "flagIds": [
+      "F021"
+     ],
+     "object": "TeamViewer（无人值守）",
+     "verdict": "uncertain",
+     "confidence": 0.6,
+     "evidence": "TeamViewer 以服务方式安装，开机自动运行，并开启了“轻松访问”。最近 30 天有 3 次传入连接。",
+     "proposedAction": "ask_user",
+     "actionName": "需要先问你",
+     "risk": null,
+     "userExplanation": "TeamViewer 是正规的远程控制软件。但以服务方式安装并开启无人值守后，只要知道账号就能随时连进这台电脑。电话诈骗里常让人装这类软件。",
+     "questionForUser": "这是你自己（或你信任的人）装来远程协助的吗？最近 30 天的 3 次连接你都知道吗？",
+     "needsUser": true
+    },
+    {
+     "flagIds": [
+      "F011"
+     ],
+     "object": "XLServicePlatform",
+     "verdict": "bloat",
+     "confidence": 0.95,
+     "evidence": "迅雷的服务平台，以 svchost 方式运行，开机自动启动。签名：Shenzhen Thunder Networking Technologies Ltd.（有效）",
+     "proposedAction": "service.set_manual",
+     "actionName": "改为手动启动",
+     "risk": "yellow",
+     "userExplanation": "迅雷的后台服务，不开迅雷时也一直在运行。改成手动后，打开迅雷时它会自己启动。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "xunlei-service-platform"
+    },
+    {
+     "flagIds": [
+      "F012"
+     ],
+     "object": "Thunder（开机自启动）",
+     "verdict": "bloat",
+     "confidence": 0.93,
+     "evidence": "HKCU\\...\\Run 里的 Thunder，指向 D:\\Program Files\\Thunder\\Program\\Thunder.exe -silent。签名有效。",
+     "proposedAction": "startup.disable",
+     "actionName": "关闭开机自启动",
+     "risk": "green",
+     "userExplanation": "迅雷每次开机都在后台启动。不常下载的话，用到时再打开就行。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "xunlei-autostart"
+    },
+    {
+     "flagIds": [
+      "F017"
+     ],
+     "object": "WpsUpdateTask_Lin",
+     "verdict": "bloat",
+     "confidence": 0.85,
+     "evidence": "计划任务每天运行 C:\\Users\\Lin\\AppData\\Local\\Kingsoft\\WPS Office\\ksolaunch.exe /update，用户登录时也运行一次。",
+     "proposedAction": "task.disable",
+     "actionName": "停用这个计划任务",
+     "risk": "green",
+     "userExplanation": "WPS 的自动更新任务。停用后 WPS 照常能用，只是不会在后台自动更新。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "wps-update-task"
+    },
+    {
+     "flagIds": [
+      "F013"
+     ],
+     "object": "ramboplay-uac",
+     "verdict": "leftover",
+     "confidence": 0.97,
+     "evidence": "计划任务 \\ramboplay-uac 指向 C:\\Program Files (x86)\\RamboPlay\\launcher.exe，文件已经不存在。",
+     "proposedAction": "task.delete_leftover",
+     "actionName": "删除这个残留任务",
+     "risk": "green",
+     "userExplanation": "某个游戏平台卸载后留下的计划任务，指向的程序已经没有了，每次触发都会失败。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F031"
+     ],
+     "object": "PassGuard（驱动登记）",
+     "verdict": "leftover",
+     "confidence": 0.9,
+     "evidence": "服务登记 PassGuard（内核驱动）指向 System32\\drivers\\PassGuard.sys，文件已不存在；没有挂在任何设备过滤器上；当前未运行。",
+     "proposedAction": "service.delete_orphan",
+     "actionName": "删除只剩登记的驱动",
+     "risk": "yellow",
+     "userExplanation": "网银安全控件的驱动。文件已经不在了，只剩一条登记。删除登记前会先备份，可以撤销。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F005"
+     ],
+     "object": "快速启动",
+     "verdict": "problem",
+     "confidence": 0.8,
+     "evidence": "快速启动已开启（HiberbootEnabled = 1）。上次真正重启是 23 天前。",
+     "proposedAction": "power.disable_fast_startup",
+     "actionName": "关闭快速启动",
+     "risk": "yellow",
+     "userExplanation": "开着快速启动时，点“关机”不等于重启，系统内核会存进休眠文件。23 天没有真正重启，内存占用和小毛病会积累。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F019"
+     ],
+     "object": "Microsoft Edge 后台运行",
+     "verdict": "bloat",
+     "confidence": 0.9,
+     "evidence": "Edge 设置“关闭后继续运行后台扩展和应用”已开启，关闭窗口后仍有 6 个 msedge.exe 进程。",
+     "proposedAction": "browser.disable_background",
+     "actionName": "关闭 Edge 的后台运行",
+     "risk": "green",
+     "userExplanation": "关掉浏览器窗口后，Edge 仍在后台占用内存。关闭这个选项后，窗口关了就是真的关了。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "edge-background"
+    },
+    {
+     "flagIds": [
+      "F024"
+     ],
+     "object": "临时文件和缓存 6.4 GB",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "%TEMP% 3.1 GB（2.8 GB 超过 30 天未改动）；npm / pip 缓存 2.2 GB；Windows 传递优化缓存 1.1 GB。",
+     "proposedAction": "cache.clean",
+     "actionName": "清理缓存（移到回收站）",
+     "risk": "green",
+     "userExplanation": "大部分是超过一个月没动过的临时文件。清理只移到回收站，你选类别和时间，默认什么都不勾。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F025"
+     ],
+     "object": "C 盘剩余 8.2 GB（6%）",
+     "verdict": "problem",
+     "confidence": 0.95,
+     "evidence": "C: 共 128 GB，剩余 8.2 GB。最大的几项：WeChat Files 41 GB、休眠文件 6.3 GB、临时文件 6.4 GB。",
+     "proposedAction": "none",
+     "actionName": "",
+     "risk": null,
+     "userExplanation": "C 盘快满了，系统更新和软件运行都会变慢甚至失败。最大的是微信文件，可以在微信设置里把存储位置改到 D 盘。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F033"
+     ],
+     "object": "最近 30 天 2 次蓝屏",
+     "verdict": "problem",
+     "confidence": 0.75,
+     "evidence": "10 月 12 日、10 月 19 日各一次蓝屏，代码 0x000000CE（驱动卸载时没有取消挂起的操作）。",
+     "proposedAction": "none",
+     "actionName": "",
+     "risk": null,
+     "userExplanation": "0xCE 通常是某个驱动在停止时出了问题。和上面网银控件的残留驱动可能有关，先清理残留再观察。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "Microsoft Defender 实时保护",
+     "verdict": "normal",
+     "confidence": 0.99,
+     "evidence": "实时保护、云保护、篡改防护都已开启；病毒库 1 天前更新。",
+     "proposedAction": "none",
+     "actionName": "",
+     "risk": null,
+     "userExplanation": "Windows 自带的杀毒工作正常。Iris 不另装杀毒软件，也不改它的设置。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F007"
+     ],
+     "object": "HuaweiPCManager",
+     "verdict": "normal",
+     "confidence": 0.96,
+     "evidence": "华为电脑管家服务，签名有效（Huawei Device Co., Ltd.），从 Program Files 运行。",
+     "proposedAction": "none",
+     "actionName": "",
+     "risk": null,
+     "userExplanation": "笔记本厂商自带的管理程序，负责驱动更新、多屏协同等，属于正常组件。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "huawei-pcmanager"
+    },
+    {
+     "flagIds": [
+      "F009"
+     ],
+     "object": "NVIDIA 显示驱动 32.0.15.6094",
+     "verdict": "normal",
+     "confidence": 0.97,
+     "evidence": "驱动日期 2024-09，签名有效（NVIDIA Corporation）。",
+     "proposedAction": "none",
+     "actionName": "",
+     "risk": null,
+     "userExplanation": "显卡驱动版本较新，签名正常。",
+     "questionForUser": null,
+     "needsUser": false,
+     "kbId": "nvidia-display"
+    }
+   ],
+   "tips": [
+    {
+     "title": "卸载软件后，Defender 排除项不会自动删除",
+     "body": "有些软件安装时会让 Defender 不扫描自己的目录或进程名，卸载后这些排除项还在。按进程名的排除对任何同名程序都生效，等于留了一个口子。",
+     "relatedFlagIds": [
+      "F041",
+      "F042"
+     ]
+    },
+    {
+     "title": "点“关机”不等于重启",
+     "body": "Windows 默认开着快速启动，关机时把系统内核存进休眠文件，下次开机直接读回来。真正的重启要点“重启”。",
+     "relatedFlagIds": [
+      "F005"
+     ]
+    },
+    {
+     "title": "微信文件默认存在 C 盘",
+     "body": "聊天里收到的图片、视频默认存在“文档”里，几年下来几十 GB 很常见。在微信“设置 → 文件管理”里可以改到其他盘。",
+     "relatedFlagIds": [
+      "F025"
+     ]
+    }
+   ],
+   "notCollected": [
+    "电池健康度（这台电脑没有电池）"
+   ],
+   "unjudgedFlagIds": []
+  },
+  "confirmedFlagIds": [],
+  "kbFlagIds": [
+   "F011",
+   "F012",
+   "F017",
+   "F019",
+   "F007",
+   "F009"
+  ],
+  "issues": [],
+  "offline": false,
+  "elapsedSec": 21.4
+ },
+ "extra": {
+  "timings": [
+   [
+    "等待管理员确认",
+    4.8
+   ],
+   [
+    "采集 13 个方面",
+    96.2
+   ],
+   [
+    "AI 研判",
+    21.4
+   ],
+   [
+    "生成报告",
+    0.6
+   ]
+  ],
+  "history": [
+   [
+    "8月 30日",
+    64
+   ],
+   [
+    "9月 14日",
+    69
+   ],
+   [
+    "10月 3日",
+    66
+   ],
+   [
+    "10月 25日",
+    72
+   ]
+  ],
+  "changes": [
+   {
+    "kind": "add",
+    "text": "新增开机自启动 Thunder",
+    "why": "10 月 8 日安装迅雷 11.4 时一起加的"
+   },
+   {
+    "kind": "add",
+    "text": "新增 Defender 允许的威胁 PUA:Win32/Presenoker",
+    "why": "10 月 16 日在 Windows 安全中心手动放行"
+   },
+   {
+    "kind": "fix",
+    "text": "已删除残留计划任务 \\Huorong\\HipsDaemon",
+    "why": "上次体检后由你处理"
+   },
+   {
+    "kind": "add",
+    "text": "C 盘可用空间减少 11.3 GB",
+    "why": "主要是 WeChat Files 增长"
+   }
+  ],
+  "crossCheck": {
+   "F044": "AI 判为“拿不准”，规则判为“需处理”",
+   "F005": "规则和 AI 一致"
+  },
+  "unknownObjects": 4
+ }
+}

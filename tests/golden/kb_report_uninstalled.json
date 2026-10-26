@@ -1,0 +1,404 @@
+{
+ "name": "kb_report_uninstalled",
+ "note": "迅雷已卸载：残留提示交给模型",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "test"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "processes",
+     "rule": "runs-from-user-folder",
+     "severity": "low",
+     "object": "wps.exe",
+     "evidence": "从用户可写目录运行（签名：Valid）：C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe"
+    },
+    {
+     "id": "F002",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）"
+    },
+    {
+     "id": "F003",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "C:",
+     "evidence": "系统盘只剩 10 GB"
+    }
+   ],
+   "sections": {
+    "processes": {
+     "items": [
+      {
+       "name": "wps.exe",
+       "path": "C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe",
+       "company": "Zhuhai Kingsoft Office Software Co.,Ltd",
+       "signature": "Valid"
+      }
+     ]
+    },
+    "drivers": {
+     "kernelDrivers": {
+      "items": [
+       {
+        "name": "XLWFP",
+        "state": "Running",
+        "startMode": "Auto",
+        "path": "C:\\WINDOWS\\system32\\drivers\\xlwfp.sys",
+        "company": "",
+        "signer": "ShenZhen Thunder Networking Technologies Ltd.",
+        "signature": "Valid"
+       }
+      ]
+     }
+    },
+    "software": {
+     "items": [
+      {
+       "name": "WPS Office",
+       "publisher": ""
+      }
+     ]
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "test",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "processes",
+     "rule": "runs-from-user-folder",
+     "severity": "low",
+     "object": "wps.exe",
+     "evidence": "从用户可写目录运行（签名：Valid）：C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe",
+     "context": {
+      "name": "wps.exe",
+      "path": "C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe",
+      "company": "Zhuhai Kingsoft Office Software Co.,Ltd",
+      "signature": "Valid"
+     },
+     "knowledge": {
+      "kbId": "wps-user-folder",
+      "product": "WPS Office",
+      "verdict": "normal",
+      "proposedAction": "none",
+      "explanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+      "certainty": "confirmed",
+      "direct": true
+     }
+    },
+    {
+     "flagId": "F002",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）",
+     "context": {
+      "name": "XLWFP",
+      "state": "Running",
+      "startMode": "Auto",
+      "path": "C:\\WINDOWS\\system32\\drivers\\xlwfp.sys",
+      "signer": "ShenZhen Thunder Networking Technologies Ltd.",
+      "signature": "Valid"
+     },
+     "knowledge": {
+      "kbId": "thunder-drivers-leftover",
+      "product": "迅雷",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F003",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "C:",
+     "evidence": "系统盘只剩 10 GB",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": [
+    "WPS Office"
+   ]
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "test",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F002",
+     "section": "drivers",
+     "rule": "seed-anticheat-accel",
+     "severity": "medium",
+     "object": "XLWFP",
+     "evidence": "疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）",
+     "context": {
+      "name": "XLWFP",
+      "state": "Running",
+      "startMode": "Auto",
+      "path": "C:\\WINDOWS\\system32\\drivers\\xlwfp.sys",
+      "signer": "ShenZhen Thunder Networking Technologies Ltd.",
+      "signature": "Valid"
+     },
+     "knowledge": {
+      "kbId": "thunder-drivers-leftover",
+      "product": "迅雷",
+      "verdict": "leftover",
+      "proposedAction": "ask_user",
+      "explanation": "迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+      "certainty": "likely",
+      "direct": false
+     }
+    },
+    {
+     "flagId": "F003",
+     "section": "storage",
+     "rule": "system-drive-low",
+     "severity": "medium",
+     "object": "C:",
+     "evidence": "系统盘只剩 10 GB",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": [
+    "WPS Office"
+   ],
+   "handledByKnowledgeBase": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "WPS Office：wps.exe",
+     "verdict": "normal",
+     "proposedAction": "none"
+    }
+   ]
+  },
+  "kbFindings": [
+   {
+    "flagIds": [
+     "F001"
+    ],
+    "object": "WPS Office：wps.exe",
+    "verdict": "normal",
+    "confidence": 0.9,
+    "evidence": "F001 从用户可写目录运行（签名：Valid）：C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））",
+    "proposedAction": "none",
+    "userExplanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+    "questionForUser": null,
+    "kbId": "wps-user-folder"
+   }
+  ],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"test\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F002\", \"section\": \"drivers\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"XLWFP\", \"evidence\": \"疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）\", \"context\": {\"name\": \"XLWFP\", \"state\": \"Running\", \"startMode\": \"Auto\", \"path\": \"C:\\\\WINDOWS\\\\system32\\\\drivers\\\\xlwfp.sys\", \"signer\": \"ShenZhen Thunder Networking Technologies Ltd.\", \"signature\": \"Valid\"}, \"knowledge\": {\"kbId\": \"thunder-drivers-leftover\", \"product\": \"迅雷\", \"verdict\": \"leftover\", \"proposedAction\": \"ask_user\", \"explanation\": \"迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。\", \"certainty\": \"likely\", \"direct\": false}}, {\"flagId\": \"F003\", \"section\": \"storage\", \"rule\": \"system-drive-low\", \"severity\": \"medium\", \"object\": \"C:\", \"evidence\": \"系统盘只剩 10 GB\", \"context\": {}}], \"sharedContext\": {}, \"installedSoftware\": [\"WPS Office\"], \"handledByKnowledgeBase\": [{\"flagIds\": [\"F001\"], \"object\": \"WPS Office：wps.exe\", \"verdict\": \"normal\", \"proposedAction\": \"none\"}]}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：2 项建议处理，1 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [
+    "XLWFP：迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+    "C:：C 盘空间不足，会影响系统更新和运行速度"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F002"
+     ],
+     "object": "XLWFP",
+     "verdict": "leftover",
+     "confidence": 0.7,
+     "evidence": "F002 疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）",
+     "proposedAction": "ask_user",
+     "userExplanation": "迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+     "questionForUser": "你还在用对应的游戏、加速器或下载软件吗？"
+    },
+    {
+     "flagIds": [
+      "F003"
+     ],
+     "object": "C:",
+     "verdict": "problem",
+     "confidence": 0.9,
+     "evidence": "F003 系统盘只剩 10 GB",
+     "proposedAction": "cache.clean",
+     "userExplanation": "C 盘空间不足，会影响系统更新和运行速度",
+     "questionForUser": null
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "test",
+   "score": {
+    "total": 97,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": [
+       {
+        "rule": "runs-from-user-folder",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "wps.exe"
+        ],
+        "points": 0,
+        "note": "研判为正常，不扣分"
+       }
+      ]
+     },
+     "存储": {
+      "weight": 20,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "system-drive-low",
+        "flagIds": [
+         "F003"
+        ],
+        "objects": [
+         "C:"
+        ],
+        "points": 10
+       }
+      ]
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 90,
+      "deductions": [
+       {
+        "rule": "seed-anticheat-accel",
+        "flagIds": [
+         "F002"
+        ],
+        "objects": [
+         "XLWFP"
+        ],
+        "points": 10
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：2 项建议处理，1 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [
+     "XLWFP：迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+     "C:：C 盘空间不足，会影响系统更新和运行速度"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F002"
+      ],
+      "object": "XLWFP",
+      "verdict": "leftover",
+      "confidence": 0.7,
+      "evidence": "F002 疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）",
+      "proposedAction": "ask_user",
+      "actionName": "需要先问用户",
+      "risk": null,
+      "userExplanation": "迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+      "questionForUser": "你还在用对应的游戏、加速器或下载软件吗？",
+      "needsUser": true
+     },
+     {
+      "flagIds": [
+       "F003"
+      ],
+      "object": "C:",
+      "verdict": "problem",
+      "confidence": 0.9,
+      "evidence": "F003 系统盘只剩 10 GB",
+      "proposedAction": "cache.clean",
+      "actionName": "清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理",
+      "risk": "green",
+      "userExplanation": "C 盘空间不足，会影响系统更新和运行速度",
+      "questionForUser": null,
+      "needsUser": false
+     },
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "WPS Office：wps.exe",
+      "verdict": "normal",
+      "confidence": 0.9,
+      "evidence": "F001 从用户可写目录运行（签名：Valid）：C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+      "questionForUser": null,
+      "needsUser": false,
+      "kbId": "wps-user-folder"
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [
+    "F001"
+   ],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 97 / 100**　纯规则模式（没有调用 AI）：2 项建议处理，1 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 test　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. XLWFP：迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。\n2. C:：C 盘空间不足，会影响系统更新和运行速度\n\n## 需要你确认的问题\n\n- **XLWFP**：你还在用对应的游戏、加速器或下载软件吗？\n\n> 有 1 项是已经弄清楚的常见软件组件，由知识库直接给出结论（表格里标\"知识库\"），没有交给模型\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| C: | 需处理 | 0.90 | 清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理 | 绿 | C 盘空间不足，会影响系统更新和运行速度 |\n| XLWFP | 卸载残留 | 0.70 | 需要先问用户 | — | 迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。 |\n| WPS Office：wps.exe | 正常 | 0.90（知识库） | 不需要处理 | — | WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n  - −0　runs-from-user-folder：wps.exe（F001，研判为正常，不扣分）\n- **存储**（权重 20%）：90 分\n  - −10　system-drive-low：C:（F003）\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：90 分\n  - −10　seed-anticheat-accel：XLWFP（F002）\n\n## 证据（专业模式）\n\n- **XLWFP**（F002，建议 `ask_user`）：F002 疑似下载器驱动（Running，签名者：ShenZhen Thunder Networking Technologies Ltd.）\n- **C:**（F003，建议 `cache.clean`）：F003 系统盘只剩 10 GB\n- **WPS Office：wps.exe**（F001，建议 `none`）：F001 从用户可写目录运行（签名：Valid）：C:\\Users\\[用户]\\AppData\\Local\\Kingsoft\\WPS Office\\12.1.0.28802\\office6\\wps.exe（知识库 wps-user-folder：实测 2026-10-24（WPS 12.1））\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF002,XLWFP,卸载残留,模型,0.70,需要先问用户,迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。,,,\r\nF003,C:,需处理,模型,0.90,清理缓存：由用户勾选类别和时间范围；聊天软件的图片、视频、文件只能移到回收站或用软件自带清理,C 盘空间不足，会影响系统更新和运行速度,,,\r\nF001,WPS Office：wps.exe,正常,知识库 wps-user-folder,0.90,不需要处理,WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。,,,\r\n"
+ }
+}

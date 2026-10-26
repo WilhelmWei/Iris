@@ -1,0 +1,42 @@
+# 每次推送和 PR：跑全部测试（C#、Python、PowerShell）。都能在 Linux 上运行。
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: C# 测试（研判库、操作库）
+        run: dotnet test pcdoctor.sln -c Release
+
+      - name: Python 测试（研判脚本、知识库、复核表、远程体检包）
+        run: python -m unittest discover -s tests
+
+      - name: PowerShell 测试（采集脚本）
+        shell: pwsh
+        run: |
+          $out = ./tests/unit.ps1 | Out-String
+          $out
+          if ($out -match 'FAIL') { exit 1 }   # unit.ps1 失败时只打印 FAIL，不改退出码
+
+      - name: 一致性数据是否最新（改了 judge/ 或 kb/ 后要重新生成 tests/golden）
+        run: |
+          python tools/make_golden.py
+          git diff --exit-code -- tests/golden

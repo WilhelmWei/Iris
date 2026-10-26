@@ -1,0 +1,16 @@
+pcdoctor-report-*.json
+*.log
+__pycache__/
+# 研判脚本写在报告旁边的输出
+pcdoctor-*-evidence.json
+pcdoctor-*-judge*.json
+pcdoctor-*-judge.md
+pcdoctor-known.json
+dist/
+src/Pcdoctor.App/web/dev/
+bin/
+obj/
+*.user
+
+# 安装包只放 OSS 和 GitHub Releases，不进仓库
+release/

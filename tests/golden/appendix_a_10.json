@@ -1,0 +1,187 @@
+{
+ "name": "appendix_a_10",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "drivers",
+     "rule": "duplicate-versions",
+     "severity": "low",
+     "object": "bth.inf",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": []
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "duplicate-versions",
+     "severity": "low",
+     "object": "bth.inf",
+     "evidence": "证据",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "duplicate-versions",
+     "severity": "low",
+     "object": "bth.inf",
+     "evidence": "证据",
+     "context": {}
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": []
+  },
+  "kbFindings": [],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"duplicate-versions\", \"severity\": \"low\", \"object\": \"bth.inf\", \"evidence\": \"证据\", \"context\": {}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：1 项建议处理，0 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [
+    "bth.inf：驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）"
+   ],
+   "findings": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "bth.inf",
+     "verdict": "leftover",
+     "confidence": 0.8,
+     "evidence": "F001 证据",
+     "proposedAction": "driver.delete_old_version",
+     "userExplanation": "驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）",
+     "questionForUser": null
+    }
+   ],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 100,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 97,
+      "deductions": [
+       {
+        "rule": "duplicate-versions",
+        "flagIds": [
+         "F001"
+        ],
+        "objects": [
+         "bth.inf"
+        ],
+        "points": 3
+       }
+      ]
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：1 项建议处理，0 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [
+     "bth.inf：驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）"
+    ],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "bth.inf",
+      "verdict": "leftover",
+      "confidence": 0.8,
+      "evidence": "F001 证据",
+      "proposedAction": "driver.delete_old_version",
+      "actionName": "删除驱动仓库里没有设备在用的旧版驱动包（不加 /force）",
+      "risk": "yellow",
+      "userExplanation": "驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）",
+      "questionForUser": null,
+      "needsUser": false
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 100 / 100**　纯规则模式（没有调用 AI）：1 项建议处理，0 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n## 最该处理的 3 件事\n\n1. bth.inf：驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| bth.inf | 卸载残留 | 0.80 | 删除驱动仓库里没有设备在用的旧版驱动包（不加 /force） | 黄 | 驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本） |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：97 分\n  - −3　duplicate-versions：bth.inf（F001）\n\n## 证据（专业模式）\n\n- **bth.inf**（F001，建议 `driver.delete_old_version`）：F001 证据\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,bth.inf,卸载残留,模型,0.80,删除驱动仓库里没有设备在用的旧版驱动包（不加 /force）,驱动仓库里保留了没有设备在用的旧版本，可以删除（系统会自动保护在用的版本）,,,\r\n"
+ }
+}

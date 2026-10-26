@@ -1,0 +1,217 @@
+{
+ "name": "appendix_a_03b",
+ "note": "",
+ "input": {
+  "report": {
+   "tool": {
+    "version": "appendix-a"
+   },
+   "flags": [
+    {
+     "id": "F001",
+     "section": "drivers",
+     "rule": "boot-start-third-party",
+     "severity": "info",
+     "object": "dokan2a",
+     "evidence": "证据"
+    }
+   ],
+   "sections": {
+    "software": {
+     "items": [
+      {
+       "name": "华为电脑管家",
+       "publisher": ""
+      }
+     ]
+    },
+    "drivers": {
+     "kernelDrivers": {
+      "items": [
+       {
+        "name": "dokan2a",
+        "state": "Running",
+        "startMode": "System",
+        "path": "C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys",
+        "company": "Dokan Project",
+        "signer": "Huawei Device Co.",
+        "signature": "Valid"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "known": [],
+  "useKb": true,
+  "raw": null,
+  "generatedAt": "2026-01-01 00:00"
+ },
+ "expected": {
+  "evidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [
+    {
+     "flagId": "F001",
+     "section": "drivers",
+     "rule": "boot-start-third-party",
+     "severity": "info",
+     "object": "dokan2a",
+     "evidence": "证据",
+     "context": {
+      "name": "dokan2a",
+      "state": "Running",
+      "startMode": "System",
+      "path": "C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys",
+      "company": "Dokan Project",
+      "signer": "Huawei Device Co.",
+      "signature": "Valid"
+     },
+     "knowledge": {
+      "kbId": "huawei-dokan",
+      "product": "华为电脑管家",
+      "verdict": "normal",
+      "proposedAction": "none",
+      "explanation": "Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。",
+      "certainty": "confirmed",
+      "direct": true
+     }
+    }
+   ],
+   "sharedContext": {},
+   "installedSoftware": [
+    "华为电脑管家"
+   ]
+  },
+  "modelEvidence": {
+   "schema": "pcdoctor.evidence/0.1",
+   "collector": {
+    "reportTime": null,
+    "version": "appendix-a",
+    "isAdmin": null,
+    "quick": null,
+    "incomplete": []
+   },
+   "machine": {},
+   "items": [],
+   "sharedContext": {},
+   "installedSoftware": [
+    "华为电脑管家"
+   ],
+   "handledByKnowledgeBase": [
+    {
+     "flagIds": [
+      "F001"
+     ],
+     "object": "华为电脑管家：dokan2a",
+     "verdict": "normal",
+     "proposedAction": "none"
+    }
+   ]
+  },
+  "kbFindings": [
+   {
+    "flagIds": [
+     "F001"
+    ],
+    "object": "华为电脑管家：dokan2a",
+    "verdict": "normal",
+    "confidence": 0.85,
+    "evidence": "F001 证据（知识库 huawei-dokan：实测（华为笔记本）：C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys，厂商 Dokan Project、签名者 Huawei Device Co.；Dokan 项目 https://github.com/dokan-dev/dokany）",
+    "proposedAction": "none",
+    "userExplanation": "Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。",
+    "questionForUser": null,
+    "kbId": "huawei-dokan"
+   }
+  ],
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [], \"sharedContext\": {}, \"installedSoftware\": [\"华为电脑管家\"], \"handledByKnowledgeBase\": [{\"flagIds\": [\"F001\"], \"object\": \"华为电脑管家：dokan2a\", \"verdict\": \"normal\", \"proposedAction\": \"none\"}]}",
+  "offlineRaw": {
+   "headline": "纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认",
+   "malwareSuspected": false,
+   "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+   "top3": [],
+   "findings": [],
+   "tips": [],
+   "notCollected": []
+  },
+  "offlineResult": {
+   "schema": "pcdoctor.judge/0.1",
+   "generatedAt": "2026-01-01 00:00",
+   "model": "纯规则模式",
+   "collectorVersion": "appendix-a",
+   "score": {
+    "total": 100,
+    "categories": {
+     "安全": {
+      "weight": 30,
+      "score": 100,
+      "deductions": []
+     },
+     "性能与后台": {
+      "weight": 25,
+      "score": 100,
+      "deductions": []
+     },
+     "存储": {
+      "weight": 20,
+      "score": 100,
+      "deductions": []
+     },
+     "启动": {
+      "weight": 15,
+      "score": 100,
+      "deductions": []
+     },
+     "驱动与系统设置": {
+      "weight": 10,
+      "score": 100,
+      "deductions": []
+     }
+    }
+   },
+   "judgement": {
+    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认",
+    "malwareSuspected": false,
+    "malwareReasoning": "规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。",
+    "top3": [],
+    "findings": [
+     {
+      "flagIds": [
+       "F001"
+      ],
+      "object": "华为电脑管家：dokan2a",
+      "verdict": "normal",
+      "confidence": 0.85,
+      "evidence": "F001 证据（知识库 huawei-dokan：实测（华为笔记本）：C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys，厂商 Dokan Project、签名者 Huawei Device Co.；Dokan 项目 https://github.com/dokan-dev/dokany）",
+      "proposedAction": "none",
+      "actionName": "不需要处理",
+      "risk": null,
+      "userExplanation": "Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。",
+      "questionForUser": null,
+      "needsUser": false,
+      "kbId": "huawei-dokan"
+     }
+    ],
+    "tips": [],
+    "notCollected": [],
+    "unjudgedFlagIds": []
+   },
+   "confirmedFlagIds": [],
+   "kbFlagIds": [
+    "F001"
+   ],
+   "issues": [],
+   "offline": true
+  },
+  "offlineMarkdown": "# 电脑体检报告\n\n**健康分 100 / 100**　纯规则模式（没有调用 AI）：0 项建议处理，0 项需要你确认\n\n> 生成时间 2026-01-01 00:00 · 纯规则模式（没有联网、没有调用 AI） · 采集器 appendix-a　结论来自固定规则和知识库，不结合上下文判断，比 AI 研判粗；拿不准的都列成了问题\n\n## 有没有中毒\n\n**没有发现中毒迹象。** 规则没有发现中毒迹象：没有 Defender 未处理的威胁，没有伪装成系统程序的进程。纯规则模式不结合上下文判断，结论比 AI 研判粗。\n\n> 查病毒交给 Windows 自带的 Microsoft Defender：本工具只读取它的检测结果（加 `-Scan` 运行时会先发起一次快速扫描），不修改任何安全设置。我们鼓励用好已有的强大工具，而不是重复造一个杀毒引擎。\n\n> 有 1 项是已经弄清楚的常见软件组件，由知识库直接给出结论（表格里标\"知识库\"），没有交给模型\n\n## 逐项结论\n\n| 对象 | 结论 | 置信度 | 建议 | 风险 | 说明 |\n| --- | --- | --- | --- | --- | --- |\n| 华为电脑管家：dokan2a | 正常 | 0.85（知识库） | 不需要处理 | — | Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。 |\n\n## 健康分扣分明细\n\n- **安全**（权重 30%）：100 分\n- **性能与后台**（权重 25%）：100 分\n- **存储**（权重 20%）：100 分\n- **启动**（权重 15%）：100 分\n- **驱动与系统设置**（权重 10%）：100 分\n\n## 证据（专业模式）\n\n- **华为电脑管家：dokan2a**（F001，建议 `none`）：F001 证据（知识库 huawei-dokan：实测（华为笔记本）：C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys，厂商 Dokan Project、签名者 Huawei Device Co.；Dokan 项目 https://github.com/dokan-dev/dokany）\n",
+  "offlineReviewCsv": "编号,对象,模型结论,来源,置信度,建议操作,给用户的说明,判定,应该是,备注\r\nF001,华为电脑管家：dokan2a,正常,知识库 huawei-dokan,0.85,不需要处理,Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。,,,\r\n"
+ }
+}

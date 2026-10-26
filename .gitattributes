@@ -1,0 +1,6 @@
+# PowerShell 脚本在 Windows 上用 CRLF；文件本身须保留 UTF-8 BOM（git 不会去掉）
+*.ps1 text eol=crlf
+*.md  text eol=lf
+*.bat text eol=crlf
+remote/*.txt text eol=crlf
+*.iss text eol=crlf

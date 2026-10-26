@@ -1,0 +1,175 @@
+{
+ "schema": "pcdoctor.kb/0.1",
+ "about": "知识库种子表。每条：match 里的条件全部满足才算命中（正则，不区分大小写）；when 按已装软件区分情况。certainty：confirmed 有实测或公开资料、likely 有较强依据、guess 推测。direct=true 且 certainty=confirmed 时直接下结论、不交给模型；其余作为提示附在证据包里，由模型结合证据判断。按名字识别的条目必须同时限定路径或签名，防止恶意程序冒名。",
+ "entries": [
+  {
+   "id": "thunder-drivers",
+   "product": "迅雷",
+   "match": {"section": "drivers", "rule": ["seed-anticheat-accel", "seed-bundle"], "object": "^XL(WFP|Guard)$", "company": "Thunder|迅雷", "signed": true},
+   "when": {"installed": "迅雷|Thunder"},
+   "verdict": "bloat", "confidence": 0.85, "proposedAction": "app.uninstall",
+   "explanation": "迅雷的网络过滤驱动（XLWFP）和保护驱动（XLGuard），迅雷不开也随系统加载。迅雷还装着，它们属于迅雷的组件；不常用迅雷的话，用「设置 → 应用」卸载迅雷，卸载后再体检一次，看驱动有没有被一起删掉。不要手动停止驱动。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测 2026-10-24：签名者 ShenZhen Thunder Networking Technologies Ltd."
+  },
+  {
+   "id": "thunder-drivers-leftover",
+   "product": "迅雷",
+   "match": {"section": "drivers", "object": "^XL(WFP|Guard)$", "company": "Thunder|迅雷"},
+   "when": {"notInstalled": "迅雷|Thunder"},
+   "verdict": "leftover", "confidence": 0.8, "proposedAction": "ask_user",
+   "explanation": "迅雷的驱动，但已装软件里没有迅雷，像是卸载残留。驱动删除属于红色操作，先确认不再使用迅雷。",
+   "certainty": "likely", "direct": false,
+   "source": "迅雷卸载后常留下驱动和服务（附录 A 同类经验）"
+  },
+  {
+   "id": "thunder-svchost",
+   "product": "迅雷",
+   "match": {"section": "services", "rule": ["svchost-third-party-dll", "seed-anticheat-accel", "seed-bundle"], "object": "^XLServicePlatform$", "company": "Thunder|迅雷", "signed": true},
+   "when": {"installed": "迅雷|Thunder"},
+   "verdict": "bloat", "confidence": 0.85, "proposedAction": "service.set_manual",
+   "explanation": "迅雷的后台服务平台，以 DLL 形式寄宿在系统的 svchost 进程里，开机就运行，不打开迅雷也在。签名有效，不是病毒，但属于常驻后台；不常用迅雷可以改为手动启动，或干脆卸载迅雷。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测 2026-10-24：C:\\Program Files (x86)\\Common Files\\Thunder Network\\ServicePlatform，厂商深圳市迅雷网络技术有限公司"
+  },
+  {
+   "id": "huawei-dokan",
+   "product": "华为电脑管家",
+   "match": {"section": "drivers", "object": "^dokan\\d*a?$", "path": "\\\\Huawei\\\\PCManager\\\\", "company": "Huawei", "signed": true},
+   "when": {"installed": "华为电脑管家|PC Manager|Huawei"},
+   "verdict": "normal", "confidence": 0.85, "proposedAction": "none",
+   "explanation": "Dokan 是开源的文件系统驱动，华为电脑管家用它把手机等设备的文件挂成电脑上的磁盘。属于正常组件；它在系统启动早期加载，不能直接删除。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测（华为笔记本）：C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys，厂商 Dokan Project、签名者 Huawei Device Co.；Dokan 项目 https://github.com/dokan-dev/dokany"
+  },
+  {
+   "id": "bank-peckp",
+   "product": "网银键盘保护驱动",
+   "match": {"section": "drivers", "object": "^PECKP"},
+   "verdict": "uncertain", "confidence": 0.7, "proposedAction": "ask_user",
+   "explanation": "网银的键盘输入保护驱动，挂在键盘设备的过滤器上。还在用这家银行的网银就保留；不用了也绝对不能直接停止它：实战中强停直接蓝屏（0xCE），只能先摘除过滤器、重启后再处理。",
+   "question": "你还在用需要这个键盘保护控件的网银吗？",
+   "certainty": "confirmed", "direct": false,
+   "source": "附录 A：sc stop PECKP_x64.sys 蓝屏 0xCE（红线 1、2 的来源）"
+  },
+  {
+   "id": "bank-passguard",
+   "product": "网银密码控件 PassGuard",
+   "match": {"section": "drivers", "object": "^PassGuard"},
+   "verdict": "leftover", "confidence": 0.7, "proposedAction": "ask_user",
+   "explanation": "PassGuard 是网银 / 支付页面的密码输入控件驱动。附录 A 的机器上它妨碍了内存完整性开启。",
+   "certainty": "likely", "direct": false,
+   "source": "附录 A：内存完整性打不开的原因之一（网银 PassGuard）。实测文件已不存在、只剩登记，推测是 2026-10-23 手动清理留下的（用户不确定）"
+  },
+  {
+   "id": "tencent-tesmon",
+   "product": "腾讯 TesMon",
+   "match": {"section": "drivers", "object": "^TesMon$"},
+   "verdict": "leftover", "confidence": 0.65, "proposedAction": "ask_user",
+   "explanation": "腾讯的驱动（多见于游戏反作弊 / 安全组件），附录 A 的机器上它妨碍了内存完整性开启。",
+   "certainty": "likely", "direct": false,
+   "source": "附录 A：内存完整性打不开的原因之一（腾讯 TesMon）。实测文件已不存在、只剩登记（推测是手动清理残留）"
+  },
+  {
+   "id": "huawei-ew-usb",
+   "product": "华为旧 USB / 移动宽带驱动",
+   "match": {"section": "drivers", "object": "^ew_"},
+   "verdict": "leftover", "confidence": 0.65, "proposedAction": "ask_user",
+   "explanation": "ew_ 开头的驱动通常属于华为的 USB 连接 / 移动宽带（上网卡、手机连接）驱动，多是很多年前连接华为设备时装上的旧驱动。",
+   "certainty": "likely", "direct": false,
+   "source": "附录 A：华为旧 USB 驱动妨碍内存完整性；ew_ 前缀为推测对应"
+  },
+  {
+   "id": "anticheat-leftovers",
+   "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+   "match": {"section": ["drivers", "services"], "object": "^(EasyAntiCheat|UniFairy|unirsdt|ACE-)"},
+   "verdict": "uncertain", "confidence": 0.6, "proposedAction": "ask_user",
+   "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
+   "question": "你还在玩需要这个反作弊程序的游戏吗？",
+   "certainty": "confirmed", "direct": false,
+   "source": "附录 A：内核堆栈保护打不开（EasyAntiCheat、腾讯 UniFairy / unirsdt）"
+  },
+  {
+   "id": "server-services",
+   "product": "IIS / FTP 服务器",
+   "match": {"section": "services", "rule": "server-service-running", "object": "^(W3SVC|FTPSVC|WAS|IISADMIN|MSFTPSVC)$"},
+   "verdict": "problem", "confidence": 0.7, "proposedAction": "service.set_manual",
+   "explanation": "Windows 自带的网站 / FTP 服务器组件，个人电脑一般用不到，常见于装开发工具或某些软件时被顺带开启。不做网站开发的话可以改为手动。",
+   "certainty": "confirmed", "direct": false,
+   "source": "附录 A：IIS 网站服务器、FTP 服务器在运行，改手动"
+  },
+  {
+   "id": "wps-user-folder",
+   "product": "WPS Office",
+   "match": {"section": ["processes", "scheduledTasks"], "rule": ["runs-from-user-folder", "frequent"], "object": "^(wps|wpscloudsvr|promecefpluginhost|wpp|et|wpspdf|ksolaunch)\\.exe$|^WpsUpdate(Logon)?Task", "path": "\\\\Kingsoft\\\\WPS Office\\\\", "signed": true},
+   "verdict": "normal", "confidence": 0.9, "proposedAction": "none",
+   "explanation": "WPS 个人版默认按用户安装在 AppData 目录下，从这里运行是正常的，数字签名有效；更新任务每小时检查一次更新。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测 2026-10-24（WPS 12.1）"
+  },
+  {
+   "id": "wps-wake-task",
+   "product": "WPS Office",
+   "match": {"section": "scheduledTasks", "object": "^WpsWakeWnsLogonTask", "path": "\\\\Kingsoft\\\\WPS Office\\\\"},
+   "verdict": "bloat", "confidence": 0.6, "proposedAction": "task.disable",
+   "explanation": "登录时唤醒 WPS 后台的计划任务。从名字看和 WPS 的通知推送有关（推测），不影响用 WPS 打开文档；觉得 WPS 弹窗多可以禁用，随时可以恢复。",
+   "certainty": "guess", "direct": false,
+   "source": "实测任务名；用途为推测"
+  },
+  {
+   "id": "zoom-update",
+   "product": "Zoom",
+   "match": {"section": "scheduledTasks", "object": "^ZoomUpdateTask", "path": "\\\\Zoom\\\\bin\\\\Zoom\\.exe", "signed": true},
+   "verdict": "normal", "confidence": 0.9, "proposedAction": "none",
+   "explanation": "Zoom 的自动更新任务。Zoom 默认按用户安装在 AppData 目录下，签名有效。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测 2026-10-24"
+  },
+  {
+   "id": "claude-desktop",
+   "product": "Claude 桌面版",
+   "match": {"section": "processes", "rule": ["runs-from-user-folder", "heavy-memory"], "object": "^(claude|chrome-native-host)\\.exe$", "path": "\\\\AnthropicClaude\\\\", "signed": true},
+   "verdict": "normal", "confidence": 0.9, "proposedAction": "none",
+   "explanation": "Claude 桌面版默认按用户安装在 AppData 目录下，从这里运行是正常的。",
+   "certainty": "confirmed", "direct": true,
+   "source": "实测 2026-10-24"
+  },
+  {
+   "id": "browser-updaters",
+   "product": "浏览器自动更新",
+   "match": {"section": "scheduledTasks", "rule": "frequent", "object": "^(GoogleUpdaterTask|GoogleUpdateTask|MicrosoftEdgeUpdateTask)", "path": "\\\\(Google|Microsoft)\\\\", "signed": true},
+   "verdict": "normal", "confidence": 0.9, "proposedAction": "none",
+   "explanation": "浏览器的自动更新任务，定时检查更新是正常设计。浏览器是上网的第一道门，建议保留，及时拿到安全更新。",
+   "certainty": "confirmed", "direct": true,
+   "source": "Chrome / Edge 的标准更新机制"
+  },
+  {
+   "id": "letsvpn-exclusions",
+   "product": "快连 VPN",
+   "match": {"section": "security", "rule": ["defender-exclusion", "defender-exclusion-orphan"], "evidence": "letsvpn|LetsPRO|快连"},
+   "verdict": "leftover", "confidence": 0.85, "proposedAction": "defender.review",
+   "explanation": "快连 VPN 安装时会添加 Defender 排除项（目录和 Update.exe、uninst.exe 等按进程名的排除），卸载后不会自动删除。按进程名的排除对任何同名程序都生效，等于留了一个口子。",
+   "certainty": "confirmed", "direct": false,
+   "source": "实测 2026-10-24：快连卸载后，安装目录和 5 个按进程名的排除仍留在 Defender 里"
+  },
+  {
+   "id": "kingroot-pua",
+   "product": "KingRoot",
+   "match": {"section": "security", "rule": "defender-allowed-threat", "object": "DroidRooter", "evidence": "kingroot"},
+   "verdict": "uncertain", "confidence": 0.7, "proposedAction": "ask_user",
+   "explanation": "KingRoot 是安卓一键 root 工具，Defender 把它归为「可能不需要的应用」。如果是自己给手机 root 时放行的，属于知情选择；不再需要的话可以删除安装包并在 Windows 安全中心撤销允许。",
+   "question": "这是你自己给手机 root 时放行的吗？",
+   "certainty": "confirmed", "direct": false,
+   "source": "实测：Defender 把 KingRoot 安装包识别为 DroidRooter 类「可能不需要的应用」"
+  },
+  {
+   "id": "jijidown-pua",
+   "product": "唧唧Down（JiJiDown）",
+   "match": {"section": "security", "rule": "defender-allowed-threat", "evidence": "JiJiDown"},
+   "verdict": "uncertain", "confidence": 0.6, "proposedAction": "defender.review",
+   "explanation": "唧唧Down 是第三方 B 站视频下载工具，Defender 把它的更新组件归为「可能不需要的应用」（PUA）。PUA 指广告、捆绑、行为不透明这类问题，不等于病毒；不常用的话建议卸载，并撤销允许。",
+   "certainty": "likely", "direct": false,
+   "source": "实测：JiJiDown\\Update\\Mode.dll 被检测为 PUA:Win32/Packunwan"
+  }
+ ]
+}
