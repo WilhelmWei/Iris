@@ -39,7 +39,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.2.7'
+$ScriptVersion = '0.2.8'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -747,6 +747,18 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
         pagefileGB = if ($pf) { [math]::Round((($pf | Measure-Object AllocatedBaseSize -Sum).Sum) / 1024, 1) } else { $null }
     }
 
+    # 物理硬盘：SSD 还是机械硬盘。MediaType / BusType / HealthStatus 在 CIM 里是数字，按文档换成英文名（不随系统语言变化）
+    $mediaNames  = @{ 0 = 'Unspecified'; 3 = 'HDD'; 4 = 'SSD'; 5 = 'SCM' }
+    $busNames    = @{ 1 = 'SCSI'; 3 = 'ATA'; 7 = 'USB'; 8 = 'RAID'; 10 = 'SAS'; 11 = 'SATA'; 12 = 'SD'; 13 = 'MMC'; 17 = 'NVMe'; 18 = 'SCM'; 19 = 'UFS' }
+    $healthNames = @{ 0 = 'Healthy'; 1 = 'Warning'; 2 = 'Unhealthy'; 5 = 'Unknown' }
+    $disks = @((Safe 'MSFT_PhysicalDisk' { Get-CimInstance -Namespace 'root\Microsoft\Windows\Storage' -ClassName MSFT_PhysicalDisk -OperationTimeoutSec 20 -ErrorAction Stop }) |
+        Where-Object { $_ } | ForEach-Object {
+            $m = $mediaNames[[int]$_.MediaType]; if (-not $m) { $m = [string]$_.MediaType }
+            $b = $busNames[[int]$_.BusType]; if (-not $b) { $b = [string]$_.BusType }
+            $hs = $healthNames[[int]$_.HealthStatus]; if (-not $hs) { $hs = [string]$_.HealthStatus }
+            [ordered]@{ name = $_.FriendlyName; mediaType = $m; busType = $b; sizeGB = [math]::Round([double]$_.Size / 1GB, 1); health = $hs }
+        })
+
     $folders = [ordered]@{}
     if (-not $Quick) {
         $cands = [ordered]@{
@@ -823,7 +835,7 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
     $rootStd = '(?i)^(\$.*|Windows|Program Files|Program Files \(x86\)|ProgramData|Users|PerfLogs|Recovery|System Volume Information|Intel|AMD|NVIDIA|Config\.Msi|Documents and Settings|OneDriveTemp|inetpub|Drivers|ESD)$'
     $cRoot = @(Get-ChildItem -LiteralPath "$env:SystemDrive\" -Directory -Force | Where-Object { $_.Name -notmatch $rootStd } | ForEach-Object { $_.Name })
 
-    [ordered]@{ volumes = @($vols); system = $sys; folders = $folders; steamLibraries = $steamLibs; nonStandardFoldersAtSystemRoot = $cRoot }
+    [ordered]@{ volumes = @($vols); physicalDisks = $disks; system = $sys; folders = $folders; steamLibraries = $steamLibs; nonStandardFoldersAtSystemRoot = $cRoot }
 }
 
 # 9. 电源与电池 ----------------------------------------------------------------

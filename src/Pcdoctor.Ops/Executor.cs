@@ -162,3 +162,21 @@ public static class HandledStatus
         return o;
     }
 }
+
+/// <summary>
+/// 「处理」记录发给作者（内测反馈）的部分：做了哪种操作、对应哪条结论、结果怎样。
+/// 文字由调用方打码（hide）；不带操作目标（路径、注册表位置）、改之前的备份和执行者账户。
+/// </summary>
+public static class JournalFeedback
+{
+    public static JsonObject View(JournalEntry e, Func<string, string> hide) => new()
+    {
+        ["id"] = e.Id, ["time"] = e.TimeUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"), ["op"] = e.Op, ["opName"] = e.OpName,
+        ["title"] = hide(Cut(e.Title, 300)), ["risk"] = e.Risk, ["status"] = e.Status, ["message"] = hide(Cut(e.Message, 600)),
+        ["reversible"] = e.Reversible, ["needsAdmin"] = e.NeedsAdmin, ["undoneTime"] = e.UndoneUtc?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        ["undoMessage"] = e.UndoMessage == null ? null : hide(Cut(e.UndoMessage, 600)),
+        ["reportId"] = e.ReportId, ["findingKey"] = e.FindingKey, ["batchId"] = e.BatchId,
+    };
+
+    static string Cut(string? s, int max) => s == null ? "" : s.Length <= max ? s : s[..max];
+}

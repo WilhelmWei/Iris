@@ -95,10 +95,14 @@ public static class Helper
         var work = elevated ? ProtectedDir(Path.Combine("work", Guid.NewGuid().ToString("N"))) : dir;
         try
         {
+            JsonObject? scanInfo = null;
             if (scan)
             {
                 Progress(dir, new JsonObject { ["phase"] = "scan" });
-                RunPowerShell(dir, "Start-MpScan -ScanType QuickScan", null, 1800);
+                var ssw = Stopwatch.StartNew();
+                var code = RunPowerShell(dir, "Start-MpScan -ScanType QuickScan", null, 1800);
+                // 退出码 0 = 扫描正常结束；-1 = 超时或取消；其他 = Start-MpScan 报错（例如没有管理员权限、Defender 被第三方杀毒软件接管）
+                scanInfo = new JsonObject { ["seconds"] = Math.Round(ssw.Elapsed.TotalSeconds, 1), ["exitCode"] = code, ["ok"] = code == 0 };
             }
             if (Cancelled(dir)) { Done(dir, new JsonObject { ["ok"] = false, ["error"] = "已取消" }); return 0; }
 
@@ -123,7 +127,7 @@ public static class Helper
             {
                 var dest = Path.Combine(dir, Path.GetFileName(report));
                 if (!dest.Equals(report, StringComparison.OrdinalIgnoreCase)) File.Copy(report, dest, true);
-                Done(dir, new JsonObject { ["ok"] = true, ["report"] = dest, ["isAdmin"] = elevated, ["elapsed"] = sw.Elapsed.TotalSeconds });
+                Done(dir, new JsonObject { ["ok"] = true, ["report"] = dest, ["isAdmin"] = elevated, ["elapsed"] = sw.Elapsed.TotalSeconds, ["scan"] = scanInfo });
             }
             return 0;
         }

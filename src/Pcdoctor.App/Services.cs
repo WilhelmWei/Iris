@@ -272,6 +272,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["source"] = "local", ["reportTime"] = report["generatedAt"]?.DeepClone() ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             ["machine"] = MachineLabel(report), ["isAdmin"] = report["tool"]?["isAdmin"]?.DeepClone(),
             ["timings"] = CollectTimings(timings, report, scan, sw.Elapsed - collectStart),
+            ["scan"] = done["scan"]?.DeepClone(),
         });
         try { emit("sectionDetails", new JsonObject { ["rows"] = Insights.SectionSummaries(report) }); } catch { }
         try { Directory.Delete(dir, true); } catch { }
@@ -433,10 +434,12 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
     {
         if (report?["sections"]?["security"]?["defender"] is not JsonObject d) return null;
         static JsonNode? N(JsonNode? v) => v is JsonValue x && x.TryGetValue<double>(out var n) && n >= 0 && n < 100000 ? JsonValue.Create(n) : null;
-        bool scanned = (meta["timings"] as JsonArray)?.Any(t => t?[0]?.ToString() == "Defender 快速扫描") == true;
+        // beta.5 起记录了扫描有没有正常结束；更早的报告只能从用时里看出"发起过扫描"
+        bool asked = meta["scan"] is JsonObject || (meta["timings"] as JsonArray)?.Any(t => t?[0]?.ToString() == "Defender 快速扫描") == true;
+        bool failed = meta["scan"] is JsonObject sc && sc["ok"] is JsonValue ok && ok.TryGetValue<bool>(out var okb) && !okb;
         return new JsonObject
         {
-            ["scanned"] = scanned,
+            ["scanned"] = asked && !failed, ["scanFailed"] = failed,
             ["realTime"] = d["realTimeProtection"] is JsonValue r && r.TryGetValue<bool>(out var rb) ? rb : null,
             ["quickScanAgeDays"] = N(d["quickScanAgeDays"]), ["fullScanAgeDays"] = N(d["fullScanAgeDays"]),
             ["signatureAgeDays"] = N(d["signatureAgeDays"]),
@@ -572,7 +575,11 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             }
         }
         catch (Exception ex) { AppData.LogError("执行", ex); emit("planError", new JsonObject { ["message"] = "执行时出错：" + ex.Message }); }
-        finally { emit("planDone", new JsonObject { ["batchId"] = batch }); }
+        finally
+        {
+            emit("planDone", new JsonObject { ["batchId"] = batch });
+            AutoSendHandling("execute", e => e.BatchId == batch);
+        }
     }
 
     // ================================================================== 操作记录
@@ -609,32 +616,37 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         if (!Confirm(targets.Count == 1 ? "确认撤销这一步？" : $"确认撤销这一批的 {targets.Count} 步？", items))
             return new JsonObject { ["cancelled"] = true, ["ok"] = false, ["message"] = "已取消" };
 
-        var messages = new List<string>();
-        var ok = true;
-        foreach (var e in targets.Where(e => !e.NeedsAdmin))
+        var ids = targets.Select(e => e.Id).ToHashSet();
+        try
         {
-            var o = Executor.Undo(e, Helper.UserContext());
-            journal.Save(e);
-            ok &= o.Status == Status.Done;
-            messages.Add(o.Message);
-        }
-        var admin = targets.Where(e => e.NeedsAdmin).ToList();
-        if (admin.Count > 0)
-        {
-            // 管理员执行的步骤：只把编号交给辅助进程，它从受保护目录读取记录和备份；一批只弹一次管理员确认
-            var dir = NewRunDir();
-            try
+            var messages = new List<string>();
+            var ok = true;
+            foreach (var e in targets.Where(e => !e.NeedsAdmin))
             {
-                var p = StartHelper("undo", dir, elevate: true, "--ids", string.Join(",", admin.Select(e => e.Id)))
-                        ?? throw new InvalidOperationException("没有同意管理员权限，没有撤销");
-                var done = await WaitHelper(p, dir, _ => { }, CancellationToken.None);
-                ok &= done?["ok"]?.GetValue<bool>() == true;
-                messages.Add(done?["message"]?.ToString() ?? done?["error"]?.ToString() ?? "撤销失败");
+                var o = Executor.Undo(e, Helper.UserContext());
+                journal.Save(e);
+                ok &= o.Status == Status.Done;
+                messages.Add(o.Message);
             }
-            finally { try { Directory.Delete(dir, true); } catch { } }
+            var admin = targets.Where(e => e.NeedsAdmin).ToList();
+            if (admin.Count > 0)
+            {
+                // 管理员执行的步骤：只把编号交给辅助进程，它从受保护目录读取记录和备份；一批只弹一次管理员确认
+                var dir = NewRunDir();
+                try
+                {
+                    var p = StartHelper("undo", dir, elevate: true, "--ids", string.Join(",", admin.Select(e => e.Id)))
+                            ?? throw new InvalidOperationException("没有同意管理员权限，没有撤销");
+                    var done = await WaitHelper(p, dir, _ => { }, CancellationToken.None);
+                    ok &= done?["ok"]?.GetValue<bool>() == true;
+                    messages.Add(done?["message"]?.ToString() ?? done?["error"]?.ToString() ?? "撤销失败");
+                }
+                finally { try { Directory.Delete(dir, true); } catch { } }
+            }
+            return new JsonObject { ["ok"] = ok, ["message"] = targets.Count == 1 ? messages[0]
+                : ok ? $"已撤销 {targets.Count} 步，重新检测确认都回到了原来的状态" : "部分步骤没能撤销，详情见操作记录" };
         }
-        return new JsonObject { ["ok"] = ok, ["message"] = targets.Count == 1 ? messages[0]
-            : ok ? $"已撤销 {targets.Count} 步，重新检测确认都回到了原来的状态" : "部分步骤没能撤销，详情见操作记录" };
+        finally { AutoSendHandling("undo", e => ids.Contains(e.Id)); }
     }
 
     // ================================================================== 存储空间（设置里可以看、可以清）
@@ -792,7 +804,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         p["meta"] = new JsonObject
         {
             ["reportTime"] = meta["reportTime"]?.DeepClone(), ["machine"] = meta["machine"]?.DeepClone(),
-            ["isAdmin"] = meta["isAdmin"]?.DeepClone(), ["timings"] = meta["timings"]?.DeepClone(),
+            ["isAdmin"] = meta["isAdmin"]?.DeepClone(), ["timings"] = meta["timings"]?.DeepClone(), ["scan"] = meta["scan"]?.DeepClone(),
         };
         p["settings"] = new JsonObject { ["mode"] = s.Mode, ["provider"] = s.Provider, ["model"] = s.Model, ["theme"] = s.Theme };
         p["report"] = Insights.ScrubForFeedback(Redacted(AppData.ReadJson(Path.Combine(dir, "report.json"))!));
@@ -801,7 +813,33 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         p["marks"] = AppData.ReadJson(Path.Combine(dir, "feedback.json"))?.DeepClone() ?? new JsonObject();
         p["crossCheck"] = AppData.ReadJson(Path.Combine(dir, "crosscheck.json"))?.DeepClone();
         p["errorLog"] = RecentErrors();
+        p["journal"] = new JsonArray(AllEntries().Take(200).Select(e => (JsonNode)HandlingEntry(e)).ToArray());
         return p;
+    }
+
+    static JsonObject HandlingEntry(JournalEntry e) => JournalFeedback.View(e, HidePrivate);
+
+    /// <summary>同意过内测反馈时，「处理」页执行或撤销完就把这一批的结果发出去（看朋友们是不是真的用了「处理」、哪些操作容易失败）。</summary>
+    void AutoSendHandling(string kind, Func<JournalEntry, bool> which)
+    {
+        var s = AppData.LoadSettings();
+        if (s.BetaConsent != "yes" || Cloud.FeedbackUrl == null) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var entries = AllEntries().Where(which).ToList();
+                if (entries.Count == 0) return;
+                var p = Envelope("handling", entries[0].ReportId ?? "", s);
+                p["handling"] = new JsonObject
+                {
+                    ["event"] = kind, ["steps"] = new JsonArray(entries.Select(e => (JsonNode)HandlingEntry(e)).ToArray()),
+                };
+                Cloud.Enqueue("handling", p);
+                await Cloud.Flush(AppData.InstallId(s));
+            }
+            catch (Exception ex) { AppData.LogError("发送处理记录", ex); }
+        });
     }
 
     /// <summary>error.log 的最后 16 KB，打码后带上，方便定位内测时遇到的错误。</summary>
@@ -812,10 +850,16 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             if (!File.Exists(AppData.ErrorLog)) return "";
             var text = File.ReadAllText(AppData.ErrorLog);
             if (text.Length > 16384) text = text[^16384..];
-            var profile = Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-            return Redactor.HidePrivate(Redactor.HidePrivate(text, Environment.UserName, Environment.MachineName), profile, null);
+            return HidePrivate(text);
         }
         catch { return ""; }
+    }
+
+    /// <summary>发给作者的文字里，把用户名、计算机名、用户文件夹名、邮箱换成占位符（和体检报告的打码一样）。</summary>
+    static string HidePrivate(string text)
+    {
+        var profile = Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        return Redactor.HidePrivate(Redactor.HidePrivate(text, Environment.UserName, Environment.MachineName), profile, null);
     }
 
     /// <summary>同意过内测反馈时，每次体检完自动发送（一键都不用点）；没同意就什么也不做。</summary>
@@ -881,7 +925,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             items.Add($"去隐私的体检结果：{(report["flags"] as JsonArray)?.Count ?? 0} 条预筛结果，以及进程、自启动、服务、驱动、已装软件的名称、版本、厂商、安装位置");
             items.Add($"研判结论：{(p["judge"]?["judgement"]?["findings"] as JsonArray)?.Count ?? 0} 条，以及健康分");
             items.Add($"你的回答和“判断不对”的标记：{(p["answers"] as JsonObject)?.Count ?? 0} 条回答、{(p["marks"] as JsonObject)?.Count ?? 0} 条标记（包括你写的说明）");
-            items.Add("每一步的用时、程序版本、随机安装编号");
+            items.Add("每一步的用时、程序版本、随机安装编号；这次有没有先做 Defender 扫描、扫了多久");
+            items.Add($"「处理」页的记录：{(p["journal"] as JsonArray)?.Count ?? 0} 步，每一步做了哪种操作、结果怎样（不含文件路径和备份）");
             if (((string?)p["errorLog"])?.Length > 0) items.Add("最近的错误记录（已打码）");
         }
         return new JsonObject

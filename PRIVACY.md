@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Iris（电脑体检，仓库 pcdoctor）· 版本 2026-10-25.2**
+**Iris · AI 电脑体检 · 版本 2026-10-27.1**
 
 [中文](#中文) · [English](#english)
 
@@ -16,7 +16,7 @@
 
 体检只读，不修改任何东西。读取的内容：
 
-- 系统和硬件概况：Windows 版本、电脑型号、CPU、内存、各磁盘空间、开机时长、电池状态
+- 系统和硬件概况：Windows 版本、电脑型号、CPU、内存、硬盘型号和类型（SSD / 机械硬盘）、各磁盘空间、开机时长、电池状态
 - 正在运行的程序、开机自启动、服务、计划任务、驱动的名称、路径、厂商和数字签名状态
 - 已装软件的名称和厂商
 - 安全设置的状态：Microsoft Defender（含排除项、被允许的威胁、近期检测记录）、防火墙是否开启、UAC、安全启动、内存完整性
@@ -45,7 +45,8 @@
 
 - 去隐私的体检结果：用户名、计算机名、邮箱换成占位符；再去掉系统代理地址、DNS 服务器地址、hosts 条目（只留数量）。其中包含软件、进程、服务、驱动的名称、版本、厂商和**安装位置**。如果你把文件夹起名为自己的名字，路径里会出现这个名字
 - 研判结论和健康分；你对问题的回答、"判断不对 / 漏掉了"的标记，**包括你写的说明文字**
-- 每一步的用时、程序版本、主题和研判方式，最近的错误记录（同样打码）
+- 每一步的用时、程序版本、主题和研判方式，最近的错误记录（同样打码）；这次体检前有没有做 Defender 快速扫描、扫了多久、是否正常结束
+- 「处理」页的记录：每一步做了哪种操作（例如"关闭开机自启动"）、对应报告里的哪条结论、结果（成功 / 没生效已恢复 / 没能执行 / 已撤销）和结果说明（同样打码）。**不含**操作对象的完整路径、注册表位置和改之前的备份。除了随体检反馈一起发送，在「处理」页执行或撤销完成后也会单独发送一次，用来了解哪些操作容易失败
 - 一个随机生成的安装编号：只用来把同一台电脑的反馈归到一起、防止被刷，和你的身份无关
 
 **不包含**：API Key、文档、照片、聊天记录、浏览记录、密码、Cookie。服务器**不记录你的 IP 地址**；不需要注册。反馈只有作者能看，只用于改进 Iris，不出售、不用于广告。**内测结束后 90 天内删除**。
@@ -86,7 +87,7 @@ Your check-up data stays on your computer. Data leaves it in only two cases: whe
 
 The check-up is read-only and changes nothing. It reads:
 
-- System and hardware overview: Windows version, device model, CPU, memory, disk space, uptime, battery status
+- System and hardware overview: Windows version, device model, CPU, memory, disk model and type (SSD / HDD), disk space, uptime, battery status
 - Names, paths, vendors and digital-signature status of running programs, startup entries, services, scheduled tasks and drivers
 - Names and publishers of installed software
 - Status of security settings: Microsoft Defender (including exclusions, allowed threats and recent detections), whether the firewall is on, UAC, Secure Boot, Memory Integrity
@@ -115,7 +116,8 @@ The **beta feedback package** is used to find where Iris judges wrongly and to r
 
 - The de-identified check-up result: user name, computer name and e-mail replaced with placeholders; system proxy, DNS servers and hosts entries removed (only their counts are kept). It includes names, versions, vendors and **install locations** of software, processes, services and drivers. If you named a folder after yourself, that name will appear in paths
 - Verdicts and the health score; your answers and "wrong / missed" marks, **including the notes you typed**
-- Timings, app version, theme and analysis mode, recent error records (redacted the same way)
+- Timings, app version, theme and analysis mode, recent error records (redacted the same way); whether a Defender quick scan ran before this check-up, how long it took and whether it finished normally
+- The "处理" (fix) page log: which kind of operation each step was (e.g. "disable startup entry"), which finding in the report it belongs to, the result (done / not effective and restored / could not run / undone) and the result message (redacted the same way). It does **not** include the full path or registry location of the target, nor the backup taken before the change. Besides travelling with the check-up feedback, it is also sent on its own after you run or undo steps on that page, to learn which operations tend to fail
 - A randomly generated install ID, used only to group feedback from the same computer and prevent abuse; it is not linked to your identity
 
 **Not included**: API key, documents, photos, chat history, browsing history, passwords, cookies. The server **does not log your IP address**; no account is needed. Only the author can read the feedback; it is used only to improve Iris and is never sold or used for advertising. **It is deleted within 90 days after the beta ends.**

@@ -81,8 +81,10 @@ public static class Cloud
                     using var resp = await Http.SendAsync(req, ct);
                     var code = (int)resp.StatusCode;
                     if (resp.IsSuccessStatusCode) { File.Delete(f); sent++; continue; }
-                    if (code is 400 or 413) { File.Delete(f); error = $"服务器拒收了一个反馈包（{code}）"; continue; }
-                    error = code == 429 ? "发送太频繁，稍后会自动重试" : $"服务器暂时出错（{code}），稍后会自动重试";
+                    var why = await Reason(resp, ct);
+                    if (code is 400 or 413) { File.Delete(f); error = $"服务器拒收了一个反馈包（{code}{why}）"; continue; }
+                    error = code == 429 ? "发送太频繁，稍后会自动重试" : $"服务器暂时出错（{code}{why}），稍后会自动重试";
+                    AppData.LogError("发送反馈", new HttpRequestException($"HTTP {code}{why}"));
                     break;
                 }
                 catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
@@ -94,6 +96,13 @@ public static class Cloud
             return new(sent, Directory.GetFiles(AppData.Outbox, "*.json.gz").Length, error);
         }
         finally { FlushLock.Release(); }
+    }
+
+    /// <summary>服务器返回的出错原因（读不到就是空字符串），见 Insights.ServerReason。</summary>
+    static async Task<string> Reason(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try { return Pcdoctor.Core.Insights.ServerReason(await resp.Content.ReadAsStringAsync(ct)); }
+        catch { return ""; }
     }
 
     // ------------------------------------------------------------------ 检查更新

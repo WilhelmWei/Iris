@@ -199,6 +199,27 @@ public static class Insights
         return redactedReport;
     }
 
+    /// <summary>
+    /// 反馈服务器出错时返回的原因，例如阿里云的 {"Code":"AccessDenied","Message":"Current user is in debt."}（账户欠费）。
+    /// 合成一行、最多 200 个字，前面加"："，方便用户截图给作者；没有内容时返回空字符串。
+    /// </summary>
+    public static string ServerReason(string? body)
+    {
+        var text = (body ?? "").Trim();
+        if (text.StartsWith('{'))
+        {
+            try
+            {
+                if (JsonNode.Parse(text) is JsonObject o)
+                    text = string.Join(" ", new[] { o["Code"], o["Message"], o["error"], o["message"] }
+                        .Select(x => x is JsonValue v && v.TryGetValue<string>(out var s) ? s : null).Where(s => !string.IsNullOrWhiteSpace(s)));
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
+        text = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return text.Length == 0 ? "" : "：" + (text.Length > 200 ? text[..200] + "…" : text);
+    }
+
     /// <summary>语义化版本比较：1.0.0-beta.1 &lt; 1.0.0-beta.2 &lt; 1.0.0-rc.1 &lt; 1.0.0 &lt; 1.0.1。</summary>
     public static int CompareVersions(string a, string b)
     {

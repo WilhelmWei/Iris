@@ -202,4 +202,17 @@ public class InsightsTests
         var p = Insights.Prints(T.J("{}"), T.J("""{"flagIds": ["F009"], "object": "C 盘"}"""));
         Assert.Equal(["object|C 盘"], p);
     }
+
+    [Theory]
+    [InlineData("{\"Code\":\"AccessDenied\",\"Message\":\"Current user is in debt.\",\"RequestId\":\"x\"}", "：AccessDenied Current user is in debt.")]
+    [InlineData("{\"error\": \"too many\"}", "：too many")]
+    [InlineData("<html>\n  Bad   Gateway\n</html>", "：<html> Bad Gateway </html>")]
+    [InlineData("{broken", "：{broken")]
+    [InlineData("", "")]
+    [InlineData(null, "")]
+    [InlineData("{\"RequestId\":\"x\"}", "")]
+    public void ServerReasonIsOneShortLine(string? body, string expected) => Assert.Equal(expected, Insights.ServerReason(body));
+
+    [Fact]
+    public void ServerReasonIsCut() => Assert.Equal(1 + 200 + 1, Insights.ServerReason(new string('x', 5000)).Length);
 }

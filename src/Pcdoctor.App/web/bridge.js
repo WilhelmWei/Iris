@@ -88,7 +88,7 @@
         const r = await load();
         const h = r ? r.history : [];
         return { version: '1.0.0-rc.1', isAdmin: false, settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
-                 privacy: { version: '2026-10-25.2', accepted: M.privacyAccepted },
+                 privacy: { version: '2026-10-27.1', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
@@ -97,7 +97,7 @@
       }
       case 'getReport': { const r = await load(); await sleep(350); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search),
         handled: handled(), selected: { keys: (M.selected || []).slice(), carried: M.carried || 0, dropped: M.carried ? 1 : 0 },
-        defender: r.defender || { scanned: !!M.scanned, realTime: true, quickScanAgeDays: M.scanned ? 0 : 12, fullScanAgeDays: 417, signatureAgeDays: 0 } }); }
+        defender: r.defender || { scanned: !!M.scanned && !/[?&]scanfail/.test(location.search), scanFailed: /[?&]scanfail/.test(location.search), realTime: true, quickScanAgeDays: M.scanned ? 0 : 12, fullScanAgeDays: 417, signatureAgeDays: 0 } }); }
       case 'storageInfo': await sleep(200); return M.storage = M.storage || { reports: { count: 9, local: 8, bytes: 14.2 * 1048576 }, backups: { count: 6, bytes: 412 * 1024, admin: 2 }, webview: { bytes: 38.5 * 1048576, pending: false }, outbox: { count: 1, bytes: 96 * 1024 } };
       case 'cleanStorage': {
         await sleep(500); const st = M.storage;
@@ -117,7 +117,8 @@
       case 'exportFeedback': return { ok: true, exported: true, path: 'C:\\Users\\你\\Desktop\\Iris-反馈-' + p.reportId + '.zip', message: '反馈包已保存到桌面，发给作者就行' };
       case 'previewFeedback': return {
         items: ['去隐私的体检结果：51 条预筛结果，以及进程、自启动、服务、驱动、已装软件的名称、版本、厂商、安装位置', '研判结论：17 条，以及健康分',
-                `你的回答和“判断不对”的标记：${Object.keys(M.answers).length} 条回答、${Object.keys(M.marks || {}).length} 条标记（包括你写的说明）`, '每一步的用时、程序版本、随机安装编号'],
+                `你的回答和“判断不对”的标记：${Object.keys(M.answers).length} 条回答、${Object.keys(M.marks || {}).length} 条标记（包括你写的说明）`, '每一步的用时、程序版本、随机安装编号；这次有没有先做 Defender 扫描、扫了多久',
+                '「处理」页的记录：3 步，每一步做了哪种操作、结果怎样（不含文件路径和备份）'],
         sizeKB: 38, server: M.settings.feedbackServer ? 'Iris 作者的服务器（阿里云中国香港）' : null,
         excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '文档、照片、聊天记录、浏览记录、密码'] };
       case 'openUpdate': return {};
@@ -153,7 +154,7 @@
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-10-25.2', text };
+        return { version: '2026-10-27.1', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};

@@ -579,6 +579,7 @@
       <div><b>${title}</b><p>${esc(pii(j.malwareReasoning))}</p>
         <div class="scope"><span class="k">检查范围</span><span>${scanned
           ? '体检前，Microsoft Defender 刚做完一次快速扫描；Iris 读取了它的结果，再用自己的规则检查了自启动、驱动、排除项和放行记录。'
+          : D && D.scanFailed ? '这次请 Microsoft Defender 快速扫描了，但扫描没有正常结束（常见原因：装了其他杀毒软件、Defender 被关掉、没有给管理员权限），所以只用了 Iris 自己的检查规则。'
           : '这次只用了 Iris 自己的检查规则，没有调用更专业的 Microsoft Defender 扫描。想更放心，可以先让 Defender 快速扫描一遍再体检。'}</span>
           ${last.length ? `<span class="k">上次扫描</span><span>${last.map(x => `${x[0]} ${x[1]}`).join(' · ')}</span>` : ''}</div>
         ${warn}
@@ -1045,7 +1046,7 @@
   async function previewFeedback() {
     const id = state.report && state.report.meta.source === 'local' ? state.report.id : (state.app.lastReport && state.app.lastReport.id);
     const p = await call('previewFeedback', { reportId: id || null });
-    const items = p.items.length ? p.items : ['体检结果（软件名称、版本、厂商、安装位置）、研判结论、你的回答和“判断不对”的标记、用时和错误记录。做完第一次体检后，这里会列出具体内容。'];
+    const items = p.items.length ? p.items : ['体检结果（软件名称、版本、厂商、安装位置）、研判结论、你的回答和“判断不对”的标记、用时和错误记录、「处理」页的操作和结果。做完第一次体检后，这里会列出具体内容。'];
     modal('反馈包里有什么', `${p.server ? '发送到 ' + esc(p.server) : '导出为文件，由你发给作者'}${p.sizeKB ? ' · 压缩后约 ' + p.sizeKB + ' KB' : ''} · 不需要注册`,
       `<h4>会发送</h4><div class="payload">${items.map(x => `<div class="item">${esc(x)}</div>`).join('')}</div>
        <h4>不会发送</h4><ul>${p.excluded.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
@@ -1144,7 +1145,7 @@
           ? '同意后，每次体检完，Iris 会自动把<b>去隐私的反馈包</b>发到作者的服务器（阿里云中国香港），你不用再点任何按钮。'
           : '同意后，报告页会提示你导出<b>去隐私的反馈包</b>发给作者；以后的版本连上作者的服务器（阿里云中国香港）后，改为体检完自动发送。'}</p>
         <div class="ob-two">
-          <div><h4>会发送</h4><p>体检结果（软件的名称、版本、厂商、安装位置）、研判结论、你标记的“判断不对”和你写的说明、每一步的用时、错误记录、随机安装编号。</p></div>
+          <div><h4>会发送</h4><p>体检结果（软件的名称、版本、厂商、安装位置）、研判结论、你标记的“判断不对”和你写的说明、每一步的用时、错误记录、在「处理」页做了哪些操作和结果（不含路径和备份）、随机安装编号。</p></div>
           <div><h4>不会发送</h4><p>用户名、电脑名、邮箱、代理和 DNS 地址、API Key，以及文档、照片、聊天记录、浏览记录、密码。</p></div>
         </div>
         <p class="muted small">不需要注册。随时可以在「设置 → 内测反馈」里关掉。不同意也可以照常使用全部功能。${s.betaConsent ? `你现在的选择：${s.betaConsent === 'yes' ? '同意' : '不同意'}。` : ''}</p>
