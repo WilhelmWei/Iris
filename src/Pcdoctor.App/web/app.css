@@ -933,3 +933,4 @@ details.fold[open]::details-content { height: auto; }
   .sp-node { grid-template-columns: 18px minmax(0, 1fr) 64px; }
   .sp-node .bar { display: none; }
 }
+details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展开：不再播一次展开动画 */

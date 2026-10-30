@@ -633,19 +633,14 @@
           <p class="muted small">这些不是"垃圾"：聊天文件和下载是你的数据，系统遗留交给 Windows 自带的「磁盘清理」。把聊天文件挪到其他盘，Iris 下一版会帮你做。</p></div>
       </div>
       ${spaceTree()}
-      ${(st.notCleaned || []).length ? `<details class="fold"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}`;
+      ${(st.notCleaned || []).length ? `<details class="fold" data-fold="not-cleaned"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}`;
   }
   const SP_KIND = { system: '系统', tool: '交给 Windows', clean: 'Iris 能清', move: '可以挪', yours: '你的文件', apps: '软件' };
   function spaceTree() {
-    const R = state.report, sp = R.space, prog = state.spaceProg[R.id];
+    const R = state.report, sp = R.space;
     if (R.meta.source !== 'local') return '';
     if (!sp && !R.spaceRunning) return '';
-    const running = R.spaceRunning && !(sp && sp.finished);
-    const scanned = prog ? prog.scannedBytes : sp ? sp.scannedBytes : 0, usedB = prog ? prog.usedBytes : sp ? sp.usedBytes : 0;
-    const pctDone = usedB ? Math.min(99, Math.round(scanned / usedB * 100)) : 0;
-    const status = running ? `正在分析，已看过 ${fmtSize(scanned)} / ${fmtSize(usedB)}`
-      : sp && sp.finished ? `看完了 ${(sp.scannedFiles || 0).toLocaleString()} 个文件${sp.seconds ? `，用了 ${fmtSec(sp.seconds)}` : ''}`
-      : sp ? `没扫完（看过 ${fmtSize(sp.scannedBytes)} / ${fmtSize(sp.usedBytes)}），下次体检会重新分析` : '';
+    const { running, pctDone, status } = spaceStatus();
     const tree = sp && sp.tree;
     const max = tree ? Math.max(1, ...(tree.children || []).map(k => k.bytes)) : 1;
     const row = (n, depth) => {
@@ -660,20 +655,44 @@
         ${l && open ? `<p class="advice">${esc(l.advice)}</p>` : ''}
         ${open ? kids.map(k => row(k, depth + 1)).join('') : ''}</div>`;
     };
-    return `<div class="sp-tree"><div class="sp-tree-head"><h4>C 盘空间去哪了</h4><span class="muted small">${esc(status)}</span></div>
-      ${running ? `<div class="sp-progress" role="progressbar" aria-valuenow="${pctDone}"><i style="width:${pctDone}%"></i></div>
+    return `<div class="sp-tree"><div class="sp-tree-head"><h4>C 盘空间去哪了</h4><span class="muted small" id="sp-status">${esc(status)}</span></div>
+      ${running ? `<div class="sp-progress" role="progressbar" aria-valuenow="${pctDone}"><i id="sp-bar" style="width:${pctDone}%"></i></div>
         <p class="muted small">报告已经出来了，这一项在后台继续分析，不影响你看报告和用电脑；分析完这里会自动更新。</p>` : ''}
       ${tree && tree.children ? `<div class="sp-rows">${tree.children.filter(k => k.bytes > 0).map(k => row(k, 0)).join('')}</div>` : ''}
-      ${sp && (sp.bigFiles || []).length ? `<details class="fold"><summary>最大的 ${Math.min(10, sp.bigFiles.length)} 个文件</summary><div class="fold-body"><ul class="sp-list">${sp.bigFiles.slice(0, 10).map(f =>
+      ${sp && (sp.bigFiles || []).length ? `<details class="fold" data-fold="big-files"><summary>最大的 ${Math.min(10, sp.bigFiles.length)} 个文件</summary><div class="fold-body"><ul class="sp-list">${sp.bigFiles.slice(0, 10).map(f =>
         `<li><span class="mono small">${esc(pii(f.path))}</span><span class="num">${fmtSize(f.bytes)}</span></li>`).join('')}</ul></div></details>` : ''}</div>`;
   }
+  /** 「C 盘空间去哪了」现在的进度：进度事件（每秒）优先，否则用报告里存的快照 */
+  function spaceStatus() {
+    const R = state.report, sp = R.space, prog = state.spaceProg[R.id];
+    const running = !!R.spaceRunning && !(sp && sp.finished);
+    const scanned = prog ? prog.scannedBytes : sp ? sp.scannedBytes : 0, usedB = prog ? prog.usedBytes : sp ? sp.usedBytes : 0;
+    const pctDone = usedB ? Math.min(99, Math.round(scanned / usedB * 100)) : 0;
+    const status = running ? `正在分析，已看过 ${fmtSize(scanned)} / ${fmtSize(usedB)}`
+      : sp && sp.finished ? `看完了 ${(sp.scannedFiles || 0).toLocaleString()} 个文件${sp.seconds ? `，用了 ${fmtSec(sp.seconds)}` : ''}`
+      : sp ? `没扫完（看过 ${fmtSize(sp.scannedBytes)} / ${fmtSize(sp.usedBytes)}），下次体检会重新分析` : '';
+    return { running, pctDone, status };
+  }
+  /** 每秒的进度只改文字和进度条，不重画卡片：用户正在看的展开项、滚动位置都不受影响 */
+  function patchSpaceProgress() {
+    if (state.view !== 'report' || !document.getElementById('space-card')) return;
+    const { pctDone, status } = spaceStatus();
+    const s = document.getElementById('sp-status'), b = document.getElementById('sp-bar');
+    if (s) s.textContent = status;
+    if (b) { b.style.width = pctDone + '%'; b.parentElement.setAttribute('aria-valuenow', pctDone); }
+  }
+  /** 快照更新时整张卡片重画：先记下哪些折叠项展开着，重画后原样打开（不重放展开动画） */
   function refreshSpace() {
     if (state.view !== 'report') return;
     const el = document.getElementById('space-card');
     if (!el) return;
+    const open = [...el.querySelectorAll('details[data-fold]')].filter(d => d.open).map(d => d.dataset.fold);
     const tmp = document.createElement('div'); tmp.innerHTML = spaceCard();
     const fresh = tmp.firstElementChild;
-    if (fresh) { el.innerHTML = fresh.innerHTML; hydrate(el); }
+    if (!fresh) return;
+    el.innerHTML = fresh.innerHTML;
+    el.querySelectorAll('details[data-fold]').forEach(d => { if (open.includes(d.dataset.fold)) { d.classList.add('kept'); d.open = true; } });
+    hydrate(el);
   }
   /** 一键加入：只挑低风险、不需要回答、没被标"先不管"或"不对"的；清理缓存用目录表里的默认范围，也一起加 */
   function suggestions() {
@@ -1383,7 +1402,7 @@
     state.streamFresh = state.stream.length; updateRunning();
   });
   // 「C 盘空间去哪了」在报告出来后继续跑：进度每秒一次，快照几秒一次，只更新那张卡片
-  api.on('spaceProgress', d => { state.spaceProg[d.id] = d; if (state.report && state.report.id === d.id) refreshSpace(); });
+  api.on('spaceProgress', d => { state.spaceProg[d.id] = d; if (state.report && state.report.id === d.id) patchSpaceProgress(); });
   const spaceReload = async d => {
     if (!state.report || state.report.id !== d.id) return;
     const r = await call('getReport', { id: d.id });
