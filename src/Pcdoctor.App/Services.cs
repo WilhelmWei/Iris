@@ -718,6 +718,95 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         }
     }
 
+    // ================================================================== 搬到其他盘
+    // 和处理清单分开：清单里是报告给出的建议，这里是用户自己挑要搬的文件夹和盘。列表每次现量，不依赖报告
+    volatile bool moveRunning;
+    public bool MoveRunning => moveRunning;
+
+    static JsonObject DriveJson(DriveFact d) => new()
+    {
+        ["root"] = d.Root, ["name"] = FolderMove.DriveName(d.Root), ["label"] = d.Label, ["bus"] = d.Bus,
+        ["freeGB"] = Math.Round(d.FreeBytes / (double)(1L << 30), 1), ["totalGB"] = Math.Round(d.TotalBytes / (double)(1L << 30), 1),
+    };
+
+    public JsonObject MoveOptions()
+    {
+        var sys = new WindowsSystem(Path.GetTempPath());
+        var sysDrive = sys.Drives().FirstOrDefault(d => d.Root.Equals(FolderMove.SystemDrive(sys), StringComparison.OrdinalIgnoreCase));
+        return new JsonObject
+        {
+            ["running"] = moveRunning,
+            ["system"] = sysDrive == null ? null : DriveJson(sysDrive),
+            ["drives"] = new JsonArray(FolderMove.Targets(sys).Select(d => (JsonNode)DriveJson(d)).ToArray()),
+            ["folders"] = new JsonArray(FolderMove.Candidates(sys).Select(c => (JsonNode)new JsonObject
+            {
+                ["id"] = c.Folder.Id, ["name"] = c.Folder.Name, ["path"] = c.Path, ["bytes"] = c.Bytes, ["files"] = c.Files, ["partial"] = c.Partial,
+                ["problem"] = c.Problem, ["movedTo"] = c.MovedTo,
+                ["movedName"] = c.MovedTo == null ? null : c.MovedTo.Contains("OneDrive", StringComparison.OrdinalIgnoreCase) ? "OneDrive" : FolderMove.DriveName(c.MovedTo[..2]),
+                ["kept"] = new JsonArray(c.Kept.Select(k => (JsonNode)new JsonObject { ["name"] = FolderMove.KeptLabel(k.Name), ["bytes"] = k.Bytes }).ToArray()),
+            }).ToArray()),
+        };
+    }
+
+    public JsonObject MoveFolders(JsonArray items, string? reportId)
+    {
+        if (moveRunning) throw new InvalidOperationException("正在搬文件夹，请等这一次搬完");
+        var sys = new WindowsSystem(Path.GetTempPath());
+        var targets = FolderMove.Targets(sys);
+        var info = Catalog.Ops["folder.move"];
+        var steps = new List<PlanStep>();
+        foreach (var it in items)
+        {
+            var f = FolderMove.Get(it?["id"]?.ToString() ?? "");
+            var drive = targets.FirstOrDefault(d => d.Root.Equals(it?["drive"]?.ToString(), StringComparison.OrdinalIgnoreCase));
+            if (f == null || drive == null) throw new ArgumentException("选择的文件夹或盘不对，请刷新后重试");
+            if (steps.Any(x => x.Target["folder"]?.ToString() == f.Id)) continue;
+            steps.Add(new PlanStep
+            {
+                Key = $"move:{f.Id}#0", FindingKey = $"move:{f.Id}", Op = "folder.move", OpName = info.Name, Risk = info.Risk,
+                Title = $"{f.Name} → {FolderMove.DriveName(drive.Root)}",
+                Change = $"把 {FolderMove.DefaultPath(sys, f)} 搬到 {FolderMove.TargetPath(sys, f, drive.Root)}：先复制、逐个核对大小，"
+                         + $"再把系统里「{f.Name}」的位置改过去，最后删掉 C 盘上已经复制好的原件"
+                         + (f.Id == "documents" ? "。微信、QQ、Outlook 的文件夹留在原处" : ""),
+                Cost = info.Cost, Undo = info.Undo, Reversible = true, NeedsAdmin = false,
+                Target = new JsonObject { ["folder"] = f.Id, ["drive"] = drive.Root },
+            });
+        }
+        if (steps.Count == 0) throw new InvalidOperationException("没有选择要搬的文件夹");
+        var changes = steps.Select(s => new ChangeItem($"{s.OpName}：{s.Title}", s.Change, true, s.Undo, false)).ToList();
+        if (!Confirm($"确认把这 {steps.Count} 个文件夹搬到其他盘？", changes)) return new JsonObject { ["cancelled"] = true };
+        var batch = "batch-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];
+        moveRunning = true;
+        _ = Task.Run(() => RunMoves(steps, reportId, batch));
+        return new JsonObject { ["started"] = true, ["batchId"] = batch };
+    }
+
+    void RunMoves(List<PlanStep> steps, string? reportId, string batch)
+    {
+        try
+        {
+            foreach (var s in steps)
+            {
+                emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = "running", ["message"] = "正在检查…" });
+                var ctx = Helper.UserContext() with
+                {
+                    Progress = m => emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = "running", ["message"] = m }),
+                };
+                var e = Executor.RunStep(s, ctx, reportId, batch);
+                e.Owner = Me;
+                journal.Save(e);
+                emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = e.Status, ["message"] = e.Message });
+            }
+        }
+        catch (Exception ex) { AppData.LogError("搬文件夹", ex); emit("planError", new JsonObject { ["message"] = "搬文件夹时出错：" + ex.Message }); }
+        finally
+        {
+            moveRunning = false;
+            emit("moveDone", new JsonObject { ["batchId"] = batch });
+            AutoSendHandling("execute", e => e.BatchId == batch);
+        }
+    }
+
     // ================================================================== 操作记录
     /// <summary>两处记录：普通权限执行的在 %LOCALAPPDATA%\pcdoctor\journal；管理员执行的在受保护目录（普通用户只能读，防篡改）。</summary>
     static string Me => System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;

@@ -92,9 +92,10 @@ public static class BackupPruner
 {
     public sealed record Result(int Entries, long Bytes);
 
-    /// <summary>没生效 / 已撤销的步骤，或早于截止时间的已生效步骤。</summary>
+    /// <summary>没生效 / 已撤销的步骤，或早于截止时间的已生效步骤。搬到其他盘的记录只有几百字节，清掉就再也搬不回来了，一直保留。</summary>
     public static bool Eligible(JournalEntry e, DateTime cutoffUtc) =>
-        e.Status is Status.Undone or Status.RolledBack or Status.Failed or Status.Info || (e.Status == Status.Done && e.TimeUtc < cutoffUtc);
+        e.Status is Status.Undone or Status.RolledBack or Status.Failed or Status.Info
+        || (e.Status == Status.Done && e.TimeUtc < cutoffUtc && e.Op != "folder.move");
 
     /// <summary>有没有需要清理的（不含最近一批）。用来决定要不要为了清理去请求管理员权限。</summary>
     public static bool AnyToPrune(IReadOnlyList<JournalEntry> newestFirst, DateTime cutoffUtc)

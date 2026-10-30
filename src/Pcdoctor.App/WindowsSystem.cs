@@ -187,10 +187,11 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
     public bool FileExists(string path) => File.Exists(path);
     public bool DirectoryExists(string path) => Directory.Exists(path);
 
-    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true)
+    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true, bool includeSystem = false)
     {
         // 不跟随联接点和符号链接：防止从缓存目录"跳"到别的地方
-        var opt = new EnumerationOptions { RecurseSubdirectories = recurse, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System };
+        var opt = new EnumerationOptions { RecurseSubdirectories = recurse, IgnoreInaccessible = true,
+            AttributesToSkip = includeSystem ? FileAttributes.ReparsePoint : FileAttributes.ReparsePoint | FileAttributes.System };
         IEnumerable<string> files;
         try { files = Directory.EnumerateFiles(root, "*", opt); } catch { yield break; }
         foreach (var f in files)
@@ -199,6 +200,16 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
             try { fi = new FileInfo(f); } catch { continue; }
             yield return new FileEntry(f, fi.Length, fi.LastWriteTimeUtc);
         }
+    }
+
+    public FileEntry? GetFile(string path)
+    {
+        try
+        {
+            var fi = new FileInfo(path);
+            return fi.Exists ? new FileEntry(path, fi.Length, fi.LastWriteTimeUtc) : null;
+        }
+        catch { return null; }
     }
 
     public IReadOnlyList<string> ListDirectories(string dir)
@@ -266,5 +277,86 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
         };
         SHFileOperation(ref op);
         return list.Where(p => !File.Exists(p)).ToList();
+    }
+
+    // ------------------------------------------------------------------ 搬个人文件夹
+    public bool CopyFile(string source, string destination)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(source, destination, overwrite: false);  // 系统的 CopyFile：保留修改时间和属性
+            return true;
+        }
+        catch { return false; }
+    }
+
+    public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+    public void DeleteEmptyDirectories(string root)
+    {
+        if (!Directory.Exists(root) || IsReparsePoint(root)) return;
+        foreach (var d in ListDirectories(root)) DeleteEmptyDirectories(d);
+        try { if (!Directory.EnumerateFileSystemEntries(root).Any()) Directory.Delete(root); } catch { }
+    }
+
+    [DllImport("shell32.dll")] static extern int SHGetKnownFolderPath(ref Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+    [DllImport("shell32.dll")] static extern int SHSetKnownFolderPath(ref Guid rfid, uint dwFlags, IntPtr hToken, [MarshalAs(UnmanagedType.LPWStr)] string pszPath);
+    const uint KF_FLAG_DONT_VERIFY = 0x4000;
+
+    public string? GetKnownFolder(string guid)
+    {
+        var id = Guid.Parse(guid);
+        if (SHGetKnownFolderPath(ref id, KF_FLAG_DONT_VERIFY, IntPtr.Zero, out var p) != 0) return null;
+        try { return Marshal.PtrToStringUni(p); } finally { Marshal.FreeCoTaskMem(p); }
+    }
+
+    public bool SetKnownFolder(string guid, string path)
+    {
+        var id = Guid.Parse(guid);
+        return SHSetKnownFolderPath(ref id, 0, IntPtr.Zero, path) == 0;
+    }
+
+    public IReadOnlyList<DriveFact> Drives()
+    {
+        var list = new List<DriveFact>();
+        foreach (var d in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (!d.IsReady) continue;
+                var root = d.Name.TrimEnd('\\');
+                list.Add(new DriveFact(root, d.VolumeLabel, d.DriveType.ToString(), d.DriveFormat, d.DriveType == DriveType.Fixed ? BusType(root) : "Unknown",
+                    d.AvailableFreeSpace, d.TotalSize));
+            }
+            catch { /* 读不到的盘跳过 */ }
+        }
+        return list;
+    }
+
+    // 硬盘接口：用 IOCTL_STORAGE_QUERY_PROPERTY 读设备描述里的 BusType（不需要管理员权限，不随系统语言变化）。
+    // 有的 USB 移动硬盘在 Windows 里也显示为"本地磁盘"，只看盘的类型分不出来
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr sa, uint disposition, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle h, uint code, byte[] inBuf, int inSize, byte[] outBuf, int outSize, out int returned, IntPtr overlapped);
+    const uint IOCTL_STORAGE_QUERY_PROPERTY = 0x2D1400;
+
+    static string BusType(string root)
+    {
+        try
+        {
+            using var h = CreateFileW(@"\\.\" + root, 0, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
+            if (h.IsInvalid) return "Unknown";
+            var query = new byte[12];  // PropertyId = StorageDeviceProperty (0)，QueryType = PropertyStandardQuery (0)
+            var buf = new byte[1024];
+            if (!DeviceIoControl(h, IOCTL_STORAGE_QUERY_PROPERTY, query, query.Length, buf, buf.Length, out var n, IntPtr.Zero) || n < 32) return "Unknown";
+            return BitConverter.ToInt32(buf, 28) switch  // STORAGE_DEVICE_DESCRIPTOR.BusType
+            {
+                1 => "SCSI", 3 => "ATA", 4 => "1394", 7 => "USB", 8 => "RAID", 10 => "SAS", 11 => "SATA", 12 => "SD", 13 => "MMC",
+                14 => "Virtual", 15 => "FileBackedVirtual", 16 => "Spaces", 17 => "NVMe", 18 => "SCM", 19 => "UFS", _ => "Unknown",
+            };
+        }
+        catch { return "Unknown"; }
     }
 }

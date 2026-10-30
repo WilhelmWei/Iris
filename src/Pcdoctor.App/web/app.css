@@ -953,3 +953,27 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 .reduce .pulse { animation: none; }
 .section-head + div > .cats, div > .bulk + .cats { margin-bottom: 14px; }
 .cats button[aria-pressed="true"] { background: var(--surface-2); }
+
+/* 搬到其他盘（「处理」页） */
+.move-card { margin-top: 14px; display: grid; gap: 14px; }
+.move-card .lead { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.65; max-width: 52em; }
+.move-card .plan-bar { margin-top: 0; }
+.mv-rows { display: grid; gap: 6px; }
+.mv-row { display: grid; gap: 4px; }
+.mv-row.off .cc-item { cursor: default; color: var(--text-2); }
+.mv-row.off .cc-item .box { opacity: .35; }
+.mv-row .cc-item:disabled { cursor: default; }
+.mv-row .cc-item .nm i { margin-top: 2px; }
+.mv-status { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 0 10px 4px 40px; }
+.mv-drives { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mv-drives .label { font-size: 12.5px; color: var(--text-3); margin-right: 4px; }
+.mv-drives button { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: none; color: var(--text-2); cursor: pointer; font-size: 12.5px; }
+.mv-drives button i { font-style: normal; }
+.mv-drives button[aria-pressed="true"] { border-color: transparent; background: var(--btn-2); color: var(--on-btn-2); }
+.mv-notes { margin: 0; padding-left: 18px; display: grid; gap: 4px; line-height: 1.55; }
+.move-card .empty-note { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+.move-card .empty-note .ico { flex: none; margin-top: 3px; color: var(--text-3); }
+#plan-move > details.fold { margin-top: 10px; }
+#plan-move .deduct .linkish { margin-left: 6px; }
+.move-card .plan-bar { position: static; }
+.mv-row.moved .cc-item .box { opacity: 1; border-color: transparent; color: var(--c-ok); }

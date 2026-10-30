@@ -128,7 +128,7 @@ public sealed class SpaceScan(ISpaceSource src, string root, long usedBytes, str
 
 /// <summary>
 /// 系统盘上常见位置的说明：是什么、能不能动、怎么处理。路径相对系统盘根目录，一整段的 * 匹配任意名字（例如用户名）。
-/// kind：system 系统（不要动）、tool 交给 Windows 自带的工具、clean Iris 能清、move 可以挪到其他盘、yours 你的文件、apps 软件。
+/// kind：system 系统（不要动）、tool 交给 Windows 自带的工具、clean Iris 能清、move 可以搬到其他盘、yours 你的文件、apps 软件。
 /// </summary>
 public static class SpaceLabels
 {
@@ -153,12 +153,12 @@ public static class SpaceLabels
         new(@"Users\*\Documents\xwechat_files", "微信聊天文件", "move", "可以在微信的设置里清理，或者把存储位置改到其他盘"),
         new(@"Users\*\Documents\Tencent Files", "QQ 聊天文件", "move", "可以在 QQ 的设置里清理，或者把存储位置改到其他盘"),
         new(@"Users\*\Documents\WXWork", "企业微信文件", "move", "可以在企业微信的设置里清理，或者把存储位置改到其他盘"),
-        new(@"Users\*\Downloads", "下载文件夹", "move", "多是用过的安装包和文件，可以整理；也可以把整个文件夹挪到其他盘"),
+        new(@"Users\*\Downloads", "下载文件夹", "move", "多是用过的安装包和文件，可以整理；也可以在「处理」页把整个文件夹搬到其他盘"),
         new(@"Users\*\Desktop", "桌面", "yours", "你的文件"),
-        new(@"Users\*\Documents", "文档", "move", "你的文件；可以把整个文件夹挪到其他盘"),
-        new(@"Users\*\Pictures", "图片", "move", "你的文件；可以把整个文件夹挪到其他盘"),
-        new(@"Users\*\Videos", "视频", "move", "你的文件；可以把整个文件夹挪到其他盘"),
-        new(@"Users\*\Music", "音乐", "move", "你的文件；可以把整个文件夹挪到其他盘"),
+        new(@"Users\*\Documents", "文档", "move", "你的文件；可以在「处理」页把整个文件夹搬到其他盘"),
+        new(@"Users\*\Pictures", "图片", "move", "你的文件；可以在「处理」页把整个文件夹搬到其他盘"),
+        new(@"Users\*\Videos", "视频", "move", "你的文件；可以在「处理」页把整个文件夹搬到其他盘"),
+        new(@"Users\*\Music", "音乐", "move", "你的文件；可以在「处理」页把整个文件夹搬到其他盘"),
         new(@"Users\*\OneDrive", "OneDrive", "yours", "同步到云端的文件；可以在 OneDrive 设置里改成「仅在线」来腾出空间"),
         new(@"pagefile.sys", "虚拟内存文件", "system", "Windows 自动管理，不要删；内存不够时它会变大"),
         new(@"swapfile.sys", "虚拟内存文件（应用）", "system", "Windows 自动管理，不要删"),

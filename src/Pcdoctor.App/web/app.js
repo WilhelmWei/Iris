@@ -104,7 +104,7 @@
     view: 'home', app: null, report: null, loading: false, filter: 'todo', cat: null,
     selected: new Set(), dismissed: new Set(), pro: false, mode: 'offline', scan: false,
     progress: null, stream: [], streamFresh: 0, sectionEvents: false, runStart: 0, running: false,
-    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), executing: false, lastRun: null, carried: null,
+    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, executing: false, lastRun: null, carried: null,
     journal: [], sheet: null, tip: 0, lessonConfirm: false, enter: true,
     markOpen: null, markKind: 'wrong', fb: {}, ob: null, seed: Math.floor(Math.random() * 1000),
   };
@@ -314,7 +314,7 @@
       state.view = view; state.loading = true; state.enter = true; render();
       await loadReport(state.app.lastReport.id); state.loading = false;
     }
-    if (view === 'plan') { state.journal = await call('getJournal'); ensurePlan(); }
+    if (view === 'plan') { state.journal = await call('getJournal'); ensurePlan(); loadMove(); }
     const changed = state.view !== view;
     state.enter = changed || state.enter; state.view = view;
     pageSwap(changed, () => { render(); $main.scrollTop = 0; });
@@ -632,7 +632,7 @@
     const big = [];
     const pad = s => /[A-Za-z0-9]$/.test(s) ? s + ' ' : s, padL = s => /^[A-Za-z0-9]/.test(s) ? ' ' + s : s;
     chatsOnC.forEach(x => big.push({ name: `${pad(x.name)}聊天文件`, mb: x.sizeGB * 1024, how: `在${padL(pad(x.name))}的设置里清理，或者把存储位置改到其他盘` }));
-    if (st.downloadsGB >= 2) big.push({ name: '下载文件夹', mb: st.downloadsGB * 1024, how: '多是用过的安装包和文件，可以自己整理' });
+    if (st.downloadsGB >= 2) big.push({ name: '下载文件夹', mb: st.downloadsGB * 1024, how: '多是用过的安装包和文件，可以自己整理，或者整个搬到其他盘' });
     (st.system || []).forEach(x => big.push({ name: x.name, mb: x.mb, how: x.why }));
     big.sort((a, b) => b.mb - a.mb);
     const lead = [];
@@ -660,12 +660,13 @@
         <div class="sp-col"><h4>更大的空间在这里</h4>
           ${big.length ? `<ul class="sp-list">${big.slice(0, 5).map(x => `<li title="${esc(x.how || '')}"><span>${esc(x.name)}<i class="muted small">${esc(x.how ? ' · ' + x.how : '')}</i></span><span class="num">${fmtMB(x.mb)}</span></li>`).join('')}</ul>`
             : '<p class="muted small">没有发现特别占地方的聊天文件或系统遗留。</p>'}
-          <p class="muted small">这些不是"垃圾"：聊天文件和下载是你的数据，系统遗留交给 Windows 自带的「磁盘清理」。把聊天文件挪到其他盘，Iris 下一版会帮你做。</p></div>
+          <p class="muted small">这些不是"垃圾"：聊天文件和下载是你的数据，系统遗留交给 Windows 自带的「磁盘清理」。文档、下载这些文件夹可以整个搬到其他盘。</p>
+          ${R.meta.source === 'local' ? `<button class="btn" data-act="go-move">${icon('arrow')}搬到其他盘</button>` : ''}</div>
       </div>
       ${spaceTree()}
       ${(st.notCleaned || []).length ? `<details class="fold" data-fold="not-cleaned"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}`;
   }
-  const SP_KIND = { system: '系统', tool: '交给 Windows', clean: 'Iris 能清', move: '可以挪', yours: '你的文件', apps: '软件' };
+  const SP_KIND = { system: '系统', tool: '交给 Windows', clean: 'Iris 能清', move: '可以搬', yours: '你的文件', apps: '软件' };
   function spaceTree() {
     const R = state.report, sp = R.space;
     if (R.meta.source !== 'local') return '';
@@ -907,6 +908,7 @@
       <div><h1>处理</h1><p class="muted" style="margin:8px 0 0;max-width:48em">要改什么由你决定。改之前逐项写清会改什么、有什么代价、怎么撤销；改完重新检测，没生效的自动恢复原状。所有改动都记在下面，随时可以撤销。</p></div>
       <div id="plan-result">${resultCard()}</div>
       <section id="plan-pending">${pendingSection()}</section>
+      <section id="plan-move">${moveSection()}</section>
       <section><div class="section-head"><h2>已处理 · 可以撤销</h2></div>
         <div class="history">${historyHtml(state.journal || [])}</div></section>
     </div>`;
@@ -957,6 +959,88 @@
       </div>` : ''}
     </div>`;
   }
+  // ------------------------------------------------------------------ 搬到其他盘
+  // 和上面的清单分开：清单里是报告给的建议；这里是你自己挑要搬哪些文件夹、搬到哪个盘。列表每次打开现量，不依赖报告
+  const GiB = 1024 * 1024 * 1024;
+  async function loadMove(force) {
+    if (state.move && state.move.loading) return;
+    if (state.move && state.move.data && !force) { renderMove(); return; }
+    state.move = Object.assign(state.move || { sel: [], drive: null, status: {} }, { loading: true });
+    renderMove();
+    try { state.move.data = await call('moveOptions'); } catch (e) { state.move.error = e.message || String(e); }
+    state.move.loading = false;
+    const D = state.move.data;
+    if (D) {
+      if (!D.drives.some(d => d.root === state.move.drive)) state.move.drive = D.drives.length ? D.drives[0].root : null;
+      state.move.sel = state.move.sel.filter(id => D.folders.some(f => f.id === id && movable(f)));
+      if (D.running) state.move.running = true;
+    }
+    renderMove();
+  }
+  const movable = f => !f.movedTo && !f.problem && f.bytes >= 100 * 1024 * 1024;
+  function renderMove() {
+    if (state.view !== 'plan') return;
+    const box = document.getElementById('plan-move'); if (!box) return;
+    box.innerHTML = moveSection(); hydrate(box);
+  }
+  function moveSection() {
+    const M = state.move || {}, D = M.data;
+    const head = `<div class="section-head"><h2>搬到其他盘</h2><span class="muted small">和上面的清单分开：这里由你自己挑</span></div>`;
+    if (!D) return `${head}${M.error ? `<div class="card empty">${icon('alert')}<span>${esc(M.error)}</span></div>` : '<div class="skel" style="height:150px"></div>'}`;
+    const sysTxt = D.system ? `C 盘还剩 ${fmtSize(D.system.freeGB * GiB)}。` : '';
+    const intro = `<p class="lead">${esc(sysTxt)}把「文档」「下载」这样的个人文件夹整个搬到别的盘：资源管理器里点「文档」照样打开，只是文件实际放在新的盘上。
+      和文件夹属性里「位置 → 移动」做的是同一件事，随时可以撤销、全部搬回来。</p>`;
+    const guides = moveGuides(D);
+    if (!D.drives.length) return `${head}<div class="card pad move-card">${intro}
+      <div class="empty-note">${icon('info')}<span>这台电脑没有别的内置硬盘可以搬过去（U 盘和移动硬盘不行：拔掉以后文件夹就打不开了）。可以先清理缓存，或者把不常用的大文件拷到移动硬盘备份后再删除。</span></div></div>${guides}`;
+    const drive = D.drives.find(d => d.root === M.drive) || D.drives[0];
+    const running = !!M.running;
+    const rows = D.folders.map(f => {
+      const st = M.status[f.id], on = M.sel.includes(f.id), ok = movable(f);
+      const kept = (f.kept || []).filter(k => k.bytes > 0);
+      let note = '';
+      if (f.movedTo) note = `已经在${f.movedName === 'OneDrive' ? ' OneDrive 里' : ` ${f.movedName}`}<span class="mono small"> · ${esc(pii(f.movedTo))}</span>`;
+      else if (f.problem) note = esc(f.problem);
+      else if (!ok) note = '很小，不用搬';
+      else note = `${(f.files || 0).toLocaleString()} 个文件${f.partial ? '（还没量完，实际更大）' : ''}`;
+      if (kept.length) note += ` · ${kept.map(k => `${esc(k.name)} ${fmtSize(k.bytes)}`).join('、')} 留在原处（在软件里改位置）`;
+      const stTxt = st ? { running: ['run', '搬运中', 'spinner'], done: ['ok', '已搬好', 'check'], failed: ['fail', '没有搬', 'alert'], rolledBack: ['fail', '没搬成，已恢复原样', 'undo'] }[st.status] : null;
+      return `<div class="mv-row ${ok ? '' : 'off'} ${f.movedTo ? 'moved' : ''}">
+        <button class="cc-item" ${ok && !running ? `data-act="mv-pick" data-v="${esc(f.id)}"` : 'disabled'} aria-pressed="${on && ok}">
+          <span class="box">${icon('check')}</span>
+          <span class="nm">${esc(f.name)}<i class="muted small">${note}</i></span>
+          <span class="num">${f.movedTo ? '' : fmtSize(f.bytes)}</span></button>
+        ${stTxt ? `<div class="mv-status"><span class="status ${stTxt[0]}">${icon(stTxt[2])}${esc(stTxt[1])}</span><span class="muted small">${esc(pii(st.message || ''))}</span></div>` : ''}</div>`;
+    }).join('');
+    const picked = D.folders.filter(f => M.sel.includes(f.id) && movable(f));
+    const bytes = picked.reduce((a, f) => a + f.bytes, 0);
+    const tooBig = drive && bytes > drive.freeGB * GiB - Math.max(2 * GiB, bytes / 20);
+    const mins = Math.max(1, Math.round(bytes / (80 * 1024 * 1024) / 60));
+    const drives = D.drives.length > 1 ? `<div class="choices mv-drives"><span class="label">搬到</span>${D.drives.map(d =>
+      `<button data-act="mv-drive" data-v="${esc(d.root)}" aria-pressed="${d.root === drive.root}" ${running ? 'disabled' : ''}>${esc(d.name)}${d.label ? ` · ${esc(d.label)}` : ''}<i class="muted small"> 剩 ${fmtSize(d.freeGB * GiB)}</i></button>`).join('')}</div>`
+      : `<p class="muted small">搬到 ${esc(drive.name)}${drive.label ? `（${esc(drive.label)}）` : ''}，那里还剩 ${fmtSize(drive.freeGB * GiB)}。</p>`;
+    let bar;
+    if (running) bar = `<span class="sum"><b>正在搬</b>先复制、逐个核对，再改位置、删 C 盘上的原件；请不要关闭 Iris</span><button class="btn primary" disabled>${icon('spinner')}搬运中…</button>`;
+    else bar = `<span class="sum"><b>${picked.length ? `${picked.length} 个文件夹 · ${fmtSize(bytes)}` : '先勾选要搬的文件夹'}</b>${picked.length ? (tooBig ? `<span style="color:var(--c-prob)">${esc(drive.name)}空间不够</span>` : `大约 ${mins} 分钟；搬之前最好关掉正在用这些文件的软件`) : '默认一个都不勾'}</span>
+      <button class="btn primary" data-act="mv-go" ${!picked.length || tooBig ? 'disabled' : ''}>搬到 ${esc(drive.name)} <span class="arrow">${icon('arrow')}</span></button>`;
+    return `${head}<div class="card pad move-card">${intro}<div class="mv-rows">${rows}</div>${drives}
+      <ul class="mv-notes muted small"><li>搬的是文件夹里的全部文件，搬完资源管理器、桌面快捷方式、软件的"保存到文档"都自动指向新位置。</li>
+        <li>微信、QQ、Outlook 的文件夹留在原处：它们记着完整路径，跟着搬会找不到，请在软件自己的设置里改存储位置。</li>
+        <li>正在被使用的文件会留在原处，不会丢；个别软件记着旧位置，会在 C 盘重新建一个同名的空文件夹，属于正常。</li></ul>
+      <div class="plan-bar">${bar}</div></div>${guides}`;
+  }
+  function moveGuides(D) {
+    const docs = D.folders.find(f => f.id === 'documents');
+    const chat = docs ? (docs.kept || []).filter(k => k.bytes > 0) : [];
+    return `<details class="fold" data-fold="move-guides"><summary>其他占地方的东西怎么搬</summary><div class="fold-body"><ul class="deduct">
+      <li><b>微信 / QQ 聊天文件${chat.length ? `（${chat.map(k => `${esc(k.name)} ${fmtSize(k.bytes)}`).join('、')}）` : ''}</b>：微信在「设置 → 文件管理 → 更改」里选 D 盘的文件夹；QQ 在「设置 → 存储管理」里改。软件会自己把旧文件搬过去。</li>
+      <li><b>游戏</b>：Steam 在「设置 → 存储空间」里添加 D 盘的游戏库，选中游戏点「移动」；其他游戏平台在游戏的「管理」里一般也有"移动安装位置"。</li>
+      <li><b>应用商店装的应用</b>：在「设置 → 应用 → 安装的应用」里点应用旁的「…」→「移动」。<button class="linkish" data-act="open-settings" data-v="apps">打开</button></li>
+      <li><b>以后新装、新下载的东西</b>：在「设置 → 存储 → 新内容的保存位置」里把新应用、新文档默认放到 D 盘。<button class="linkish" data-act="open-settings" data-v="savelocations">打开</button></li>
+      <li><b>普通软件</b>：不要直接剪切「Program Files」里的文件夹——注册表、服务和快捷方式还指向 C 盘，软件会打不开。真要搬，就卸载后重新安装到 D 盘。</li>
+    </ul></div></details>`;
+  }
+
   /** 清理缓存这一步当前的选择：没动过就是方案里的默认（全选） */
   function ccOf(s) {
     return state.cacheChoice[s.key] = state.cacheChoice[s.key] || { categories: (s.cacheOptions.categories || []).slice(), age: null };
@@ -971,10 +1055,12 @@
     const later = items.filter(e => e.status === 'done' && LATER.includes(e.op)).length;
     const undoable = items.filter(e => e.status === 'done' && e.reversible).length;
     const parts = [ok && `${ok} 项已生效`, bad && `${bad} 项没生效、已恢复原状`, undone && `${undone} 项已撤销`].filter(Boolean).join('，');
+    const moves = items.every(e => e.op === 'folder.move');
     return `<section class="card result">
       <div class="r-top"><span class="glyph ${bad && !ok ? 'v-problem' : 'v-normal'}">${icon(bad && !ok ? 'alert' : 'check')}</span>
         <div><div class="eyebrow">刚刚完成 · ${esc(L.time)}</div><b>处理了 ${items.length} 项：${parts}</b>
-          <p>每一项都重新检测过${later ? `；其中 ${later} 项下次开机后才能看到效果` : ''}。报告里这些结论已经标上「已处理」，下面的记录里随时可以撤销。</p></div>
+          <p>${moves ? '每个文件夹都逐个核对过；资源管理器里的这些文件夹已经指向新位置。下面的记录里随时可以撤销（会全部搬回 C 盘）。'
+            : `每一项都重新检测过${later ? `；其中 ${later} 项下次开机后才能看到效果` : ''}。报告里这些结论已经标上「已处理」，下面的记录里随时可以撤销。`}</p></div>
         <button class="icon-btn" data-act="result-close" aria-label="收起">${icon('x')}</button></div>
       <ul class="r-list">${items.map(e => { const t = JST[e.status] || ['', e.status, 'dot'];
         return `<li><span class="status ${t[0]}">${icon(t[2])}${esc(t[1])}</span><span class="grow">${esc(e.opName)}：${esc(pii(e.title))}</span></li>`; }).join('')}</ul>
@@ -1478,6 +1564,19 @@
   api.on('checkupError', e => { state.running = false; state.view = 'home'; state.enter = true; render(); toast(e.message); });
   api.on('opProgress', p => { state.confirming = false; state.planStatus[p.key] = p; renderPlan(); });
   api.on('planError', e => { toast(e.message); });
+  api.on('moveProgress', p => { if (!state.move) return; state.move.running = true; state.move.status[p.folder] = p; renderMove(); });
+  api.on('moveDone', async d => {
+    const batchId = d && d.batchId;
+    await refreshAfterChange();
+    const items = (state.journal || []).filter(e => batchId && e.batchId === batchId);
+    if (state.move) { state.move.running = false; state.move.sel = []; }
+    state.lastRun = items.length ? { batchId, time: new Date().toTimeString().slice(0, 5) } : state.lastRun;
+    await loadMove(true);
+    if (state.view === 'plan') { const r = document.getElementById('plan-result'); if (r) { r.innerHTML = resultCard(); hydrate(r); }
+      const h = document.querySelector('.plan-page .history'); if (h) { h.innerHTML = historyHtml(state.journal || []); hydrate(h); } }
+    const ok = items.filter(e => e.status === 'done').length;
+    toast(ok ? `搬好了 ${ok} 个文件夹，随时可以在记录里撤销` : '没有搬动任何文件夹');
+  });
   api.on('planDone', async d => {
     const batchId = d && d.batchId;
     await refreshAfterChange();
@@ -1647,6 +1746,27 @@
       case 'jump': {
         const target = document.getElementById(el.dataset.to);
         if (target) { target.scrollIntoView({ behavior: S().reduceMotion ? 'auto' : 'smooth', block: 'start' }); target.classList.remove('pulse'); void target.offsetWidth; target.classList.add('pulse'); }
+        break;
+      }
+      case 'mv-pick': { const M = state.move, v = el.dataset.v; M.sel = M.sel.includes(v) ? M.sel.filter(x => x !== v) : M.sel.concat(v); renderMove(); break; }
+      case 'mv-drive': state.move.drive = el.dataset.v; renderMove(); break;
+      case 'open-settings': quiet('openSettings', { page: el.dataset.v }); break;
+      case 'mv-go': {
+        const M = state.move; if (!M || M.running) break;
+        const items = M.sel.map(id => ({ id, drive: M.drive }));
+        M.running = true; M.status = {}; renderMove();
+        try {
+          // 桌面程序会先弹出 Windows 原生确认框，写清从哪搬到哪；点了取消就什么也不做
+          const r = await call('moveFolders', { items, reportId: state.report && state.report.canExecute !== false ? state.report.id : '' });
+          if (r && r.cancelled) { M.running = false; toast('已取消，没有做任何修改'); }
+        } catch (e) { M.running = false; }
+        renderMove();
+        break;
+      }
+      case 'go-move': {
+        if (state.sheet) closeSheet();
+        await go('plan');
+        setTimeout(() => { const t = document.getElementById('plan-move'); if (t) t.scrollIntoView({ behavior: S().reduceMotion ? 'auto' : 'smooth', block: 'start' }); }, 350);
         break;
       }
       case 'space-open': { const p = el.dataset.p; state.spaceOpen.has(p) ? state.spaceOpen.delete(p) : state.spaceOpen.add(p); refreshSpace(); break; }

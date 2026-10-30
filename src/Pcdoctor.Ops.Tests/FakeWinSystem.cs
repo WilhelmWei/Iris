@@ -123,18 +123,21 @@ public sealed class FakeWinSystem : IWinSystem
         $"<?xml version=\"1.0\" encoding=\"UTF-16\"?><Task xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\"><Principals><Principal><LogonType>{logonType}</LogonType></Principal></Principals><Settings><Enabled>{(enabled ? "true" : "false")}</Enabled></Settings><Actions><Exec><Command>\"{command}\"</Command></Exec></Actions></Task>";
 
     public bool FileExists(string path) => Files.ContainsKey(path);
-    public bool DirectoryExists(string path) => Files.Keys.Any(f => f.StartsWith(path.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase));
+    public bool DirectoryExists(string path) => Files.Keys.Any(f => f.StartsWith(path.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))
+                                                || Dirs.Contains(path.TrimEnd('\\'));
+    /// <summary>空文件夹（有文件的文件夹由文件路径隐含）。</summary>
+    public HashSet<string> Dirs { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>模拟的联接点 / 符号链接文件夹：列文件夹时看不到，递归列文件时不进入。</summary>
     public HashSet<string> ReparseDirs { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Running { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Deleted { get; } = new(StringComparer.OrdinalIgnoreCase);
     static bool Under(string path, string dir) => path.StartsWith(dir.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
-    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true) =>
+    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true, bool includeSystem = false) =>
         Files.Values.Where(f => Under(f.Path, root) && (recurse || !f.Path[(root.TrimEnd('\\').Length + 1)..].Contains('\\'))
                                 && !ReparseDirs.Any(r => Under(f.Path, r) && Under(r, root))).ToList();
     public IReadOnlyList<string> ListDirectories(string dir) =>
-        Files.Keys.Where(f => Under(f, dir)).Select(f => dir.TrimEnd('\\') + "\\" + f[(dir.TrimEnd('\\').Length + 1)..].Split('\\')[0])
-            .Where(d => Files.Keys.Any(f => Under(f, d)) && !ReparseDirs.Contains(d)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        Files.Keys.Concat(Dirs).Where(f => Under(f, dir)).Select(f => dir.TrimEnd('\\') + "\\" + f[(dir.TrimEnd('\\').Length + 1)..].Split('\\')[0])
+            .Where(d => (Dirs.Contains(d) || Files.Keys.Concat(Dirs).Any(f => Under(f, d))) && !ReparseDirs.Contains(d)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     public bool IsReparsePoint(string path) => ReparseDirs.Contains(path.TrimEnd('\\'));
     public IReadOnlyList<string> DeleteFiles(IReadOnlyList<string> paths)
     {
@@ -153,4 +156,38 @@ public sealed class FakeWinSystem : IWinSystem
         return moved;
     }
     public void AddFile(string path, long size, int daysOld) => Files[path] = new(path, size, UtcNow.AddDays(-daysOld));
+
+    public FileEntry? GetFile(string path) => Files.GetValueOrDefault(path);
+
+    /// <summary>读不出来的文件（被别的程序独占打开）：复制会失败。</summary>
+    public HashSet<string> Unreadable { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>复制完一个文件后调用（模拟"搬的过程中别的程序改了原件"）。</summary>
+    public Action<string>? OnCopied { get; set; }
+    public int CopyCount { get; private set; }
+    public bool CopyFile(string source, string destination)
+    {
+        if (Unreadable.Contains(source) || !Files.TryGetValue(source, out var f) || Files.ContainsKey(destination)) return false;
+        Files[destination] = f with { Path = destination };
+        CopyCount++;
+        OnCopied?.Invoke(source);
+        return true;
+    }
+    public void CreateDirectory(string path) { if (!DirectoryExists(path)) Dirs.Add(path.TrimEnd('\\')); }
+    public void DeleteEmptyDirectories(string root)
+    {
+        // 有文件的文件夹由文件路径隐含，删完文件自然就"没有了"；这里只需要处理空文件夹
+        var r = root.TrimEnd('\\');
+        foreach (var d in Dirs.Where(d => d.Equals(r, StringComparison.OrdinalIgnoreCase) || Under(d, r)).OrderByDescending(d => d.Length).ToList())
+            if (!Files.Keys.Any(f => Under(f, d)) && !Dirs.Any(x => Under(x, d))) Dirs.Remove(d);
+    }
+    public Dictionary<string, string> KnownFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool RefuseKnownFolder { get; set; }
+    public string? GetKnownFolder(string guid) => KnownFolders.GetValueOrDefault(guid);
+    public bool SetKnownFolder(string guid, string path)
+    {
+        if (RefuseKnownFolder) return false;
+        KnownFolders[guid] = path; return true;
+    }
+    public List<DriveFact> DriveList { get; } = [];
+    public IReadOnlyList<DriveFact> Drives() => DriveList;
 }

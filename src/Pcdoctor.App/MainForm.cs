@@ -58,6 +58,13 @@ public sealed class MainForm : Form
     /// <summary>关闭窗口时让还在扫 C 盘的辅助进程停下，已经扫到的部分存进报告（最多等 2 秒）。</summary>
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        if (services.MoveRunning && e.CloseReason == CloseReason.UserClosing
+            && MessageBox.Show(this, "正在把文件夹搬到其他盘。现在关闭会停在一半：文件不会丢，但有些文件可能在两个盘上各留一份，需要自己整理。\n\n确定现在关闭吗？",
+                               "Iris", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+        {
+            e.Cancel = true;
+            return;
+        }
         try { services.StopSpaceScans(); } catch { }
         base.OnFormClosing(e);
     }
@@ -217,6 +224,13 @@ public sealed class MainForm : Form
             case "buildPlan": return services.BuildPlan(S("reportId"), p["keys"]!.AsArray().Select(x => x!.ToString()));
             case "executePlan": return services.ExecutePlan(S("planId"), S("reportId"), p["steps"]!.AsArray());
             case "getJournal": return services.GetJournal();
+            case "moveOptions": return services.MoveOptions();
+            case "moveFolders": return services.MoveFolders(p["items"]!.AsArray(), p["reportId"]?.ToString());
+            case "openSettings":
+                // 只打开固定的几个 Windows 设置页（新内容的保存位置、安装的应用、存储）
+                var page = S("page") switch { "savelocations" => "ms-settings:savelocations", "apps" => "ms-settings:appsfeatures", "storage" => "ms-settings:storagesense", _ => null };
+                if (page != null) Services.OpenUri(page);
+                return new JsonObject();
             case "undo": return await services.Undo(p["id"]?.ToString(), p["batchId"]?.ToString());
             case "saveSettings": return services.SaveSettings(p);
             case "getPrivacy": return services.GetPrivacy();

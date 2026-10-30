@@ -4,7 +4,11 @@ using System.Xml.Linq;
 namespace Pcdoctor.Ops;
 
 /// <summary>执行一步时的环境：系统接口 + 存放备份文件（导出的驱动包等）的目录。</summary>
-public sealed record OpContext(IWinSystem Sys, string WorkDir);
+public sealed record OpContext(IWinSystem Sys, string WorkDir)
+{
+    /// <summary>耗时长的步骤（搬文件夹）报告进度，界面上显示"正在复制 3.2 / 12 GB"。</summary>
+    public Action<string>? Progress { get; init; }
+}
 
 /// <summary>一个操作 = 前置检查 → 备份 → 执行 → 重新检测验证 → 没生效就回滚。
 /// 结果一律以重新检测为准，不看命令有没有报错（CLAUDE.md"执行结果一律以重新检测为准"）。</summary>
@@ -67,7 +71,7 @@ public static class Operations
     {
         new StartupDisable(), new TaskDisable(), new TaskDeleteLeftover(), new ServiceSetManual(), new ServiceDeleteOrphan(),
         new BrowserDisableBackground(), new ChromeDisableBackground(), new PowerDisableFastStartup(), new CacheClean(), new DefenderScan(), new AppUninstall(),
-        new DriverDeleteOldVersion(),
+        new DriverDeleteOldVersion(), new FolderMoveOp(),
     }.ToDictionary(o => o.Id);
 
     public static Operation? Get(string id) => All.TryGetValue(id, out var o) ? o : null;
@@ -103,6 +107,9 @@ public static class Operations
             case "service.set_manual":
             case "service.delete_orphan":
                 return SafeName.IsMatch(V("name")) ? null : "服务名称不合法";
+            case "folder.move":
+                if (FolderMove.Get(V("folder")) == null) return "不支持搬这个文件夹";
+                return System.Text.RegularExpressions.Regex.IsMatch(V("drive"), "^[D-Zd-z]:$") ? null : "目标盘不合法";
             case "driver.delete_old_version":
                 return System.Text.RegularExpressions.Regex.IsMatch(V("publishedName"), @"^oem\d+\.inf$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
                     ? null : "只处理第三方驱动包（oem 开头）";

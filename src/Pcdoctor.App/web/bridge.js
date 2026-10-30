@@ -68,11 +68,11 @@
     { name: 'Users', path: 'C:\\Users', bytes: 196 * GB, label: L('用户文件夹', 'yours', '每个 Windows 账户的文件和设置'), children: [
       { name: 'Alice', path: 'C:\\Users\\Alice', bytes: 194 * GB, children: [
         { name: 'AppData', path: 'C:\\Users\\Alice\\AppData', bytes: 61 * GB, label: L('软件的数据和缓存', 'apps', '软件的设置、缓存和聊天记录等，跟着软件走；其中的缓存 Iris 可以清理') },
-        { name: 'Documents', path: 'C:\\Users\\Alice\\Documents', bytes: 38 * GB, label: L('文档', 'move', '你的文件；可以把整个文件夹挪到其他盘'), children: [
+        { name: 'Documents', path: 'C:\\Users\\Alice\\Documents', bytes: 38 * GB, label: L('文档', 'move', '你的文件；可以在「处理」页把整个文件夹搬到其他盘'), children: [
           { name: 'WeChat Files', path: 'C:\\Users\\Alice\\Documents\\WeChat Files', bytes: 23.4 * GB, label: L('微信聊天文件', 'move', '可以在微信的设置里清理，或者把存储位置改到其他盘') },
           { name: '其他 6 个文件夹', other: true, bytes: 14.6 * GB }] },
-        { name: 'Videos', path: 'C:\\Users\\Alice\\Videos', bytes: 31 * GB, label: L('视频', 'move', '你的文件；可以把整个文件夹挪到其他盘') },
-        { name: 'Downloads', path: 'C:\\Users\\Alice\\Downloads', bytes: 12.6 * GB, label: L('下载文件夹', 'move', '多是用过的安装包和文件，可以整理；也可以把整个文件夹挪到其他盘') },
+        { name: 'Videos', path: 'C:\\Users\\Alice\\Videos', bytes: 31 * GB, label: L('视频', 'move', '你的文件；可以在「处理」页把整个文件夹搬到其他盘') },
+        { name: 'Downloads', path: 'C:\\Users\\Alice\\Downloads', bytes: 12.6 * GB, label: L('下载文件夹', 'move', '多是用过的安装包和文件，可以整理；也可以在「处理」页把整个文件夹搬到其他盘') },
         { name: '其他 9 个文件夹', other: true, bytes: 51.4 * GB }] }] },
     { name: 'Program Files', path: 'C:\\Program Files', bytes: 74 * GB, label: L('已安装的软件', 'apps', '大的软件可以卸载，或者卸载后重装到其他盘') },
     { name: 'Windows', path: 'C:\\Windows', bytes: 41 * GB, label: L('Windows 系统', 'system', '系统本身，不要手动删除里面的文件'), children: [
@@ -194,6 +194,14 @@
         runExecute(p); return { started: true };
       }
       case 'getJournal': return M.journal.map(e => Object.assign({}, e));
+      case 'moveOptions': await sleep(500); return moveOptions();
+      case 'moveFolders': {
+        const ok = await nativeConfirm(`确认把这 ${p.items.length} 个文件夹搬到其他盘？`, p.items.map(it => { const f = M.move.folders.find(x => x.id === it.id);
+          return `<b style="font-size:13.5px;color:#1b1b1b">搬到其他盘：${esc(f.name)} → ${esc(it.drive.replace(':', ' 盘'))}</b><br>会改：先复制、逐个核对大小，再把系统里「${esc(f.name)}」的位置改过去，最后删掉 C 盘上已经复制好的原件<br>可以撤销`; }));
+        if (!ok) return { cancelled: true };
+        runMove(p); return { started: true };
+      }
+      case 'openSettings': return {};
       case 'setSelected': M.selected = p.keys.slice(); return { saved: true };
       case 'undo': {
         const list = M.journal.filter(x => (p.batchId ? x.batchId === p.batchId : x.id === p.id) && x.status === 'done' && x.reversible);
@@ -307,6 +315,44 @@
     return out;
   }
   if (/[?&]carried\b/.test(location.search)) { M.selected = ['F012', 'F017']; M.carried = 2; }
+
+  // 搬到其他盘：?nodrive 模拟只有一个盘
+  const GBb = 1024 * 1024 * 1024;
+  function moveOptions() {
+    if (!M.move) M.move = {
+      system: { root: 'C:', name: 'C 盘', freeGB: 18.6, totalGB: 237.5, bus: 'NVMe' },
+      drives: /[?&]nodrive\b/.test(location.search) ? [] : [{ root: 'D:', name: 'D 盘', label: '数据', freeGB: 612.4, totalGB: 931.5, bus: 'SATA' }, { root: 'E:', name: 'E 盘', label: '', freeGB: 88.2, totalGB: 200, bus: 'NVMe' }],
+      folders: [
+        { id: 'documents', name: '文档', path: 'C:\\Users\\Alice\\Documents', bytes: 14.2 * GBb, files: 18342, partial: false, kept: [{ name: '微信', bytes: 31.4 * GBb }] },
+        { id: 'downloads', name: '下载', path: 'C:\\Users\\Alice\\Downloads', bytes: 23.8 * GBb, files: 1290, partial: false, kept: [] },
+        { id: 'pictures', name: '图片', path: 'C:\\Users\\Alice\\Pictures', bytes: 3.1 * GBb, files: 5620, partial: false, kept: [] },
+        { id: 'videos', name: '视频', path: 'C:\\Users\\Alice\\Videos', bytes: 0.4 * GBb, files: 12, partial: false, kept: [] },
+        { id: 'music', name: '音乐', path: 'C:\\Users\\Alice\\Music', bytes: 0.02 * GBb, files: 3, partial: false, kept: [] },
+      ],
+    };
+    return JSON.parse(JSON.stringify(Object.assign({ running: !!M.moving }, M.move)));
+  }
+  async function runMove(p) {
+    const batch = 'batch-' + Date.now(); M.moving = true;
+    for (const it of p.items) {
+      const f = M.move.folders.find(x => x.id === it.id), key = 'move:' + f.id + '#0';
+      for (let i = 0; i <= 5; i++) {
+        emit('moveProgress', { key, folder: f.id, status: 'running', message: i < 5 ? `正在复制「${f.name}」：${(f.bytes / GBb * i / 5).toFixed(1)} GB / ${(f.bytes / GBb).toFixed(1)} GB` : `正在把「${f.name}」的位置改到新文件夹…` });
+        await sleep(450);
+      }
+      const drive = it.drive.replace(':', ' 盘');
+      const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(),
+        findingKey: 'move:' + f.id, reportId: 'demo', op: 'folder.move', opName: '搬到其他盘', title: `${f.name} → ${drive}`, risk: 'yellow', status: 'done',
+        message: `已把「${f.name}」搬到 ${drive}（${(f.bytes / GBb).toFixed(1)} GB，${f.files} 个文件），资源管理器里的「${f.name}」已经指向新位置` + (f.id === 'documents' ? '。微信、QQ、Outlook 的文件夹留在原处，聊天文件可以在软件设置里改存储位置' : ''),
+        reversible: true };
+      M.journal.unshift(entry);
+      f.movedTo = it.drive + '\\Alice\\' + f.path.split('\\').pop(); f.movedName = drive;
+      M.move.system.freeGB = +(M.move.system.freeGB + f.bytes / GBb).toFixed(1);
+      emit('moveProgress', { key, folder: f.id, status: 'done', message: entry.message });
+    }
+    M.moving = false;
+    emit('moveDone', { batchId: batch });
+  }
 
   async function runExecute(p) {
     const batch = 'batch-' + Date.now();

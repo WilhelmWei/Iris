@@ -48,6 +48,10 @@ public sealed class RegTree
 
 public sealed record FileEntry(string Path, long Size, DateTime LastWriteUtc);
 
+/// <summary>一个盘：Root 形如 "D:"；Kind = Fixed / Removable / Network / CDRom / Ram / Unknown；
+/// Bus = 硬盘接口（SATA / NVMe / USB / SD / RAID / …，读不到时为 Unknown）。</summary>
+public sealed record DriveFact(string Root, string? Label, string Kind, string Format, string Bus, long FreeBytes, long TotalBytes);
+
 /// <summary>操作库对 Windows 的全部读写。桌面程序里是真实实现，测试里是模拟实现。
 /// 原则：只用不随系统语言变化的接口（注册表、退出码、XML），不解析命令行工具的文字输出。</summary>
 public interface IWinSystem
@@ -83,8 +87,11 @@ public interface IWinSystem
     // 文件
     bool FileExists(string path);
     bool DirectoryExists(string path);
-    /// <summary>列出文件（recurse = false 只列这一层）。不跟随联接点和符号链接。</summary>
-    IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true);
+    /// <summary>列出文件（recurse = false 只列这一层）。不跟随联接点和符号链接；
+    /// includeSystem = false 时跳过带"系统"属性的文件（清理缓存用），搬文件夹时要连 desktop.ini 一起列出。</summary>
+    IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true, bool includeSystem = false);
+    /// <summary>一个文件的大小和修改时间；不存在或读不到时返回 null。</summary>
+    FileEntry? GetFile(string path);
     /// <summary>直接子文件夹，不含联接点和符号链接。</summary>
     IReadOnlyList<string> ListDirectories(string dir);
     bool IsReparsePoint(string path);
@@ -95,4 +102,16 @@ public interface IWinSystem
     /// <summary>批量移到回收站（红线 6：不永久删除用户文件），返回确实移走了的文件。
     /// 回收站关闭或文件太大放不进回收站时，系统会先提示，不会悄悄永久删除。</summary>
     IReadOnlyList<string> MoveToRecycleBin(IReadOnlyList<string> paths);
+
+    // 搬个人文件夹到其他盘（只在用户自己的权限里执行）
+    /// <summary>复制一个文件（自动建上级文件夹，不覆盖已有文件，保留修改时间）；没复制成功返回 false。</summary>
+    bool CopyFile(string source, string destination);
+    void CreateDirectory(string path);
+    /// <summary>从下往上删掉空文件夹（包括 root 自己，如果它也空了）；不进入联接点和符号链接。</summary>
+    void DeleteEmptyDirectories(string root);
+    /// <summary>Windows 的"已知文件夹"（文档、下载……）当前指向哪里；guid 不带大括号。</summary>
+    string? GetKnownFolder(string guid);
+    /// <summary>改"已知文件夹"的位置（和文件夹属性里「位置 → 移动」改的是同一个设置）。</summary>
+    bool SetKnownFolder(string guid, string path);
+    IReadOnlyList<DriveFact> Drives();
 }

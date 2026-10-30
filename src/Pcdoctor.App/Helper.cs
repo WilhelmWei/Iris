@@ -20,7 +20,7 @@ namespace Pcdoctor.App;
 public static class Helper
 {
     /// <summary>辅助进程绝不执行的操作：卸载命令来自普通用户可写的注册表位置，不能用管理员身份运行。</summary>
-    static readonly HashSet<string> NotInHelper = ["app.uninstall"];
+    static readonly HashSet<string> NotInHelper = ["app.uninstall", "folder.move"];  // 改的是当前用户自己的东西，只在用户自己的权限里做
 
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int processId);
 
