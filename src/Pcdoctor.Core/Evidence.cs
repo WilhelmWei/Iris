@@ -216,8 +216,23 @@ public static class Evidence
             {
                 var st = Py.Get(S, "storage");
                 var folders = Py.Get(st, "folders");
+                var junk = Py.Or(Py.Get(st, "junk"), new JsonObject());
                 if (rule == "chat-cache-large")
                     return objKey is null ? null : Py.Get(Py.Get(folders, "chatApps"), objKey);
+                if (rule == "junk-cleanable")
+                    return new JsonObject
+                    {
+                        ["cleanableMB"] = Py.Clone(Py.Get(junk, "cleanableMB")),
+                        ["items"] = Py.List(Py.Iter(Py.Get(junk, "items"))
+                            .Where(x => Py.S(Py.Get(x, "tier")) == "A" && (Py.Truthy(Py.Get(x, "cleanableMB")) ? Py.Num(Py.Get(x, "cleanableMB")) : 0) > 0)
+                            .Select(x => (JsonNode?)new JsonObject
+                            {
+                                ["name"] = Py.Clone(Py.Get(x, "name")), ["group"] = Py.Clone(Py.Get(x, "group")),
+                                ["cleanableMB"] = Py.Clone(Py.Get(x, "cleanableMB")), ["running"] = Py.Clone(Py.Get(x, "running")),
+                            })),
+                    };
+                if (rule == "system-leftover")
+                    return Find(Py.Get(junk, "items"), "name", obj);
                 if (rule == "system-drive-low")
                 {
                     var bigOnC = Py.Iter(Py.Get(Py.Get(S, "software"), "items"))
@@ -237,6 +252,7 @@ public static class Evidence
                         ["folders"] = fs,
                         ["largeSoftwareOnC"] = Py.List(bigOnC),
                         ["steamLibraries"] = Py.Clone(Py.Get(st, "steamLibraries")),
+                        ["cleanableCacheMB"] = Py.Clone(Py.Get(junk, "cleanableMB")),
                     };
                 }
                 return objKey is null ? null : Py.Get(folders, objKey);
@@ -259,6 +275,17 @@ public static class Evidence
             case "browserNetwork":
             {
                 var b = Py.Get(S, "browserNetwork");
+                if (rule is "edge-idle-background" or "chrome-idle-background" or "browser-unused")
+                    return new JsonObject
+                    {
+                        ["mainBrowser"] = Py.Clone(Py.Get(b, "mainBrowser")), ["policies"] = Py.Clone(Py.Get(b, "policies")),
+                        ["browsers"] = Py.List(Py.Iter(Py.Get(b, "browsers")).Select(x =>
+                        {
+                            var one = new JsonObject();
+                            foreach (var k in new[] { "id", "name", "isDefault", "lastBrowsedDays", "processes", "memoryMB", "autostart" }) one[k] = Py.Clone(Py.Get(x, k));
+                            return (JsonNode?)one;
+                        })),
+                    };
                 var o = new JsonObject();
                 foreach (var k in new[] { "policies", "edgeProcesses", "proxy", "hostsEntries" }) o[k] = Py.Clone(Py.Get(b, k));
                 return o;

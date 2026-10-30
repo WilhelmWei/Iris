@@ -108,9 +108,11 @@ public static class Helper
 
             var script = Path.Combine(work, "pcdoctor-collect.ps1");
             File.WriteAllBytes(script, Pcdoctor.Core.Resources.CollectorScriptBytes());
+            var junk = Path.Combine(work, "junk.json");
+            File.WriteAllBytes(junk, Pcdoctor.Ops.Junk.CatalogBytes());
             // 以文本方式运行脚本块：组策略强制的执行策略管不到它；本机采集不打码（报告只存在本机），发给模型前由主程序打码
             static string Q(string s) => "'" + s.Replace("'", "''") + "'";
-            var cmd = $"& ([scriptblock]::Create([IO.File]::ReadAllText({Q(script)}, [Text.Encoding]::UTF8))) -OutDir {Q(work)} -NoRedact";
+            var cmd = $"& ([scriptblock]::Create([IO.File]::ReadAllText({Q(script)}, [Text.Encoding]::UTF8))) -OutDir {Q(work)} -NoRedact -JunkCatalog {Q(junk)}";
             var exit = RunPowerShell(dir, cmd, line =>
             {
                 var i = line.IndexOf("采集：", StringComparison.Ordinal);
@@ -134,7 +136,7 @@ public static class Helper
         finally
         {
             if (elevated) try { Directory.Delete(work, true); } catch { }
-            else try { File.Delete(Path.Combine(work, "pcdoctor-collect.ps1")); } catch { }
+            else try { File.Delete(Path.Combine(work, "pcdoctor-collect.ps1")); File.Delete(Path.Combine(work, "junk.json")); } catch { }
         }
     }
 

@@ -83,7 +83,15 @@ public interface IWinSystem
     // 文件
     bool FileExists(string path);
     bool DirectoryExists(string path);
-    IEnumerable<FileEntry> EnumerateFiles(string root);
+    /// <summary>列出文件（recurse = false 只列这一层）。不跟随联接点和符号链接。</summary>
+    IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true);
+    /// <summary>直接子文件夹，不含联接点和符号链接。</summary>
+    IReadOnlyList<string> ListDirectories(string dir);
+    bool IsReparsePoint(string path);
+    /// <summary>直接删除（不进回收站），只用于清理目录表里 A 类的缓存。正在使用、删不掉的跳过；返回确实删掉了的文件。</summary>
+    IReadOnlyList<string> DeleteFiles(IReadOnlyList<string> paths);
+    /// <summary>有没有这个名字（不带 .exe）的进程在运行。</summary>
+    bool IsProcessRunning(string name);
     /// <summary>批量移到回收站（红线 6：不永久删除用户文件），返回确实移走了的文件。
     /// 回收站关闭或文件太大放不进回收站时，系统会先提示，不会悄悄永久删除。</summary>
     IReadOnlyList<string> MoveToRecycleBin(IReadOnlyList<string> paths);

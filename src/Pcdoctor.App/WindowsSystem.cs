@@ -187,10 +187,10 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
     public bool FileExists(string path) => File.Exists(path);
     public bool DirectoryExists(string path) => Directory.Exists(path);
 
-    public IEnumerable<FileEntry> EnumerateFiles(string root)
+    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true)
     {
         // 不跟随联接点和符号链接：防止从缓存目录"跳"到别的地方
-        var opt = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System };
+        var opt = new EnumerationOptions { RecurseSubdirectories = recurse, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System };
         IEnumerable<string> files;
         try { files = Directory.EnumerateFiles(root, "*", opt); } catch { yield break; }
         foreach (var f in files)
@@ -199,6 +199,47 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
             try { fi = new FileInfo(f); } catch { continue; }
             yield return new FileEntry(f, fi.Length, fi.LastWriteTimeUtc);
         }
+    }
+
+    public IReadOnlyList<string> ListDirectories(string dir)
+    {
+        try
+        {
+            var opt = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
+            return Directory.EnumerateDirectories(dir, "*", opt).ToList();
+        }
+        catch { return []; }
+    }
+
+    public bool IsReparsePoint(string path)
+    {
+        try { return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0; }
+        catch { return true; }  // 读不到属性的，当作不能进入
+    }
+
+    public IReadOnlyList<string> DeleteFiles(IReadOnlyList<string> paths)
+    {
+        var done = new List<string>();
+        foreach (var p in paths)
+        {
+            try
+            {
+                var fi = new FileInfo(p);
+                if (!fi.Exists || (fi.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                if (fi.IsReadOnly) fi.IsReadOnly = false;
+                fi.Delete();
+                done.Add(p);
+            }
+            catch { /* 正在使用或没有权限：跳过 */ }
+        }
+        return done;
+    }
+
+    public bool IsProcessRunning(string name)
+    {
+        var ps = Process.GetProcessesByName(name);
+        foreach (var p in ps) p.Dispose();
+        return ps.Length > 0;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

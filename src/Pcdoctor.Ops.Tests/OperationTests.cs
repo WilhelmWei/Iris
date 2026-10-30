@@ -226,33 +226,107 @@ public class OperationTests : IDisposable
         Assert.Equal(1, sys.ReadValue(Hive.LocalMachine, k, "HiberbootEnabled")!.AsInt());
     }
 
-    // ------------------------------------------------------------------ 清理缓存
     [Fact]
-    public void Cache_clean_moves_only_old_files_in_chosen_categories_to_recycle_bin()
+    public void Chrome_background_policy_written_verified_and_undone()
     {
-        sys.AddFile(@"C:\Users\u\AppData\Local\Temp\old.tmp", 1 << 20, 40);
-        sys.AddFile(@"C:\Users\u\AppData\Local\Temp\new.tmp", 1 << 20, 2);
-        sys.AddFile(@"C:\Users\u\AppData\Local\Temp\locked.tmp", 1 << 20, 40);
-        sys.Locked.Add(@"C:\Users\u\AppData\Local\Temp\locked.tmp");
-        sys.AddFile(@"C:\Users\u\AppData\Local\pip\Cache\a.whl", 1 << 20, 400);   // 没选这一类
-        sys.AddFile(@"C:\Users\u\Documents\thesis.docx", 1 << 20, 400);         // 不在任何缓存目录
-        var s = Step("cache.clean", new() { ["paths"] = new JsonArray(@"C:\Users\u\Documents") });  // 方案里塞的路径必须被忽略
-        s.CacheChoice = new CacheChoice { Categories = ["临时文件"], Age = 30 };
-        var e = Executor.RunStep(s, Ctx);
+        const string k = @"SOFTWARE\Policies\Google\Chrome";
+        var e = Executor.RunStep(Step("browser.disable_chrome_background", new()), Ctx);
         Assert.Equal(Status.Done, e.Status);
-        Assert.Equal([@"C:\Users\u\AppData\Local\Temp\old.tmp"], sys.RecycleBin.ToArray());
-        Assert.Contains("1 个正在使用", e.Message);
-        Assert.True(sys.FileExists(@"C:\Users\u\Documents\thesis.docx"));
-        Assert.False(e.Reversible);
+        Assert.Equal(0, sys.ReadValue(Hive.LocalMachine, k, "BackgroundModeEnabled")!.AsInt());
+        Assert.Equal(Status.Done, Executor.Undo(e, Ctx).Status);
+        Assert.Null(sys.ReadValue(Hive.LocalMachine, k, "BackgroundModeEnabled"));  // 原来没有这个策略：撤销后也没有
+    }
+
+    // ------------------------------------------------------------------ 清理缓存（按清理目录表）
+    const string Local = @"C:\Users\u\AppData\Local";
+    const string Chrome = Local + @"\Google\Chrome\User Data";
+
+    PlanStep Clean(bool admin, int? age, params string[] categories)
+    {
+        var s = Step("cache.clean", new() { ["paths"] = new JsonArray(@"C:\Users\u\Documents") });  // 方案里塞的路径必须被忽略
+        s.NeedsAdmin = admin;
+        s.CacheChoice = new CacheChoice { Categories = [.. categories], Age = age };
+        return s;
     }
 
     [Fact]
-    public void Cache_clean_needs_explicit_choice()
+    public void Cache_clean_deletes_only_old_catalog_files_never_user_files()
     {
-        sys.AddFile(@"C:\Users\u\AppData\Local\Temp\old.tmp", 1, 400);
-        var e = Executor.RunStep(Step("cache.clean", new()), Ctx);
-        Assert.Equal(Status.Failed, e.Status);
+        sys.AddFile(Local + @"\Temp\old.tmp", 1 << 20, 40);
+        sys.AddFile(Local + @"\Temp\sub\old2.tmp", 1 << 20, 10);
+        sys.AddFile(Local + @"\Temp\new.tmp", 1 << 20, 2);          // 不到 7 天：可能是正在安装的程序在用
+        sys.AddFile(Local + @"\Temp\locked.tmp", 1 << 20, 40);
+        sys.Locked.Add(Local + @"\Temp\locked.tmp");
+        sys.AddFile(Local + @"\pip\Cache\a.whl", 1 << 20, 400);     // 没选这一类
+        sys.AddFile(@"C:\Users\u\Documents\thesis.docx", 1 << 20, 400);
+        var e = Executor.RunStep(Clean(false, null, "temp-user"), Ctx);
+        Assert.Equal(Status.Done, e.Status);
+        Assert.Equal([Local + @"\Temp\old.tmp", Local + @"\Temp\sub\old2.tmp"], sys.Deleted.OrderBy(x => x).ToArray());
         Assert.Empty(sys.RecycleBin);
+        Assert.True(sys.FileExists(@"C:\Users\u\Documents\thesis.docx"));
+        Assert.True(sys.FileExists(Local + @"\pip\Cache\a.whl"));
+        Assert.Contains("腾出了 2 MB", e.Message);
+        Assert.Contains("1 个文件正在使用", e.Message);
+        Assert.False(e.Reversible);
+        Assert.Equal(1L << 20, Operations.Int(e.Backup["leftBytes"]));  // 重新测量：被占用的那个还在
+        Assert.Equal(Status.Failed, Executor.Undo(e, Ctx).Status);
+    }
+
+    [Fact]
+    public void Cache_clean_extra_age_limit_applies_on_top_of_catalog_default()
+    {
+        sys.AddFile(Local + @"\Temp\a.tmp", 1, 40);
+        sys.AddFile(Local + @"\Temp\b.tmp", 1, 10);
+        Executor.RunStep(Clean(false, 30, "temp-user"), Ctx);
+        Assert.Equal([Local + @"\Temp\a.tmp"], sys.Deleted.ToArray());
+    }
+
+    [Fact]
+    public void Cache_clean_rejects_missing_unknown_system_or_admin_categories()
+    {
+        sys.AddFile(Local + @"\Temp\old.tmp", 1, 400);
+        Assert.Equal(Status.Failed, Executor.RunStep(Step("cache.clean", new()), Ctx).Status);
+        Assert.Equal(Status.Failed, Executor.RunStep(Clean(false, null), Ctx).Status);
+        Assert.Equal(Status.Failed, Executor.RunStep(Clean(true, null, "..\\Documents"), Ctx).Status);
+        Assert.Equal(Status.Failed, Executor.RunStep(Clean(true, null, "windows-old"), Ctx).Status);  // B 类交给 Windows 自带的清理
+        Assert.Equal(Status.Failed, Executor.RunStep(Clean(false, null, "temp-windows"), Ctx).Status); // 需要管理员的类别不在普通权限里清
+        Assert.Empty(sys.Deleted);
+    }
+
+    [Fact]
+    public void Cache_clean_browser_profiles_skip_running_browser_links_and_non_cache_data()
+    {
+        sys.AddFile(Chrome + @"\Default\Cache\Cache_Data\f_000001", 5 << 20, 0);
+        sys.AddFile(Chrome + @"\Profile 1\Code Cache\js\x", 1 << 20, 0);
+        sys.AddFile(Chrome + @"\Default\Cookies", 1, 0);
+        sys.AddFile(Chrome + @"\Default\History", 1, 0);
+        sys.AddFile(Chrome + @"\Default\Login Data", 1, 0);
+        sys.AddFile(Chrome + @"\Linked\Cache\y", 1, 0);              // 联接点：可能指向别处，不进入
+        sys.ReparseDirs.Add(Chrome + @"\Linked");
+        sys.Running.Add("chrome");
+        var e = Executor.RunStep(Clean(false, null, "browser-chrome"), Ctx);
+        Assert.Empty(sys.Deleted);
+        Assert.Contains("chrome 正在运行", e.Message);
+        sys.Running.Clear();
+        Executor.RunStep(Clean(false, null, "browser-chrome"), Ctx);
+        Assert.Equal([Chrome + @"\Default\Cache\Cache_Data\f_000001", Chrome + @"\Profile 1\Code Cache\js\x"], sys.Deleted.OrderBy(x => x).ToArray());
+        Assert.True(sys.FileExists(Chrome + @"\Default\Cookies") && sys.FileExists(Chrome + @"\Default\History") && sys.FileExists(Chrome + @"\Default\Login Data"));
+        Assert.True(sys.FileExists(Chrome + @"\Linked\Cache\y"));
+    }
+
+    [Fact]
+    public void Cache_clean_keeps_newest_minidump_and_memory_dmp_only_at_top_level()
+    {
+        sys.AddFile(@"C:\Windows\Minidump\a.dmp", 1, 30);
+        sys.AddFile(@"C:\Windows\Minidump\b.dmp", 1, 20);
+        sys.AddFile(@"C:\Windows\Minidump\c.dmp", 1, 3);
+        sys.AddFile(@"C:\Windows\MEMORY.DMP", 1 << 30, 30);
+        sys.AddFile(@"C:\Windows\System32\config\MEMORY.DMP", 1, 30);
+        sys.AddFile(@"C:\Windows\notepad.exe", 1, 3000);
+        var e = Executor.RunStep(Clean(true, null, "crash-dumps-system", "crash-dump-full"), Ctx);
+        Assert.Equal(Status.Done, e.Status);
+        Assert.Equal([@"C:\Windows\MEMORY.DMP", @"C:\Windows\Minidump\a.dmp", @"C:\Windows\Minidump\b.dmp"], sys.Deleted.OrderBy(x => x).ToArray());
+        Assert.Contains("1 GB", e.Message);
     }
 
     // ------------------------------------------------------------------ 驱动包
@@ -329,18 +403,6 @@ public class OperationTests : IDisposable
     }
 
     // ------------------------------------------------------------------ 代码审查发现的问题（2026-10-25）
-    [Fact]
-    public void Recycle_bin_disabled_means_nothing_is_deleted()
-    {
-        sys.AddFile(@"C:\Users\u\AppData\Local\Temp\old.tmp", 1, 40);
-        sys.RecycleBinDisabled = true;
-        var s = Step("cache.clean", new());
-        s.CacheChoice = new CacheChoice { Categories = ["临时文件"], Age = 7 };
-        var e = Executor.RunStep(s, Ctx);
-        Assert.True(sys.FileExists(@"C:\Users\u\AppData\Local\Temp\old.tmp"));
-        Assert.Contains("0 个文件", e.Message);
-    }
-
     [Fact]
     public void Task_delete_uses_command_from_task_not_from_plan()
     {

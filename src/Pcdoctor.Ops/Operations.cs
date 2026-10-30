@@ -66,7 +66,7 @@ public static class Operations
     public static readonly IReadOnlyDictionary<string, Operation> All = new Operation[]
     {
         new StartupDisable(), new TaskDisable(), new TaskDeleteLeftover(), new ServiceSetManual(), new ServiceDeleteOrphan(),
-        new BrowserDisableBackground(), new PowerDisableFastStartup(), new CacheClean(), new DefenderScan(), new AppUninstall(),
+        new BrowserDisableBackground(), new ChromeDisableBackground(), new PowerDisableFastStartup(), new CacheClean(), new DefenderScan(), new AppUninstall(),
         new DriverDeleteOldVersion(),
     }.ToDictionary(o => o.Id);
 
@@ -152,6 +152,8 @@ public static class Operations
         path.StartsWith(windowsDir.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
 
     internal static JsonNode? ToJson(RegValue? v) => v?.ToJson();
+
+    public static double? Num(JsonNode? n) => n is JsonValue v && v.TryGetValue<double>(out var x) && double.IsFinite(x) ? x : null;
 
     public static long? Int(JsonNode? n) => n is JsonValue v && v.TryGetValue<long>(out var x) ? x
         : n is JsonValue w && w.TryGetValue<int>(out var y) ? y : null;
@@ -469,6 +471,16 @@ public sealed class BrowserDisableBackground : RegistrySwitch
     protected override string DoneMessage(PlanStep s, OpContext c, JsonObject b) => "已关闭 Edge 的启动增强和后台运行，下次开机生效";
 }
 
+/// <summary>关闭 Chrome 关掉窗口后的后台运行（只在 Chrome 不是主力浏览器时建议）。策略方式，红线 9：Chrome 会显示"由你的组织管理"，执行前已告知。</summary>
+public sealed class ChromeDisableBackground : RegistrySwitch
+{
+    public override string Id => "browser.disable_chrome_background";
+    protected override Hive Hive => Hive.LocalMachine;
+    protected override string Key => @"SOFTWARE\Policies\Google\Chrome";
+    protected override (string, int)[] Values => [("BackgroundModeEnabled", 0)];
+    protected override string DoneMessage(PlanStep s, OpContext c, JsonObject b) => "已关闭 Chrome 关掉窗口后的后台运行，下次打开 Chrome 时生效";
+}
+
 /// <summary>关闭快速启动，保留休眠（红线 8：用户拒绝过关休眠）。</summary>
 public sealed class PowerDisableFastStartup : RegistrySwitch
 {
@@ -480,64 +492,104 @@ public sealed class PowerDisableFastStartup : RegistrySwitch
 }
 
 // ---------------------------------------------------------------------------------------------- 一次性动作
-/// <summary>清理缓存：只处理程序自己算出的几个缓存目录，按用户勾选的类别和天数，把文件移到回收站。
-/// 目录不从处理方案里读取：方案文件放在普通用户可写的位置，不能让它指定管理员要删的路径。</summary>
+/// <summary>
+/// 清理缓存：只清清理目录表（kb/junk.json，编进程序）里 A 类的缓存，按用户留下的类别，直接删除（不进回收站）。
+/// 这些都是程序会自动重新生成的缓存，不是用户文件（红线 6 管的是用户文件）；进回收站等于没腾出空间。
+/// 目录不从处理方案里读取：方案文件放在普通用户可写的位置，不能让它指定管理员要删的路径。
+/// 浏览器等程序开着时跳过对应的一类；正在使用的文件跳过；删完重新测量。
+/// </summary>
 public sealed class CacheClean : Operation
 {
     public override string Id => "cache.clean";
-    public const int MaxFiles = 50000;
-    public static readonly string[] Categories = ["临时文件", "开发工具缓存"];
+    public const int MaxFiles = 200000;
 
-    public static IEnumerable<string> Roots(IWinSystem sys, string category) => category switch
-    {
-        "临时文件" => new[] { sys.Env("TEMP"), sys.WindowsDir.TrimEnd('\\') + @"\Temp" }.Where(x => !string.IsNullOrEmpty(x)).Select(x => x!),
-        "开发工具缓存" => sys.Env("LOCALAPPDATA") is { } l ? [l + @"\pip\Cache", l + @"\npm-cache"] : [],
-        _ => [],
-    };
+    /// <summary>可以清理的类别（目录表里的 A 类）。</summary>
+    public static IEnumerable<JunkCategory> Cleanable => Junk.Catalog.Categories.Where(c => c.Tier == "A");
 
     protected override string? Precheck(PlanStep s, OpContext c)
     {
         var ch = s.CacheChoice;
-        if (ch == null || ch.Categories.Count == 0 || ch.Age is null or < 1) return "没有选择清理的类别或时间范围，什么也没做";
-        if (ch.Categories.Any(x => !Categories.Contains(x))) return "选择了不支持的类别";
+        if (ch == null || ch.Categories.Count == 0) return "没有选择要清理的类别，什么也没做";
+        foreach (var id in ch.Categories)
+        {
+            var cat = Junk.Get(id);
+            if (cat == null || cat.Tier != "A") return "选择了不支持的类别";
+            if (cat.Admin && !s.NeedsAdmin) return "选择了需要管理员权限的类别";
+        }
+        if (ch.Age is < 0 or > 3650) return "时间范围不对";
         return null;
     }
+    /// <summary>处理方案里清理这一步的选项：按体检时量到的大小列出可清理的类别（大的在前），默认全选。
+    /// 旧报告里没有测量数字时，列出目录表里全部 A 类。</summary>
+    public static CacheOptions Options(JsonNode report, bool admin)
+    {
+        var measured = (report["sections"]?["storage"]?["junk"]?["items"] as JsonArray)?.OfType<JsonObject>()
+            .Where(x => x["id"] != null).ToDictionary(x => x["id"]!.ToString(), x => x);
+        var items = new List<CacheItem>();
+        foreach (var cat in Cleanable.Where(c => c.Admin == admin))
+        {
+            JsonObject? m = null;
+            if (measured != null && (!measured.TryGetValue(cat.Id, out m) || !((Operations.Num(m["cleanableMB"]) ?? 0) >= 1))) continue;
+            items.Add(new CacheItem
+            {
+                Id = cat.Id, Name = cat.Name, Group = cat.Group, SizeMB = m == null ? null : Operations.Num(m["cleanableMB"]),
+                Running = m?["running"]?.ToString() is { Length: > 0 } r ? r : null, Why = cat.Why, Cost = cat.Cost,
+            });
+        }
+        items = items.OrderByDescending(i => i.SizeMB ?? 0).ToList();
+        return new CacheOptions { Items = items, Categories = items.Select(i => i.Id).ToList() };
+    }
+
     protected override void Backup(PlanStep s, OpContext c, JsonObject b) { }
     protected override void Change(PlanStep s, OpContext c, JsonObject b)
     {
-        var cutoff = c.Sys.UtcNow.AddDays(-s.CacheChoice!.Age!.Value);
-        int moved = 0, skipped = 0; long bytes = 0;
-        var batch = new List<FileEntry>();
-        void Flush()
+        var results = new JsonArray();
+        long bytes = 0; int deleted = 0, skipped = 0;
+        foreach (var cat in s.CacheChoice!.Categories.Distinct().Select(Junk.Get).OfType<JunkCategory>())
         {
-            if (batch.Count == 0) return;
-            var done = new HashSet<string>(c.Sys.MoveToRecycleBin(batch.Select(f => f.Path).ToList()), StringComparer.OrdinalIgnoreCase);
-            foreach (var f in batch) if (done.Contains(f.Path)) { moved++; bytes += f.Size; } else skipped++;
-            batch.Clear();
-        }
-        foreach (var root in s.CacheChoice.Categories.SelectMany(x => Roots(c.Sys, x)).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (!c.Sys.DirectoryExists(root)) continue;
-            foreach (var f in c.Sys.EnumerateFiles(root))
+            var r = new JsonObject { ["id"] = cat.Id, ["name"] = cat.Name };
+            results.Add(r);
+            var blocking = Junk.Blocking(c.Sys, cat);
+            if (blocking.Count > 0) { r["running"] = string.Join("、", blocking); continue; }
+            var files = Junk.Eligible(c.Sys, cat, c.Sys.UtcNow, s.CacheChoice.Age ?? 0, MaxFiles - deleted - skipped);
+            long catBytes = 0; int catDeleted = 0;
+            foreach (var chunk in files.Chunk(500))
             {
-                if (f.LastWriteUtc >= cutoff) continue;
-                if (moved + skipped + batch.Count >= MaxFiles) break;
-                batch.Add(f);
-                if (batch.Count >= 200) Flush();  // 一次交给系统 200 个文件，比逐个快得多
+                var done = new HashSet<string>(c.Sys.DeleteFiles(chunk.Select(f => f.Path).ToList()), StringComparer.OrdinalIgnoreCase);
+                foreach (var f in chunk) if (done.Contains(f.Path)) { catDeleted++; catBytes += f.Size; } else skipped++;
             }
+            r["deleted"] = catDeleted; r["bytes"] = catBytes;
+            deleted += catDeleted; bytes += catBytes;
         }
-        Flush();
-        b["moved"] = moved; b["skipped"] = skipped; b["bytes"] = bytes;
+        b["categories"] = results; b["deleted"] = deleted; b["skipped"] = skipped; b["bytes"] = bytes;
     }
-    protected override string? Verify(PlanStep s, OpContext c, JsonObject b) => null;
+    /// <summary>重新测量：清过的类别里还剩多少符合条件的文件（被占用、没删掉的）。只用于告诉用户，不算失败。</summary>
+    protected override string? Verify(PlanStep s, OpContext c, JsonObject b)
+    {
+        long left = 0;
+        foreach (var r in (b["categories"] as JsonArray ?? []).OfType<JsonObject>())
+            if (r["running"] == null && Junk.Get(r["id"]!.ToString()) is { } cat)
+                left += Junk.Eligible(c.Sys, cat, c.Sys.UtcNow, s.CacheChoice!.Age ?? 0, MaxFiles).Sum(f => f.Size);
+        b["leftBytes"] = left;
+        return null;
+    }
     protected override void Rollback(PlanStep s, OpContext c, JsonObject b) { }
+
+    public static string Size(long bytes) => bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.#} GB" : $"{Math.Max(bytes, 0) / 1048576.0:0.#} MB";
+
     protected override string DoneMessage(PlanStep s, OpContext c, JsonObject b)
     {
-        var mb = (Operations.Int(b["bytes"]) ?? 0) / 1048576.0;
+        var cats = (b["categories"] as JsonArray ?? []).OfType<JsonObject>().ToList();
+        var parts = cats.Where(r => (Operations.Int(r["bytes"]) ?? 0) > 0).OrderByDescending(r => Operations.Int(r["bytes"]) ?? 0)
+            .Select(r => $"{r["name"]} {Size((Operations.Int(r["bytes"]) ?? 0))}").ToList();
+        var msg = $"腾出了 {Size((Operations.Int(b["bytes"]) ?? 0))}" + (parts.Count > 0 ? "：" + string.Join("、", parts) : "");
+        foreach (var r in cats.Where(r => r["running"] != null))
+            msg += $"。{r["running"]} 正在运行，没有清「{r["name"]}」，关掉后可以再清一次";
         var skipped = Operations.Int(b["skipped"]) ?? 0;
-        return $"已把 {b["moved"]} 个文件（{mb:0.#} MB）移到回收站" + (skipped > 0 ? $"，{skipped} 个正在使用，已跳过" : "") + "。确认没问题后再清空回收站";
+        if (skipped > 0) msg += $"。{skipped} 个文件正在使用，已跳过";
+        return msg;
     }
-    public override Outcome Undo(JournalEntry e, OpContext ctx) => Outcome.Fail("缓存清理不能自动撤销：文件都在回收站里，需要的话可以从回收站还原");
+    public override Outcome Undo(JournalEntry e, OpContext ctx) => Outcome.Fail("缓存已经直接删除，不能撤销；它们会在需要时自动重新生成");
 }
 
 /// <summary>交给 Defender 快速扫描：只发起扫描，不修改任何安全设置。</summary>

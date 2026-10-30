@@ -22,10 +22,26 @@ public sealed class PlanStep
     public CacheChoice? CacheChoice { get; set; }
 }
 
+/// <summary>清理缓存这一步可以选的类别（清理目录表里的 A 类）和体检时量到的大小；Categories 是默认勾选的。</summary>
 public sealed class CacheOptions
 {
     public List<string> Categories { get; set; } = [];
-    public List<int> Ages { get; set; } = [7, 30, 90, 180, 365];
+    public List<CacheItem> Items { get; set; } = [];
+    /// <summary>可选的"只清多少天以前的"（在目录表的默认天数之上再加限制）；0 = 按默认。</summary>
+    public List<int> Ages { get; set; } = [0, 7, 30, 90];
+}
+
+public sealed class CacheItem
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Group { get; set; } = "";
+    /// <summary>体检时量到的可清理大小；旧报告里没有这个数字时为空。</summary>
+    public double? SizeMB { get; set; }
+    /// <summary>体检时正在运行、会让这一类被跳过的程序。</summary>
+    public string? Running { get; set; }
+    public string Why { get; set; } = "";
+    public string Cost { get; set; } = "";
 }
 
 public sealed class CacheChoice

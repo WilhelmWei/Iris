@@ -3,7 +3,7 @@
 $src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
 if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
-$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf' }, $true)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory' }, $true)
 foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
 $env:windir = 'C:\Windows'
 $cases = @(
@@ -84,3 +84,45 @@ try { $r = Safe 'boom' { throw 'x' }; if ($null -eq $r -and $CollectErrors.Count
 if ($Perf.Contains('cim Pcdoctor_NoSuchClass')) { $p6++ } else { 'FAIL perf: 没有记录 cim 耗时' }
 "error-handling: $p6/3 passed"
 
+# 清理目录表的测量：通配一整段、不进入链接、文件名过滤、最短天数、保留最新几个、浏览器开着时记下来
+$jr = Join-Path ([IO.Path]::GetTempPath()) ("pcdoctor-junk-" + [guid]::NewGuid().ToString('N'))
+function New-JunkFile([string]$Rel, [int]$KB, [int]$DaysOld) {
+    $f = [IO.Path]::Combine([string[]](@($jr) + $Rel.Split('\')))
+    [void](New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($f)))
+    [IO.File]::WriteAllBytes($f, (New-Object byte[] ($KB * 1024)))
+    (Get-Item -LiteralPath $f).LastWriteTime = (Get-Date).AddDays(-$DaysOld)
+}
+New-JunkFile 'U\Default\Cache\a' 512 0
+New-JunkFile 'U\Profile 1\Cache\b' 512 0
+New-JunkFile 'U\Default\Cookies' 512 0
+New-JunkFile 'Elsewhere\Cache\secret' 1024 0
+$linked = $false
+try { [void](New-Item -ItemType SymbolicLink -Path ([IO.Path]::Combine($jr, 'U', 'Linked')) -Target ([IO.Path]::Combine($jr, 'Elsewhere')) -ErrorAction Stop); $linked = $true } catch {}
+New-JunkFile 'T\old.tmp' 1024 30
+New-JunkFile 'T\new.tmp' 1024 1
+New-JunkFile 'D\a.dmp' 1024 30
+New-JunkFile 'D\b.dmp' 1024 20
+New-JunkFile 'D\c.dmp' 1024 2
+New-JunkFile 'W\MEMORY.DMP' 2048 30
+New-JunkFile 'W\sub\MEMORY.DMP' 2048 30
+$vars = @{ ROOT = $jr }
+$cat = { param($json) $json | ConvertFrom-Json }
+$jchecks = @()
+$b = Measure-JunkCategory (& $cat '{"id":"b","tier":"A","paths":["%ROOT%\\U\\*\\Cache"],"closeFirst":["chrome"]}') $vars @{ chrome = $true }
+$jchecks += ,@('browser size', $b.sizeMB, 1)
+$jchecks += ,@('browser roots', $b.paths.Count, 2)
+$jchecks += ,@('browser running', $b.running, 'chrome')
+$tm = Measure-JunkCategory (& $cat '{"id":"t","tier":"A","paths":["%ROOT%\\T"],"minAgeDays":7}') $vars @{}
+$jchecks += ,@('temp size', $tm.sizeMB, 2)
+$jchecks += ,@('temp cleanable', $tm.cleanableMB, 1)
+$dm = Measure-JunkCategory (& $cat '{"id":"d","tier":"A","paths":["%ROOT%\\D"],"include":["*.dmp"],"keepNewest":1}') $vars @{}
+$jchecks += ,@('dumps cleanable files', $dm.cleanableFiles, 2)
+$wm = Measure-JunkCategory (& $cat '{"id":"w","tier":"A","paths":["%ROOT%\\W"],"include":["MEMORY.DMP"],"recurse":false}') $vars @{}
+$jchecks += ,@('memory.dmp top level only', $wm.sizeMB, 2)
+$jchecks += ,@('missing var', @(Expand-JunkPath '%NOPE%\x' $vars).Count, 0)
+$jchecks += ,@('dot dot', @(Expand-JunkPath '%ROOT%\..\x' $vars).Count, 0)
+$jchecks += ,@('size text', (Format-Size 1536), '1.5 GB')
+$p7=0; foreach ($c in $jchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p7++ } else { "FAIL junk $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+if (-not $linked) { 'note: 这台机器不能创建符号链接，跳过"不进入链接"的检查' }
+Remove-Item -LiteralPath $jr -Recurse -Force
+"junk: $p7/$($jchecks.Count) passed"

@@ -18,6 +18,7 @@ FILES = [  # (源文件, 包内文件名)
     ('remote/remote.ps1', 'remote.ps1'),
     ('remote/README.txt', 'README.txt'),
     ('collector/pcdoctor-collect.ps1', 'pcdoctor-collect.ps1'),
+    ('kb/junk.json', 'junk.json'),  # 清理目录表：采集脚本按它测量各类缓存
 ]
 BOM = b'\xef\xbb\xbf'
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)  # 固定时间戳，保证可复现

@@ -124,8 +124,26 @@ public sealed class FakeWinSystem : IWinSystem
 
     public bool FileExists(string path) => Files.ContainsKey(path);
     public bool DirectoryExists(string path) => Files.Keys.Any(f => f.StartsWith(path.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase));
-    public IEnumerable<FileEntry> EnumerateFiles(string root) =>
-        Files.Values.Where(f => f.Path.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)).ToList();
+    /// <summary>模拟的联接点 / 符号链接文件夹：列文件夹时看不到，递归列文件时不进入。</summary>
+    public HashSet<string> ReparseDirs { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Running { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Deleted { get; } = new(StringComparer.OrdinalIgnoreCase);
+    static bool Under(string path, string dir) => path.StartsWith(dir.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
+    public IEnumerable<FileEntry> EnumerateFiles(string root, bool recurse = true) =>
+        Files.Values.Where(f => Under(f.Path, root) && (recurse || !f.Path[(root.TrimEnd('\\').Length + 1)..].Contains('\\'))
+                                && !ReparseDirs.Any(r => Under(f.Path, r) && Under(r, root))).ToList();
+    public IReadOnlyList<string> ListDirectories(string dir) =>
+        Files.Keys.Where(f => Under(f, dir)).Select(f => dir.TrimEnd('\\') + "\\" + f[(dir.TrimEnd('\\').Length + 1)..].Split('\\')[0])
+            .Where(d => Files.Keys.Any(f => Under(f, d)) && !ReparseDirs.Contains(d)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    public bool IsReparsePoint(string path) => ReparseDirs.Contains(path.TrimEnd('\\'));
+    public IReadOnlyList<string> DeleteFiles(IReadOnlyList<string> paths)
+    {
+        var done = new List<string>();
+        foreach (var p in paths)
+            if (!Locked.Contains(p) && Files.Remove(p)) { Deleted.Add(p); done.Add(p); }
+        return done;
+    }
+    public bool IsProcessRunning(string name) => Running.Contains(name);
     public IReadOnlyList<string> MoveToRecycleBin(IReadOnlyList<string> paths)
     {
         if (RecycleBinDisabled) return [];  // 真实系统会先弹出"将永久删除"的警告；这里模拟用户选了"否"

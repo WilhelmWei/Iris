@@ -526,17 +526,26 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var steps = plan.Steps.Where(s => keep.Contains(s.Key)).ToList();
         foreach (var s in steps.Where(s => s.Op == "cache.clean"))
         {
+            // 界面只能在这一步列出的类别里取舍；没传就是默认（全部列出的类别）
+            var offered = s.CacheOptions?.Items.Select(i => i.Id).ToHashSet() ?? [];
             var ui = uiSteps.FirstOrDefault(x => x?["key"]?.ToString() == s.Key)?["cacheChoice"];
-            s.CacheChoice = ui == null ? null : new CacheChoice
+            var picked = ui?["categories"] is JsonArray arr ? arr.Select(x => x?.ToString() ?? "").Where(offered.Contains).ToList()
+                : s.CacheOptions?.Categories.Where(offered.Contains).ToList() ?? [];
+            s.CacheChoice = new CacheChoice
             {
-                Categories = ui["categories"]?.AsArray().Select(x => x!.ToString()).ToList() ?? [],
-                Age = ui["age"] is JsonValue v && v.TryGetValue<int>(out var a) ? a : null,
+                Categories = picked,
+                Age = ui?["age"] is JsonValue v && v.TryGetValue<int>(out var a) && a > 0 ? a : null,
             };
         }
         if (steps.Count == 0) throw new InvalidOperationException("没有要执行的步骤");
+        string CacheText(PlanStep s)
+        {
+            var names = s.CacheChoice!.Categories.Select(id => s.CacheOptions?.Items.FirstOrDefault(i => i.Id == id)?.Name ?? id);
+            return $"直接删除这些缓存：{string.Join("、", names)}" + (s.CacheChoice.Age is { } d ? $"（只删 {d} 天以前的）" : "")
+                   + "。不进回收站，不能撤销；都是程序会自动重新生成的缓存";
+        }
         var items = steps.Select(s => new ChangeItem($"{s.OpName}：{s.Title}",
-            s.Op == "cache.clean" && s.CacheChoice != null
-                ? $"把「{string.Join("、", s.CacheChoice.Categories)}」里 {s.CacheChoice.Age} 天前的文件移到回收站" : s.Change,
+            s.Op == "cache.clean" && s.CacheChoice != null ? CacheText(s) : s.Change,
             s.Reversible, s.Undo, s.NeedsAdmin)).ToList();
         if (!Confirm($"确认执行这 {steps.Count} 项修改？", items)) return new JsonObject { ["cancelled"] = true };
         var batch = "batch-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];

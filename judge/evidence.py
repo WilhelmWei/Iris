@@ -161,8 +161,15 @@ def _context_for(flag, S):
     if sec == 'storage':
         st = S.get('storage', {})
         folders = st.get('folders', {})
+        junk = st.get('junk') or {}
         if rule == 'chat-cache-large':
             return folders.get('chatApps', {}).get(obj)
+        if rule == 'junk-cleanable':
+            return {'cleanableMB': junk.get('cleanableMB'),
+                    'items': [{k: x.get(k) for k in ('name', 'group', 'cleanableMB', 'running')}
+                              for x in junk.get('items', []) if x.get('tier') == 'A' and (x.get('cleanableMB') or 0) > 0]}
+        if rule == 'system-leftover':
+            return _find(junk.get('items'), 'name', obj)
         if rule == 'system-drive-low':
             big_on_c = [{'name': a.get('name'), 'sizeMB': a.get('sizeMB')}
                         for a in S.get('software', {}).get('items', [])
@@ -170,7 +177,8 @@ def _context_for(flag, S):
             return {'volumes': st.get('volumes'), 'system': st.get('system'),
                     'folders': {k: {'sizeGB': v.get('sizeGB'), 'path': v.get('path')} for k, v in folders.items()
                                 if isinstance(v, dict) and 'sizeGB' in v},
-                    'largeSoftwareOnC': big_on_c, 'steamLibraries': st.get('steamLibraries')}
+                    'largeSoftwareOnC': big_on_c, 'steamLibraries': st.get('steamLibraries'),
+                    'cleanableCacheMB': junk.get('cleanableMB')}
         return folders.get(obj)
     if sec == 'stability':
         return S.get('stability')
@@ -182,6 +190,10 @@ def _context_for(flag, S):
         return S.get('power')
     if sec == 'browserNetwork':
         b = S.get('browserNetwork', {})
+        if rule in ('edge-idle-background', 'chrome-idle-background', 'browser-unused'):
+            return {'mainBrowser': b.get('mainBrowser'), 'policies': b.get('policies'),
+                    'browsers': [{k: x.get(k) for k in ('id', 'name', 'isDefault', 'lastBrowsedDays', 'processes', 'memoryMB', 'autostart')}
+                                 for x in b.get('browsers', [])]}
         return {k: b.get(k) for k in ('policies', 'edgeProcesses', 'proxy', 'hostsEntries')}
     if sec == 'versions':
         return S.get('versions')

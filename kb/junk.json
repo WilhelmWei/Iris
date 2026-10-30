@@ -1,0 +1,195 @@
+{
+  "schema": "iris.junk/1",
+  "about": "清理目录表：采集脚本按它测量大小，操作库按它清理。要删的目录只能来自这张表（编进程序，处理方案改不了它）。tier A = 程序会自动重建的缓存，Iris 直接删除；B = 系统组件，交给 Windows 自带的清理（以后的版本），现在只测量；notCleaned = 有人当垃圾清、但 Iris 不清的东西，讲清楚为什么。路径里只能用这些变量：%TEMP% %LOCALAPPDATA% %APPDATA% %USERPROFILE% %PROGRAMDATA% %WINDIR% %SYSTEMDRIVE% %STEAM%；一整段的 * 表示任意一个子文件夹（例如浏览器的每个用户资料）。",
+  "categories": [
+    {
+      "id": "temp-user", "group": "临时文件", "name": "临时文件（你的账户）", "tier": "A",
+      "paths": ["%TEMP%"], "minAgeDays": 7,
+      "why": "软件安装、解压、运行时留下的临时文件，用完一般不会自己删。",
+      "cost": "没有代价。只清 7 天以前的，正在安装或运行的程序用到的新文件不会动。"
+    },
+    {
+      "id": "temp-windows", "group": "临时文件", "name": "临时文件（Windows）", "tier": "A", "admin": true,
+      "paths": ["%WINDIR%\\Temp"], "minAgeDays": 7,
+      "why": "Windows 更新、系统组件和以管理员身份运行的程序留下的临时文件。",
+      "cost": "没有代价。只清 7 天以前的。"
+    },
+    {
+      "id": "error-reports", "group": "错误报告和崩溃转储", "name": "Windows 错误报告", "tier": "A", "admin": true,
+      "paths": ["%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive", "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportQueue",
+                "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\Temp", "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportArchive",
+                "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportQueue"],
+      "why": "程序崩溃时 Windows 生成的报告，已经发给微软或者不会再发。",
+      "cost": "没有代价。蓝屏的记录在系统日志里，Iris 照样读得到。"
+    },
+    {
+      "id": "crash-dumps-app", "group": "错误报告和崩溃转储", "name": "程序崩溃转储", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\CrashDumps"], "include": ["*.dmp"],
+      "why": "程序崩溃时留下的内存快照，只有开发者排查问题时用得到，一个可能有几百 MB。",
+      "cost": "没有代价，除非软件的客服让你把它发过去。"
+    },
+    {
+      "id": "crash-dumps-system", "group": "错误报告和崩溃转储", "name": "蓝屏转储", "tier": "A", "admin": true,
+      "paths": ["%WINDIR%\\Minidump"], "include": ["*.dmp"], "keepNewest": 1,
+      "why": "蓝屏时 Windows 留下的小型转储。",
+      "cost": "保留最新的一份，排查最近一次蓝屏时还用得到。"
+    },
+    {
+      "id": "crash-dump-full", "group": "错误报告和崩溃转储", "name": "完整内存转储（MEMORY.DMP）", "tier": "A", "admin": true,
+      "paths": ["%WINDIR%"], "include": ["MEMORY.DMP"], "recurse": false, "minAgeDays": 7,
+      "why": "严重蓝屏时写下的整份内存，常常有好几 GB，普通用户用不到。",
+      "cost": "只清 7 天以前的；最近的蓝屏还需要排查时会保留。"
+    },
+    {
+      "id": "windows-logs", "group": "旧日志", "name": "Windows 组件和更新的旧日志", "tier": "A", "admin": true,
+      "paths": ["%WINDIR%\\Logs\\CBS", "%WINDIR%\\Logs\\DISM", "%WINDIR%\\Logs\\WindowsUpdate"],
+      "include": ["*.log", "*.cab", "*.etl"], "minAgeDays": 30,
+      "why": "系统安装更新时写的日志，越积越多，偶尔有几 GB。",
+      "cost": "只清 30 天以前的；最近的日志留着，排查更新失败时还用得到。"
+    },
+    {
+      "id": "browser-edge", "group": "浏览器缓存", "name": "Microsoft Edge 缓存", "tier": "A", "closeFirst": ["msedge"],
+      "paths": ["%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Cache", "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Code Cache",
+                "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\GPUCache", "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\ShaderCache",
+                "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\GrShaderCache"],
+      "why": "浏览器为了打开网页快一点存下的图片、脚本和显卡着色器。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。清完后第一次打开常用网站会慢一点。"
+    },
+    {
+      "id": "browser-chrome", "group": "浏览器缓存", "name": "Google Chrome 缓存", "tier": "A", "closeFirst": ["chrome"],
+      "paths": ["%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Cache", "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Code Cache",
+                "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\GPUCache", "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\ShaderCache",
+                "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\GrShaderCache"],
+      "why": "浏览器为了打开网页快一点存下的图片、脚本和显卡着色器。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。清完后第一次打开常用网站会慢一点。"
+    },
+    {
+      "id": "browser-360se", "group": "浏览器缓存", "name": "360 安全浏览器缓存", "tier": "A", "closeFirst": ["360se"],
+      "paths": ["%APPDATA%\\360se6\\User Data\\*\\Cache", "%APPDATA%\\360se6\\User Data\\*\\Code Cache", "%APPDATA%\\360se6\\User Data\\*\\GPUCache"],
+      "why": "浏览器为了打开网页快一点存下的图片和脚本。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。"
+    },
+    {
+      "id": "browser-360chrome", "group": "浏览器缓存", "name": "360 极速浏览器缓存", "tier": "A", "closeFirst": ["360chrome", "360ChromeX"],
+      "paths": ["%LOCALAPPDATA%\\360Chrome\\Chrome\\User Data\\*\\Cache", "%LOCALAPPDATA%\\360Chrome\\Chrome\\User Data\\*\\Code Cache",
+                "%LOCALAPPDATA%\\360ChromeX\\Chrome\\User Data\\*\\Cache", "%LOCALAPPDATA%\\360ChromeX\\Chrome\\User Data\\*\\Code Cache"],
+      "why": "浏览器为了打开网页快一点存下的图片和脚本。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。"
+    },
+    {
+      "id": "browser-qq", "group": "浏览器缓存", "name": "QQ 浏览器缓存", "tier": "A", "closeFirst": ["QQBrowser"],
+      "paths": ["%LOCALAPPDATA%\\Tencent\\QQBrowser\\User Data\\*\\Cache", "%LOCALAPPDATA%\\Tencent\\QQBrowser\\User Data\\*\\Code Cache"],
+      "why": "浏览器为了打开网页快一点存下的图片和脚本。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。"
+    },
+    {
+      "id": "browser-brave", "group": "浏览器缓存", "name": "Brave 缓存", "tier": "A", "closeFirst": ["brave"],
+      "paths": ["%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache", "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache",
+                "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GPUCache"],
+      "why": "浏览器为了打开网页快一点存下的图片和脚本。",
+      "cost": "不会动登录状态、浏览记录、收藏和密码。"
+    },
+    {
+      "id": "browser-firefox", "group": "浏览器缓存", "name": "Firefox 缓存", "tier": "A", "closeFirst": ["firefox"],
+      "paths": ["%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\cache2"],
+      "why": "浏览器为了打开网页快一点存下的图片和脚本。",
+      "cost": "不会动登录状态、浏览记录、书签和密码（它们不在这个文件夹里）。"
+    },
+    {
+      "id": "dev-pip", "group": "开发工具缓存", "name": "pip 下载缓存", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\pip\\Cache"],
+      "why": "Python 装包时下载的安装包副本。",
+      "cost": "已经装好的环境不受影响；以后再装同样的包要重新下载。"
+    },
+    {
+      "id": "dev-npm", "group": "开发工具缓存", "name": "npm 缓存", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\npm-cache\\_cacache"],
+      "why": "Node.js 装包时下载的安装包副本。",
+      "cost": "已经装好的项目不受影响；以后再装同样的包要重新下载。"
+    },
+    {
+      "id": "dev-yarn", "group": "开发工具缓存", "name": "Yarn 缓存", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\Yarn\\Cache"],
+      "why": "Yarn 装包时下载的安装包副本。",
+      "cost": "已经装好的项目不受影响；以后再装同样的包要重新下载。"
+    },
+    {
+      "id": "dev-nuget", "group": "开发工具缓存", "name": "NuGet 下载缓存", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\NuGet\\v3-cache"],
+      "why": ".NET 还原包时的下载缓存（不是已经解压的包）。",
+      "cost": "没有代价；下次还原时按需重新下载。"
+    },
+    {
+      "id": "dev-go", "group": "开发工具缓存", "name": "Go 编译缓存", "tier": "A",
+      "paths": ["%LOCALAPPDATA%\\go-build"],
+      "why": "Go 编译时的中间结果。",
+      "cost": "下一次编译会慢一点。"
+    },
+    {
+      "id": "steam-shader", "group": "游戏平台缓存", "name": "Steam 着色器缓存", "tier": "A", "closeFirst": ["steam"],
+      "paths": ["%STEAM%\\steamapps\\shadercache"],
+      "why": "游戏为显卡预先编译的着色器，换过显卡或卸载过的游戏也会留着。",
+      "cost": "游戏第一次启动时会重新编译，可能卡顿一小会儿。"
+    },
+    {
+      "id": "thumbnails", "group": "Windows 系统缓存", "name": "缩略图缓存", "tier": "B",
+      "paths": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"], "include": ["thumbcache_*.db"], "recurse": false,
+      "why": "资源管理器里图片、视频的预览图。文件资源管理器开着时这些文件被占用，自己删不掉，交给 Windows 自带的磁盘清理。",
+      "cost": "清完后打开图片文件夹时预览图要重新生成。"
+    },
+    {
+      "id": "delivery-optimization", "group": "Windows 系统缓存", "name": "传递优化缓存", "tier": "B", "admin": true,
+      "paths": ["%WINDIR%\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\Cache"],
+      "why": "Windows 更新时为了给局域网里其他电脑分享而留的副本。属于系统服务的文件，交给 Windows 自带的清理。",
+      "cost": "没有代价。"
+    },
+    {
+      "id": "windows-update-download", "group": "Windows 系统缓存", "name": "Windows 更新下载文件", "tier": "B", "admin": true,
+      "paths": ["%WINDIR%\\SoftwareDistribution\\Download"],
+      "why": "已经装好的更新的安装包。更新服务可能正在用它们，交给 Windows 自带的清理。",
+      "cost": "没有代价。"
+    },
+    {
+      "id": "windows-old", "group": "旧系统", "name": "旧版 Windows（Windows.old）", "tier": "B", "admin": true,
+      "paths": ["%SYSTEMDRIVE%\\Windows.old"],
+      "why": "升级 Windows 大版本后留下的旧系统，用来回退。通常 10 天后 Windows 会自己删。",
+      "cost": "删除后就不能退回升级前的版本。"
+    },
+    {
+      "id": "windows-upgrade-temp", "group": "旧系统", "name": "升级临时文件（$Windows.~BT）", "tier": "B", "admin": true,
+      "paths": ["%SYSTEMDRIVE%\\$Windows.~BT", "%SYSTEMDRIVE%\\$Windows.~WS"],
+      "why": "Windows 升级时下载和展开的安装文件，升级完成后就没用了。",
+      "cost": "没有代价；如果升级还没完成，Windows 会重新下载。"
+    }
+  ],
+  "notCleaned": [
+    {
+      "id": "prefetch", "name": "预取数据（Prefetch）",
+      "why": "Windows 记下程序启动时要读哪些文件，下次提前读好。删掉后开机和打开软件反而会变慢，过几天又长回来。这是典型的伪优化。"
+    },
+    {
+      "id": "font-cache", "name": "字体缓存",
+      "why": "只有几 MB，删了要重建，还可能让字体显示出错。没有清理的价值。"
+    },
+    {
+      "id": "installer-cache", "name": "Windows 安装程序缓存（C:\\Windows\\Installer）",
+      "why": "软件卸载、修复、打补丁时要用到这里的安装包。直接删会让软件卸载不掉、修复不了。只有确认是孤立的安装包才能删，Iris 以后会单独检查。"
+    },
+    {
+      "id": "recycle-bin", "name": "回收站",
+      "why": "回收站里是你删掉的文件，要不要彻底删除由你决定。Iris 不替你清空，需要时在桌面上右键回收站选「清空回收站」。"
+    },
+    {
+      "id": "recent-and-clipboard", "name": "最近打开的文档、剪贴板",
+      "why": "这是使用痕迹，不是垃圾，几乎不占空间。清它们对速度和空间都没有帮助。"
+    },
+    {
+      "id": "registry-cleaner", "name": "注册表清理",
+      "why": "注册表里多几条无用的记录不会让电脑变慢，清错了反而会让软件或系统出问题。这是典型的伪优化。"
+    },
+    {
+      "id": "memory-booster", "name": "内存加速 / 一键释放内存",
+      "why": "把内存里的数据挤到硬盘上，过一会儿又会读回来，反而更慢。真正有用的是关掉不用的程序和浏览器标签页。"
+    }
+  ]
+}

@@ -21,6 +21,9 @@
 .PARAMETER CheckUpdates
     额外查询待安装的 Windows 更新（可能需要 1–3 分钟）。
 
+.PARAMETER JunkCatalog
+    清理目录表 junk.json 的位置（按它测量各类缓存的大小）。默认找脚本旁边的 junk.json 或仓库里的 kb\junk.json。
+
 .EXAMPLE
     # 推荐：管理员 PowerShell 中运行（不改变系统执行策略，只对本次进程生效）
     powershell -ExecutionPolicy Bypass -File .\pcdoctor-collect.ps1
@@ -34,13 +37,21 @@ param(
     [string]$OutDir = [Environment]::GetFolderPath('Desktop'),
     [switch]$NoRedact,
     [switch]$Quick,
-    [switch]$CheckUpdates
+    [switch]$CheckUpdates,
+    [string]$JunkCatalog = ''
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.2.8'
+$ScriptVersion = '0.2.9'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
+
+# 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
+if (-not $JunkCatalog -and $PSScriptRoot) {
+    foreach ($c in @("$PSScriptRoot\junk.json", "$PSScriptRoot\..\kb\junk.json")) { if (Test-Path -LiteralPath $c) { $JunkCatalog = $c; break } }
+}
+$Junk = $null
+if ($JunkCatalog -and (Test-Path -LiteralPath $JunkCatalog)) { try { $Junk = Get-Content -LiteralPath $JunkCatalog -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $Junk = $null } }
 
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -257,6 +268,82 @@ function Measure-Folder([string]$Path, [int]$CapSeconds = 20, [switch]$Breakdown
         foreach ($d in $ageDays) { $r.olderThanGB["${d}d"] = [math]::Round($byAge[$d] / 1GB, 2) }
     }
     return $r
+}
+
+function Format-Size([double]$MB) {
+    if ($MB -ge 1024) { return ('{0:0.#} GB' -f ($MB / 1024)) }
+    return ('{0:0} MB' -f $MB)
+}
+
+# 清理目录表里的路径模板 → 实际存在的文件夹。一整段的 * 匹配任意一个子文件夹；不进入联接点和符号链接
+function Expand-JunkPath([string]$Template, [hashtable]$Vars) {
+    if (-not ($Template -match '^%(\w+)%(.*)$')) { return @() }
+    $root = $Vars[$Matches[1].ToUpperInvariant()]
+    $rest = $Matches[2]
+    if (-not $root) { return @() }
+    $current = @(([string]$root).TrimEnd('\', '/'))
+    foreach ($seg in @($rest.Split('\') | Where-Object { $_ })) {
+        if ($seg -eq '..' -or $seg -eq '.') { return @() }
+        $next = @()
+        foreach ($c in $current) {
+            if ($seg -eq '*') {
+                $next += @(Get-ChildItem -LiteralPath $c -Directory -Force | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0 } | ForEach-Object { $_.FullName })
+            } else {
+                $p = [IO.Path]::Combine($c, $seg)
+                $it = Get-Item -LiteralPath $p -Force
+                if ($it -and $it.PSIsContainer -and (($it.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0)) { $next += $p }
+            }
+        }
+        $current = $next
+        if (-not $current.Count) { return @() }
+    }
+    return @($current | Where-Object { Test-Path -LiteralPath $_ -PathType Container })
+}
+
+# 量一类缓存：总大小，以及按目录表的规则（文件名、最短天数、保留最新几个）可以清理的大小。和桌面版的清理操作用同一套规则
+function Measure-JunkCategory($Cat, [hashtable]$Vars, [hashtable]$Running, [int]$CapSeconds = 15) {
+    $t = [Diagnostics.Stopwatch]::StartNew()
+    $minAge = 0; if ($Cat.minAgeDays) { $minAge = [int]$Cat.minAgeDays }
+    $recurse = $true; if ($Cat.PSObject.Properties['recurse'] -and $Cat.recurse -eq $false) { $recurse = $false }
+    $include = @(); if ($Cat.include) { $include = @($Cat.include) }
+    $keep = 0; if ($Cat.keepNewest) { $keep = [int]$Cat.keepNewest }
+    $cutoff = (Get-Date).AddDays(-$minAge)
+    $roots = @(); foreach ($p in @($Cat.paths)) { $roots += @(Expand-JunkPath $p $Vars) }
+    if (-not $roots.Count) { return $null }
+    $total = [int64]0; $files = 0; $partial = $false
+    $eligBytes = [int64]0; $eligFiles = 0
+    $kept = New-Object System.Collections.ArrayList
+    $skipAttr = [IO.FileAttributes]::ReparsePoint -bor [IO.FileAttributes]::System
+    foreach ($root in $roots) {
+        $stack = New-Object System.Collections.Stack
+        $stack.Push($root)
+        while ($stack.Count -gt 0) {
+            if ($t.Elapsed.TotalSeconds -gt $CapSeconds) { $partial = $true; break }
+            $dir = New-Object IO.DirectoryInfo ($stack.Pop())
+            try {
+                foreach ($fi in $dir.GetFiles()) {
+                    if (($fi.Attributes -band $skipAttr) -ne 0) { continue }
+                    if ($include.Count) {
+                        $ok = $false
+                        foreach ($pat in $include) { if ($fi.Name -like $pat) { $ok = $true; break } }
+                        if (-not $ok) { continue }
+                    }
+                    $total += $fi.Length; $files++
+                    if ($minAge -gt 0 -and $fi.LastWriteTime -ge $cutoff) { continue }
+                    if ($keep -gt 0) { [void]$kept.Add(@($fi.LastWriteTime, $fi.Length)) } else { $eligBytes += $fi.Length; $eligFiles++ }
+                }
+            } catch {}
+            if ($recurse) {
+                try { foreach ($sub in $dir.GetDirectories()) { if (($sub.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { $stack.Push($sub.FullName) } } } catch {}
+            }
+        }
+        if ($partial) { break }
+    }
+    if ($keep -gt 0) { foreach ($x in @($kept | Sort-Object { $_[0] } -Descending | Select-Object -Skip $keep)) { $eligBytes += $x[1]; $eligFiles++ } }
+    $run = @(); foreach ($n in @($Cat.closeFirst)) { if ($n -and $Running.ContainsKey(([string]$n).ToLowerInvariant())) { $run += $n } }
+    [ordered]@{ id = $Cat.id; group = $Cat.group; name = $Cat.name; tier = $Cat.tier
+                sizeMB = [math]::Round($total / 1MB, 1); cleanableMB = [math]::Round($eligBytes / 1MB, 1); files = $files; cleanableFiles = $eligFiles
+                partial = $partial; running = ($run -join '、'); paths = @($roots) }
 }
 
 # 隐私打码：用户名、计算机名、邮箱。用户名或计算机名为空时跳过，否则空正则会在每个字符之间插入替换
@@ -761,17 +848,13 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
 
     $folders = [ordered]@{}
     if (-not $Quick) {
+        # 临时文件、各类缓存、Windows.old 等按清理目录表另外测量（见下面的 junk）
         $cands = [ordered]@{
-            userTemp        = $env:TEMP
-            windowsTemp     = "$env:windir\Temp"
             downloads       = Join-Path $env:USERPROFILE 'Downloads'
-            windowsUpdateDl = "$env:windir\SoftwareDistribution\Download"
             condaPkgs       = @("$env:USERPROFILE\anaconda3\pkgs", "$env:USERPROFILE\miniconda3\pkgs", "$env:USERPROFILE\.conda\pkgs") | Where-Object { Test-Path $_ } | Select-Object -First 1
-            pipCache        = "$env:LOCALAPPDATA\pip\Cache"
-            npmCache        = "$env:LOCALAPPDATA\npm-cache"
             recycleBinC     = "$env:SystemDrive\`$Recycle.Bin"
         }
-        $withBreakdown = @('userTemp', 'windowsTemp', 'downloads')
+        $withBreakdown = @('downloads')
         foreach ($k in $cands.Keys) {
             if (-not $cands[$k]) { continue }
             $m = Measure-Folder $cands[$k] 15 -Breakdown:($withBreakdown -contains $k)
@@ -801,19 +884,46 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
             }
         }
         $folders.chatApps = $chat
-        foreach ($pair in @(@('windowsOld', "$env:SystemDrive\Windows.old", 'Windows.old（旧系统备份）'),
-                            @('deliveryOptimization', "$env:windir\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache", '传递优化缓存'))) {
-            $m = Measure-Folder $pair[1] 10
-            if (-not $m) { continue }
-            $folders[$pair[0]] = $m
-            $atLeast = ''; if ($m.partial) { $atLeast = '至少 ' }
-            if ($m.sizeGB -ge 2) { Add-Flag 'storage' 'system-leftover' 'low' $pair[2] "$($pair[2]) 占 $atLeast$($m.sizeGB) GB，可用系统自带的磁盘清理删除" }
-        }
-
         if ($folders.condaPkgs -and $folders.condaPkgs.sizeGB -ge 2) { Add-Flag 'storage' 'conda-cache' 'low' 'conda pkgs' "安装包缓存 $($folders.condaPkgs.sizeGB) GB，可用 conda clean -a 清理" }
-        foreach ($k in @('pipCache', 'npmCache')) { if ($folders[$k] -and $folders[$k].sizeGB -ge 1) { Add-Flag 'storage' 'dev-cache' 'low' $k "$($folders[$k].sizeGB) GB 缓存" } }
-        foreach ($k in @('userTemp', 'windowsTemp')) { if ($folders[$k] -and $folders[$k].sizeGB -ge 2) { Add-Flag 'storage' 'temp-large' 'low' $k "临时文件 $($folders[$k].sizeGB) GB" } }
         if ($folders.downloads -and $folders.downloads.sizeGB -ge 10) { Add-Flag 'storage' 'downloads-large' 'info' 'Downloads' "下载文件夹 $($folders.downloads.sizeGB) GB" }
+    }
+
+    # 按清理目录表量各类缓存和系统遗留文件（kb/junk.json；A 类 Iris 可以直接清理，B 类交给 Windows 自带的清理）
+    $junk = $null
+    if ($Junk -and -not $Quick) {
+        $jvars = @{ TEMP = $env:TEMP; LOCALAPPDATA = $env:LOCALAPPDATA; APPDATA = $env:APPDATA; USERPROFILE = $env:USERPROFILE
+                    PROGRAMDATA = $env:ProgramData; WINDIR = $env:windir; SYSTEMDRIVE = $env:SystemDrive; STEAM = $null }
+        $sp = Get-RegValue 'HKCU:\Software\Valve\Steam' 'SteamPath'
+        if ($sp) { $jvars.STEAM = ([string]$sp) -replace '/', '\' }
+        $running = @{}
+        foreach ($p in @(Get-Process)) { $running[$p.ProcessName.ToLowerInvariant()] = $true }
+        $jt = [Diagnostics.Stopwatch]::StartNew()
+        $jitems = New-Object System.Collections.ArrayList
+        foreach ($cat in @($Junk.categories)) {
+            if ($jt.Elapsed.TotalSeconds -gt 90) { [void]$CollectErrors.Add('junk: 90 秒内没有量完，其余类别跳过'); break }
+            $m = Measure-JunkCategory $cat $jvars $running 15
+            if ($m) { [void]$jitems.Add($m) }
+        }
+        $cleanMB = 0.0; $groups = [ordered]@{}; $anyPartial = $false
+        foreach ($x in $jitems) {
+            if ($x.tier -ne 'A' -or $x.cleanableMB -le 0) { continue }
+            $cleanMB += $x.cleanableMB
+            $groups[$x.group] = [double]$groups[$x.group] + $x.cleanableMB
+            if ($x.partial) { $anyPartial = $true }
+        }
+        $junk = [ordered]@{ catalog = $Junk.schema; items = @($jitems); cleanableMB = [math]::Round($cleanMB, 1) }
+        if ($cleanMB -ge 1024) {
+            $top = @($groups.Keys | Sort-Object { $groups[$_] } -Descending | Select-Object -First 3 | ForEach-Object { "$_ $(Format-Size $groups[$_])" })
+            $sev = 'low'; if ($cleanMB -ge 5120) { $sev = 'medium' }
+            $atLeast = ''; if ($anyPartial) { $atLeast = '至少' }
+            Add-Flag 'storage' 'junk-cleanable' $sev '可清理的缓存' "$atLeast$(Format-Size $cleanMB) 可以直接清理：$($top -join '、')"
+        }
+        foreach ($x in $jitems) {
+            if ($x.tier -eq 'B' -and $x.sizeMB -ge 2048 -and @('windows-old', 'windows-upgrade-temp', 'delivery-optimization', 'windows-update-download') -contains $x.id) {
+                $atLeast = ''; if ($x.partial) { $atLeast = '至少 ' }
+                Add-Flag 'storage' 'system-leftover' 'low' $x.name "$($x.name) 占 $atLeast$(Format-Size $x.sizeMB)，可以用 Windows 自带的「磁盘清理 → 清理系统文件」删除"
+            }
+        }
     }
 
     # Steam 等启动器可能把游戏库分散在多个盘
@@ -835,7 +945,7 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
     $rootStd = '(?i)^(\$.*|Windows|Program Files|Program Files \(x86\)|ProgramData|Users|PerfLogs|Recovery|System Volume Information|Intel|AMD|NVIDIA|Config\.Msi|Documents and Settings|OneDriveTemp|inetpub|Drivers|ESD)$'
     $cRoot = @(Get-ChildItem -LiteralPath "$env:SystemDrive\" -Directory -Force | Where-Object { $_.Name -notmatch $rootStd } | ForEach-Object { $_.Name })
 
-    [ordered]@{ volumes = @($vols); physicalDisks = $disks; system = $sys; folders = $folders; steamLibraries = $steamLibs; nonStandardFoldersAtSystemRoot = $cRoot }
+    [ordered]@{ volumes = @($vols); physicalDisks = $disks; system = $sys; folders = $folders; junk = $junk; steamLibraries = $steamLibs; nonStandardFoldersAtSystemRoot = $cRoot }
 }
 
 # 9. 电源与电池 ----------------------------------------------------------------
@@ -995,7 +1105,76 @@ $Sections['browserNetwork'] = Invoke-Section 'browserNetwork' '浏览器与网�
         chromeBackground   = Get-RegValue 'HKLM:\SOFTWARE\Policies\Google\Chrome' 'BackgroundModeEnabled'
     }
     $edgeProcs = @(Get-Process -Name msedge).Count
-    if ($pol.edgeStartupBoost -ne 0 -and $edgeProcs -ge 5) { Add-Flag 'browserNetwork' 'edge-preload' 'info' 'Microsoft Edge' "后台有 $edgeProcs 个 Edge 进程，可能是启动增强在预加载" }
+
+    # 主力浏览器：默认浏览器 + 每个浏览器最近一次浏览网页的时间（只看历史记录文件的修改时间，不读内容）
+    $progId = [string](Get-RegValue 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice' 'ProgId')
+    $bdefs = @(
+        @('edge', 'Microsoft Edge', @('msedge'), @("$env:LOCALAPPDATA\Microsoft\Edge\User Data"), '^MSEdge', ''),
+        @('chrome', 'Google Chrome', @('chrome'), @("$env:LOCALAPPDATA\Google\Chrome\User Data"), '^ChromeHTML', ''),
+        @('firefox', 'Firefox', @('firefox'), @("$env:APPDATA\Mozilla\Firefox\Profiles"), '^FirefoxURL', ''),
+        @('brave', 'Brave', @('brave'), @("$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data"), '^BraveHTML', ''),
+        @('360se', '360安全浏览器', @('360se'), @("$env:APPDATA\360se6\User Data"), '^360SE', '360安全浏览器'),
+        @('360chrome', '360极速浏览器', @('360chrome', '360ChromeX'), @("$env:LOCALAPPDATA\360ChromeX\Chrome\User Data", "$env:LOCALAPPDATA\360Chrome\Chrome\User Data"), '^360Chrome', '360极速浏览器'),
+        @('qqbrowser', 'QQ浏览器', @('QQBrowser'), @("$env:LOCALAPPDATA\Tencent\QQBrowser\User Data"), '^QQBrowser', 'QQ浏览器'),
+        @('sogou', '搜狗高速浏览器', @('SogouExplorer'), @("$env:APPDATA\SogouExplorer"), '^Sogou', '搜狗高速浏览器'),
+        @('2345', '2345加速浏览器', @('2345Explorer'), @("$env:APPDATA\2345Explorer"), '^2345', '2345加速浏览器')
+    )
+    $startupItems = @()
+    if ($Sections['startup'] -and $Sections['startup'].items) { $startupItems = @($Sections['startup'].items | Where-Object { $_ -and $_.enabled -ne $false }) }
+    $swItems = @()
+    if ($Sections['software'] -and $Sections['software'].items) { $swItems = @($Sections['software'].items) }
+    $now = Get-Date
+    $browsers = New-Object System.Collections.ArrayList
+    foreach ($d in $bdefs) {
+        $dirs = @($d[3] | Where-Object { Test-Path -LiteralPath $_ })
+        $uninstall = ''
+        if ($d[5]) { $hit = $swItems | Where-Object { [string]$_.name -like "*$($d[5])*" } | Select-Object -First 1; if ($hit) { $uninstall = [string]$hit.name } }
+        if (-not $dirs.Count -and -not $uninstall) { continue }
+        $newest = $null
+        foreach ($dir in $dirs) {
+            foreach ($f in @(Get-ChildItem -LiteralPath $dir -Recurse -Depth 2 -File -Force -Include 'History', 'places.sqlite')) {
+                if (-not $newest -or $f.LastWriteTime -gt $newest) { $newest = $f.LastWriteTime }
+            }
+        }
+        $last = $null; if ($newest) { $last = [math]::Round(($now - $newest).TotalDays, 1) }
+        $procs = @(Get-Process -Name $d[2])
+        $mem = 0; foreach ($p in $procs) { $mem += $p.WorkingSet64 }
+        $auto = @()
+        foreach ($s in $startupItems) {
+            foreach ($exe in $d[2]) { if ([string]$s.command -match ('\\' + [regex]::Escape($exe) + '\.exe')) { $auto += [string]$s.name; break } }
+        }
+        [void]$browsers.Add([ordered]@{ id = $d[0]; name = $d[1]; isDefault = ($progId -match $d[4]); lastBrowsedDays = $last
+                                         processes = $procs.Count; memoryMB = [math]::Round($mem / 1MB); autostart = @($auto); uninstallName = $uninstall })
+    }
+    $main = $null
+    $def = $browsers | Where-Object { $_.isDefault } | Select-Object -First 1
+    if ($def -and $def.lastBrowsedDays -ne $null -and $def.lastBrowsedDays -le 30) { $main = $def }
+    else { $main = $browsers | Where-Object { $_.lastBrowsedDays -ne $null -and $_.lastBrowsedDays -le 30 } | Sort-Object { $_.lastBrowsedDays } | Select-Object -First 1 }
+    $mainId = $null; if ($main) { $mainId = $main.id }
+
+    if (-not $main) {
+        # 判断不出主力浏览器时沿用原来的规则
+        if ($pol.edgeStartupBoost -ne 0 -and $edgeProcs -ge 5) { Add-Flag 'browserNetwork' 'edge-preload' 'info' 'Microsoft Edge' "后台有 $edgeProcs 个 Edge 进程，可能是启动增强在预加载" }
+    } else {
+        foreach ($b in $browsers) {
+            if ($b.id -eq $main.id) { continue }
+            if ($b.lastBrowsedDays -ne $null -and $b.lastBrowsedDays -lt 14) { continue }   # 最近也在用：不是"不用的浏览器"
+            $lastText = '没有找到用它浏览过网页的记录'
+            if ($b.lastBrowsedDays -ne $null) { $lastText = "已经 $([math]::Floor($b.lastBrowsedDays)) 天没用它浏览过网页" }
+            $bg = @()
+            if ($b.autostart.Count) { $bg += "开机自启动（$($b.autostart -join '、')）" }
+            if ($b.processes -gt 0) { $bg += "此刻后台有 $($b.processes) 个进程，占约 $($b.memoryMB) MB 内存" }
+            $ev = "你主要用 $($main.name)。$($b.name)$lastText"
+            if ($bg.Count) { $ev += '，但' + ($bg -join '；') }
+            if ($b.id -eq 'edge') {
+                if (($b.autostart.Count -or $b.processes -gt 0) -and ($pol.edgeStartupBoost -ne 0 -or $pol.edgeBackgroundMode -ne 0)) { Add-Flag 'browserNetwork' 'edge-idle-background' 'low' 'Microsoft Edge' $ev }
+            } elseif ($b.id -eq 'chrome') {
+                if (($b.autostart.Count -or $b.processes -gt 0) -and $pol.chromeBackground -ne 0) { Add-Flag 'browserNetwork' 'chrome-idle-background' 'low' 'Google Chrome' $ev }
+            } elseif ($b.uninstallName -and ($b.lastBrowsedDays -eq $null -or $b.lastBrowsedDays -ge 90)) {
+                Add-Flag 'browserNetwork' 'browser-unused' 'low' $b.uninstallName $ev
+            }
+        }
+    }
 
     $ext = New-Object System.Collections.ArrayList
     $roots = [ordered]@{ Chrome = "$env:LOCALAPPDATA\Google\Chrome\User Data"; Edge = "$env:LOCALAPPDATA\Microsoft\Edge\User Data" }
@@ -1042,7 +1221,7 @@ $Sections['browserNetwork'] = Invoke-Section 'browserNetwork' '浏览器与网�
 
     $dns = @((Safe 'Get-DnsClientServerAddress' { Get-DnsClientServerAddress -AddressFamily IPv4 }) | Where-Object { $_ -and $_.ServerAddresses } | ForEach-Object { [ordered]@{ interface = $_.InterfaceAlias; servers = $_.ServerAddresses } })
 
-    [ordered]@{ policies = $pol; edgeProcesses = $edgeProcs; extensions = @($ext); proxy = $proxy; hostsEntries = $hostsCustom; dns = $dns }
+    [ordered]@{ policies = $pol; edgeProcesses = $edgeProcs; browsers = @($browsers); mainBrowser = $mainId; extensions = @($ext); proxy = $proxy; hostsEntries = $hostsCustom; dns = $dns }
 }
 
 # 12. 驱动与系统版本 -----------------------------------------------------------

@@ -100,16 +100,52 @@ public class PlanBuilderTests
     }
 
     [Fact]
-    public void Cache_clean_merged_and_offers_choices_without_defaults()
+    public void Cache_clean_merged_split_by_admin_and_ordered_by_measured_size()
     {
         var (r, j) = Make(
-            (F("F030", "storage", "temp-large", "userTemp"), Finding("cache.clean", "problem", "临时文件", "F030")),
+            (F("F030", "storage", "junk-cleanable", "可清理的缓存"), Finding("cache.clean", "problem", "可清理的缓存", "F030")),
             (F("F031", "storage", "system-drive-low", "C:"), Finding("cache.clean", "problem", "C:", "F031")));
+        r["sections"]!["storage"] = JsonNode.Parse("""
+        {"junk":{"items":[
+          {"id":"temp-user","tier":"A","cleanableMB":300},
+          {"id":"browser-chrome","tier":"A","cleanableMB":900,"running":"chrome"},
+          {"id":"dev-pip","tier":"A","cleanableMB":0.2},
+          {"id":"temp-windows","tier":"A","cleanableMB":50},
+          {"id":"windows-old","tier":"B","cleanableMB":20000}]}}
+        """);
         var p = PlanBuilder.Build(r, j, ["F030", "F031"], @"C:\Windows");
-        var c = Assert.Single(p.Steps);
-        Assert.NotNull(c.CacheOptions);
-        Assert.Null(c.CacheChoice);  // 默认什么都不勾，由用户决定
+        Assert.Equal(2, p.Steps.Count);
+        var user = p.Steps.Single(s => !s.NeedsAdmin);
+        Assert.Equal(["browser-chrome", "temp-user"], user.CacheOptions!.Items.Select(i => i.Id));  // 大的在前，不到 1 MB 的不列
+        Assert.Equal(user.CacheOptions.Items.Select(i => i.Id), user.CacheOptions.Categories);    // 一键加入时默认全选
+        Assert.Equal("chrome", user.CacheOptions.Items[0].Running);
+        var admin = p.Steps.Single(s => s.NeedsAdmin);
+        Assert.Equal(["temp-windows"], admin.CacheOptions!.Items.Select(i => i.Id));                // B 类（Windows.old）不列
+        Assert.Null(user.CacheChoice);
         Assert.Contains("合并", p.Skipped.Single().Reason);
+    }
+
+    [Fact]
+    public void Unused_browser_uninstall_and_chrome_background_targets()
+    {
+        var (r, j) = Make(
+            (F("F050", "browserNetwork", "browser-unused", "360安全浏览器"), Finding("app.uninstall", "bloat", "360安全浏览器", "F050")),
+            (F("F051", "browserNetwork", "chrome-idle-background", "Google Chrome"), Finding("browser.disable_chrome_background", "bloat", "Google Chrome", "F051")));
+        r["sections"]!["software"] = JsonNode.Parse("""{"items":[{"name":"360安全浏览器"}]}""");
+        var p = PlanBuilder.Build(r, j, ["F050", "F051"], @"C:\Windows");
+        Assert.Equal("360安全浏览器", p.Steps.Single(s => s.Op == "app.uninstall").Target["displayName"]!.ToString());
+        var chrome = p.Steps.Single(s => s.Op == "browser.disable_chrome_background");
+        Assert.True(chrome.NeedsAdmin);
+        Assert.Contains("由你的组织管理", chrome.Cost);  // 红线 9：执行前告知
+    }
+
+    [Fact]
+    public void Cache_clean_on_old_report_lists_all_cleanable_categories()
+    {
+        var (r, j) = Make((F("F030", "storage", "temp-large", "userTemp"), Finding("cache.clean", "problem", "临时文件", "F030")));
+        var p = PlanBuilder.Build(r, j, ["F030"], @"C:\Windows");
+        Assert.Equal(CacheClean.Cleanable.Count(), p.Steps.Sum(s => s.CacheOptions!.Items.Count));
+        Assert.All(p.Steps.SelectMany(s => s.CacheOptions!.Items), i => Assert.Null(i.SizeMB));
     }
 
     [Fact]

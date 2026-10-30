@@ -30,7 +30,7 @@ class RemotePackageTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def test_contents(self):
-        self.assertEqual(sorted(self.files), ['README.txt', 'SHA256SUMS.txt', 'pcdoctor-collect.ps1', 'remote.ps1', 'start.bat'])
+        self.assertEqual(sorted(self.files), ['README.txt', 'SHA256SUMS.txt', 'junk.json', 'pcdoctor-collect.ps1', 'remote.ps1', 'start.bat'])
 
     def test_encoding_for_windows(self):
         for name, data in self.files.items():

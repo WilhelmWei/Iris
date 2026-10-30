@@ -17,8 +17,10 @@ public static class Catalog
             "没有代价：它指向的程序已经不存在了", "在操作记录里点撤销，会按备份原样恢复", true, true),
         ["browser.disable_background"] = new("关闭 Edge 后台", "green", "用策略关闭 Edge 的启动增强和后台运行",
             "Edge 第一次打开会慢一点；Edge 设置页会显示「你的浏览器由你的组织管理」，这是策略方式的正常提示", "在操作记录里点撤销", true, true),
-        ["cache.clean"] = new("清理缓存", "green", "把你勾选的类别里、超过所选天数的文件移到回收站",
-            "没有代价：这些是程序会自己重新生成的缓存；正在使用的文件会自动跳过", "文件都在回收站里，需要时可以还原", false, true),
+        ["browser.disable_chrome_background"] = new("关闭 Chrome 后台", "green", "用策略关闭 Chrome 关掉窗口后继续在后台运行",
+            "关掉 Chrome 窗口后，它的扩展不再在后台运行；Chrome 设置页会显示「由你的组织管理」，这是策略方式的正常提示", "在操作记录里点撤销", true, true),
+        ["cache.clean"] = new("清理缓存", "green", "把勾选的缓存直接删除（不进回收站，这样才真正腾出空间）",
+            "这些都是程序会自动重新生成的缓存，不是你的文件；正在使用的文件和开着的浏览器会自动跳过", "不能撤销，也不需要撤销：用到时程序会重新生成", false, true),
         ["defender.scan"] = new("Defender 快速扫描", "green", "让 Windows 自带的 Microsoft Defender 做一次快速扫描，不修改任何安全设置",
             "扫描时电脑会稍慢 1–5 分钟", "不需要撤销", false, true),
         ["service.set_manual"] = new("服务改为手动", "yellow", "把这个第三方服务的启动方式从「自动」改为「手动」",
@@ -72,7 +74,7 @@ public static class PlanBuilder
         var findings = judge["judgement"]!["findings"]!.AsArray();
         var flags = report["flags"]!.AsArray().ToDictionary(f => f!["id"]!.ToString(), f => f!);
         var S = report["sections"]!;
-        bool cacheAdded = false, scanAdded = false, browserAdded = false, powerAdded = false;
+        bool cacheAdded = false, scanAdded = false, browserAdded = false, chromeAdded = false, powerAdded = false;
 
         foreach (var key in keys.Distinct())
         {
@@ -133,7 +135,8 @@ public static class PlanBuilder
                         targets.Add((fl["object"]!.ToString(), new JsonObject { ["name"] = fl["object"]!.ToString() }, null));
                     break;
                 case "app.uninstall":
-                    foreach (var fl in its.Where(x => Sec(x) == "software"))
+                    // 已装软件里的，以及"很久没用的浏览器"（对象就是它在已装软件里的名字）
+                    foreach (var fl in its.Where(x => Sec(x) == "software" || x["rule"]?.ToString() == "browser-unused"))
                         if (Find(S["software"]?["items"], "name", fl["object"]?.ToString()) is { } app)
                             targets.Add((app["name"]!.ToString(), new JsonObject { ["displayName"] = app["name"]!.ToString() }, null));
                     if (targets.Count == 0) reason = "请在「设置 → 应用 → 安装的应用」里卸载对应的软件";
@@ -147,11 +150,21 @@ public static class PlanBuilder
                                     new JsonObject { ["publishedName"] = p["published"]!.ToString(), ["inf"] = p["inf"]!.ToString() }, null));
                     break;
                 case "cache.clean":
-                    if (!cacheAdded) { cacheAdded = true; targets.Add(("临时文件和缓存", new JsonObject(), null)); }
+                    if (!cacheAdded)
+                    {
+                        // 分成两步：只清你账户里的缓存时不用弹管理员确认
+                        cacheAdded = true;
+                        if (CacheClean.Options(report, admin: false).Items.Count > 0) targets.Add(("你账户里的缓存", new JsonObject(), false));
+                        if (CacheClean.Options(report, admin: true).Items.Count > 0) targets.Add(("Windows 的缓存", new JsonObject(), true));
+                        if (targets.Count == 0) reason = "这台电脑上没有量到可以清理的缓存";
+                    }
                     else reason = "已合并到上面的清理缓存";
                     break;
                 case "defender.scan":
                     if (!scanAdded) { scanAdded = true; targets.Add(("这台电脑", new JsonObject(), null)); } else reason = "已合并到上面的扫描";
+                    break;
+                case "browser.disable_chrome_background":
+                    if (!chromeAdded) { chromeAdded = true; targets.Add(("Google Chrome", new JsonObject(), null)); } else reason = "已合并";
                     break;
                 case "browser.disable_background":
                     if (!browserAdded) { browserAdded = true; targets.Add(("Microsoft Edge", new JsonObject(), null)); } else reason = "已合并";
@@ -169,7 +182,7 @@ public static class PlanBuilder
                     Key = $"{key}#{n++}", FindingKey = key, Op = op, OpName = info.Name, Title = t, Risk = info.Risk,
                     Change = info.Change, Cost = info.Cost, Undo = info.Undo, Reversible = info.Reversible,
                     NeedsAdmin = admin ?? info.NeedsAdmin, Target = target,
-                    CacheOptions = op == "cache.clean" ? new CacheOptions { Categories = [.. CacheClean.Categories] } : null,
+                    CacheOptions = op == "cache.clean" ? CacheClean.Options(report, admin ?? info.NeedsAdmin) : null,
                 });
         }
         return plan;

@@ -38,6 +38,7 @@ public static class Scoring
         "seed-bundle", "seed-anticheat-accel", "seed-bank-security", "svchost-third-party-dll",
         "server-service-running", "frequent", "duplicate-versions", "boot-start-third-party",
         "third-party-class-filter", "edge-preload", "duplicate-category",
+        "edge-idle-background", "chrome-idle-background", "browser-unused",
     };
 
     /// <summary>用户确认后可以免扣分的规则：识别类规则，加上用户自己做的 Defender 设置</summary>
