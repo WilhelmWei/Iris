@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Iris · AI 电脑体检 · 版本 2026-10-27.1**
+**Iris · AI 电脑体检 · 版本 2026-10-30.1**
 
 [中文](#中文) · [English](#english)
 
@@ -21,7 +21,9 @@
 - 已装软件的名称和厂商
 - 安全设置的状态：Microsoft Defender（含排除项、被允许的威胁、近期检测记录）、防火墙是否开启、UAC、安全启动、内存完整性
 - 网络设置：系统代理、hosts 文件中的自定义条目、DNS 服务器地址；浏览器扩展的名称和权限
-- 几个常见文件夹的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）
+- 浏览器：默认浏览器是哪个，每个浏览器最近一次浏览网页是多少天前（**只看历史记录文件的修改时间，不读浏览记录**），后台进程数和占用的内存，有没有开机自启动
+- 几个常见文件夹和各类缓存（临时文件、浏览器缓存、错误报告等）的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）
+- 「C 盘空间去哪了」：报告出来后在后台继续统计系统盘上各文件夹的大小和最大的几个文件的名字（只统计大小，**不读取文件内容**，结果只保存在本机）
 - 最近的蓝屏和程序崩溃记录
 
 **不读取**：任何文档、照片、聊天记录、浏览记录、密码、Cookie；不采集本机 IP 地址、MAC 地址、Wi-Fi 名称。
@@ -47,6 +49,7 @@
 - 研判结论和健康分；你对问题的回答、"判断不对 / 漏掉了"的标记，**包括你写的说明文字**
 - 每一步的用时、程序版本、主题和研判方式，最近的错误记录（同样打码）；这次体检前有没有做 Defender 快速扫描、扫了多久、是否正常结束
 - 「处理」页的记录：每一步做了哪种操作（例如"关闭开机自启动"）、对应报告里的哪条结论、结果（成功 / 没生效已恢复 / 没能执行 / 已撤销）和结果说明（同样打码）。**不含**操作对象的完整路径、注册表位置和改之前的备份。除了随体检反馈一起发送，在「处理」页执行或撤销完成后也会单独发送一次，用来了解哪些操作容易失败
+- C 盘空间的分布：只有系统已知位置（例如 Windows、Program Files、下载文件夹、微信聊天文件）的大小，以及总共用了多少、看了多少个文件。**不含**你自己建的文件夹名和任何文件名
 - 一个随机生成的安装编号：只用来把同一台电脑的反馈归到一起、防止被刷，和你的身份无关
 
 **不包含**：API Key、文档、照片、聊天记录、浏览记录、密码、Cookie。服务器**不记录你的 IP 地址**；不需要注册。反馈只有作者能看，只用于改进 Iris，不出售、不用于广告。**内测结束后 90 天内删除**。
@@ -92,7 +95,9 @@ The check-up is read-only and changes nothing. It reads:
 - Names and publishers of installed software
 - Status of security settings: Microsoft Defender (including exclusions, allowed threats and recent detections), whether the firewall is on, UAC, Secure Boot, Memory Integrity
 - Network settings: system proxy, custom entries in the hosts file, DNS server addresses; names and permissions of browser extensions
-- Sizes of a few common folders and statistics by file age (sizes only — **file contents are never read**)
+- Browsers: which one is the default, how many days ago each browser was last used to browse (**only the modification time of the history file is checked; browsing history is never read**), background processes and memory, whether it starts with Windows
+- Sizes of a few common folders and of caches (temporary files, browser caches, error reports, etc.) and statistics by file age (sizes only — **file contents are never read**)
+- "Where did the C: drive space go": after the report is ready, the app keeps adding up folder sizes on the system drive in the background and notes the names of the largest files (sizes only — **file contents are never read**; the result stays on this computer)
 - Recent blue-screen and application-crash records
 
 **Never read**: documents, photos, chat history, browsing history, passwords or cookies. Local IP addresses, MAC addresses and Wi-Fi names are not collected.
@@ -118,6 +123,7 @@ The **beta feedback package** is used to find where Iris judges wrongly and to r
 - Verdicts and the health score; your answers and "wrong / missed" marks, **including the notes you typed**
 - Timings, app version, theme and analysis mode, recent error records (redacted the same way); whether a Defender quick scan ran before this check-up, how long it took and whether it finished normally
 - The "处理" (fix) page log: which kind of operation each step was (e.g. "disable startup entry"), which finding in the report it belongs to, the result (done / not effective and restored / could not run / undone) and the result message (redacted the same way). It does **not** include the full path or registry location of the target, nor the backup taken before the change. Besides travelling with the check-up feedback, it is also sent on its own after you run or undo steps on that page, to learn which operations tend to fail
+- How the C: drive space is used: only the sizes of well-known locations (e.g. Windows, Program Files, the Downloads folder, WeChat chat files) plus totals. It does **not** include the names of folders you created or any file names
 - A randomly generated install ID, used only to group feedback from the same computer and prevent abuse; it is not linked to your identity
 
 **Not included**: API key, documents, photos, chat history, browsing history, passwords, cookies. The server **does not log your IP address**; no account is needed. Only the author can read the feedback; it is used only to improve Iris and is never sold or used for advertising. **It is deleted within 90 days after the beta ends.**

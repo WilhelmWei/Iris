@@ -55,6 +55,13 @@ public sealed class MainForm : Form
 
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
+    /// <summary>关闭窗口时让还在扫 C 盘的辅助进程停下，已经扫到的部分存进报告（最多等 2 秒）。</summary>
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        try { services.StopSpaceScans(); } catch { }
+        base.OnFormClosing(e);
+    }
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);

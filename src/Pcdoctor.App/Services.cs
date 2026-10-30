@@ -15,6 +15,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
     readonly JournalStore journal = new(AppData.Journal);
     CancellationTokenSource? checkupCts;
     string? currentRun;
+    /// <summary>报告出来后还在跑的「C 盘空间去哪了」：报告编号 → (辅助进程, 运行目录)。</summary>
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, (HelperProcess p, string dir)> spaceRuns = new();
 
     // ================================================================== 状态
     public JsonObject GetState()
@@ -130,6 +132,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
     {
         var cts = new CancellationTokenSource();
         if (Interlocked.CompareExchange(ref checkupCts, cts, null) != null) throw new InvalidOperationException("体检已经在进行中");
+        // 上一次体检的 C 盘空间分析还没跑完：停下（已经扫到的部分会存进那份报告），免得两个扫描同时占着硬盘
+        foreach (var (_, (_, d)) in spaceRuns) try { File.WriteAllText(Path.Combine(d, "cancel"), ""); } catch { }
         var ct = cts.Token;
         _ = Task.Run(async () =>
         {
@@ -188,9 +192,10 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
     }
 
     /// <summary>等辅助进程结束，同时把 progress.jsonl 里的新行交给 onProgress。</summary>
-    static async Task<JsonNode?> WaitHelper(HelperProcess p, string dir, Action<JsonObject> onProgress, CancellationToken ct)
+    /// <param name="untilDone">done.json 一出现就返回（辅助进程可能还在做别的，例如扫描 C 盘），此时由调用方负责释放 p。</param>
+    static async Task<JsonNode?> WaitHelper(HelperProcess p, string dir, Action<JsonObject> onProgress, CancellationToken ct, bool untilDone = false)
     {
-        using var _ = p;
+        using var _ = untilDone ? null : p;
         var path = Path.Combine(dir, "progress.jsonl");
         var seen = 0;
         void Pump()
@@ -202,7 +207,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             for (; seen < lines.Length - 1; seen++)
                 if (JsonNode.Parse(lines[seen]) is JsonObject o) onProgress(o);
         }
-        while (!p.HasExited)
+        while (!p.HasExited && !(untilDone && File.Exists(Path.Combine(dir, "done.json"))))
         {
             Pump();
             try { await Task.Delay(300, ct); } catch (OperationCanceledException) { File.WriteAllText(Path.Combine(dir, "cancel"), ""); }
@@ -217,7 +222,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var sw = Stopwatch.StartNew();
         var timings = new JsonArray();
         emit("progress", new JsonObject { ["phase"] = "admin", ["index"] = -1, ["elapsed"] = 0 });
-        var extra = scan ? new[] { "--scan" } : [];
+        // --space：交回报告后接着扫 C 盘（「C 盘空间去哪了」）；--parent：主程序关掉时辅助进程也停下
+        string[] extra = [.. scan ? new[] { "--scan" } : [], "--space", "--parent", Environment.ProcessId.ToString()];
 
         // 实时发现流：每开始采集一个方面，就把上一个方面记为完成（用时）；采集完成后再补上每个方面查到了什么
         string? curTitle = null;
@@ -249,18 +255,25 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         emit("section", new JsonObject { ["title"] = "管理员权限", ["kind"] = "admin", ["flags"] = 0, ["sec"] = adminSec,
             ["detail"] = p == null ? "没有同意，改用普通权限检查（驱动和系统日志会少一些）" : "你在 Windows 弹窗里点了“是”" });
         emit("progress", new JsonObject { ["phase"] = scan ? "scan" : "collect", ["index"] = -1, ["elapsed"] = sw.Elapsed.TotalSeconds });
-        var done = p == null ? null : await WaitHelper(p, dir, Progress, CancellationToken.None);
+        var done = p == null ? null : await WaitHelper(p, dir, Progress, CancellationToken.None, untilDone: true);
         if (p == null || done?["code"]?.ToString() == "other-user")
         {
             // 用户拒绝了管理员权限，或者用另一个管理员账户授权：改用普通权限采集（结果少一些，报告里会注明）
+            p?.Dispose();
             if (done != null) emit("notice", new JsonObject { ["message"] = done["error"]?.DeepClone() });
             File.Delete(Path.Combine(dir, "done.json"));
             File.Delete(Path.Combine(dir, "progress.jsonl"));
-            done = await WaitHelper(StartHelper("collect", dir, elevate: false, extra)!, dir, Progress, CancellationToken.None);
+            p = StartHelper("collect", dir, elevate: false, extra)!;
+            done = await WaitHelper(p, dir, Progress, CancellationToken.None, untilDone: true);
         }
         Finish(null);
-        ct.ThrowIfCancellationRequested();
-        if (done?["ok"]?.GetValue<bool>() != true) throw new InvalidOperationException(done?["error"]?.ToString() ?? "采集失败");
+        if (ct.IsCancellationRequested || done?["ok"]?.GetValue<bool>() != true)
+        {
+            try { File.WriteAllText(Path.Combine(dir, "cancel"), ""); } catch { }
+            p.Dispose();
+            ct.ThrowIfCancellationRequested();
+            throw new InvalidOperationException(done?["error"]?.ToString() ?? "采集失败");
+        }
 
         var id = NewId();
         var rdir = AppData.ReportDir(id)!;
@@ -275,8 +288,83 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["scan"] = done["scan"]?.DeepClone(),
         });
         try { emit("sectionDetails", new JsonObject { ["rows"] = Insights.SectionSummaries(report) }); } catch { }
-        try { Directory.Delete(dir, true); } catch { }
+        if (done["space"]?.GetValue<bool>() == true)
+        {
+            // 辅助进程还在扫 C 盘：交给后台跟踪，运行目录等它结束后再删
+            spaceRuns[id] = (p, dir);
+            _ = TrackSpace(id, p, dir);
+        }
+        else { p.Dispose(); try { Directory.Delete(dir, true); } catch { } }
         return id;
+    }
+
+    // ================================================================== C 盘空间去哪了（报告出来后继续跑）
+    /// <summary>每秒看一次辅助进程写的进度和快照：进度发给界面，快照复制进报告目录（界面原地更新那张卡片）。</summary>
+    async Task TrackSpace(string id, HelperProcess p, string dir)
+    {
+        var rdir = AppData.ReportDir(id)!;
+        var lastSnap = DateTime.MinValue;
+        var finished = false;
+        try
+        {
+            while (true)
+            {
+                var exited = p.HasExited;
+                if (CopySpace(dir, rdir, ref lastSnap) is { } snap)
+                {
+                    finished = snap["finished"]?.GetValue<bool>() == true;
+                    emit("spaceUpdated", new JsonObject { ["id"] = id, ["finished"] = finished });
+                }
+                if (AppData.ReadJson(Path.Combine(dir, "space-progress.json")) is JsonObject prog)
+                    emit("spaceProgress", new JsonObject
+                    {
+                        ["id"] = id, ["scannedBytes"] = prog["scannedBytes"]?.DeepClone(), ["usedBytes"] = prog["usedBytes"]?.DeepClone(),
+                        ["seconds"] = prog["seconds"]?.DeepClone(),
+                    });
+                if (exited) break;
+                await Task.Delay(1000);
+            }
+        }
+        catch (Exception ex) { AppData.LogError("C 盘空间分析", ex); }
+        finally
+        {
+            spaceRuns.TryRemove(id, out _);
+            p.Dispose();
+            try { Directory.Delete(dir, true); } catch { }
+            emit("spaceDone", new JsonObject { ["id"] = id, ["finished"] = finished });
+            // 反馈包如果已经在扫描结束前发过，再发一次带上空间分布的（控制台以同一份报告最后一次为准）
+            if (finished && AppData.ReadJson(Path.Combine(rdir, "meta.json"))?["feedbackSent"] != null) AutoSendFeedback(id);
+        }
+    }
+
+    static JsonNode? CopySpace(string dir, string rdir, ref DateTime last)
+    {
+        var src = Path.Combine(dir, "space.json");
+        try
+        {
+            if (!File.Exists(src)) return null;
+            var t = File.GetLastWriteTimeUtc(src);
+            if (t == last) return null;
+            var snap = AppData.ReadJson(src);
+            if (snap == null) return null;
+            AppData.WriteAtomic(Path.Combine(rdir, "space.json"), snap.ToJsonString());
+            last = t;
+            return snap;
+        }
+        catch { return null; }  // 辅助进程正在换文件：下一秒再读
+    }
+
+    /// <summary>主窗口关闭时：让还在扫 C 盘的辅助进程停下，等它写出已经扫到的部分，存进报告。</summary>
+    public void StopSpaceScans(int waitMs = 2000)
+    {
+        foreach (var (_, (_, dir)) in spaceRuns) try { File.WriteAllText(Path.Combine(dir, "cancel"), ""); } catch { }
+        var sw = Stopwatch.StartNew();
+        while (spaceRuns.Values.Any(r => !r.p.HasExited) && sw.ElapsedMilliseconds < waitMs) Thread.Sleep(100);
+        foreach (var (id, (_, dir)) in spaceRuns)
+        {
+            var last = DateTime.MinValue;
+            if (AppData.ReportDir(id) is { } rdir) CopySpace(dir, rdir, ref last);
+        }
     }
 
     static JsonArray CollectTimings(JsonArray timings, JsonNode report, bool scan, TimeSpan collect)
@@ -426,6 +514,45 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["selected"] = AppData.ReadJson(Path.Combine(dir, "selected.json")) ?? new JsonObject(),
             ["sent"] = meta["feedbackSent"]?.DeepClone(),
             ["canExecute"] = meta["source"]?.ToString() == "local",
+            ["storage"] = StorageSummary(report),
+            ["space"] = AppData.ReadJson(Path.Combine(dir, "space.json")),
+            ["spaceRunning"] = spaceRuns.ContainsKey(id),
+        };
+    }
+
+    /// <summary>报告里「空间」卡片的数字：C 盘剩多少、能直接清理多少（按组）、系统遗留、聊天文件和下载文件夹、不清理的东西和原因。</summary>
+    static JsonObject? StorageSummary(JsonNode? report)
+    {
+        var st = report?["sections"]?["storage"];
+        if (st == null) return null;
+        static double N(JsonNode? v) => v is JsonValue x && x.TryGetValue<double>(out var d) && double.IsFinite(d) ? d : 0;
+        var items = (st["junk"]?["items"] as JsonArray)?.OfType<JsonObject>().ToList() ?? [];
+        var groups = items.Where(x => x["tier"]?.ToString() == "A" && N(x["cleanableMB"]) >= 1)
+            .GroupBy(x => x["group"]?.ToString() ?? "")
+            .Select(g => new JsonObject
+            {
+                ["group"] = g.Key, ["mb"] = Math.Round(g.Sum(x => N(x["cleanableMB"])), 1),
+                ["names"] = new JsonArray(g.Select(x => (JsonNode?)x["name"]?.ToString()).ToArray()),
+                ["running"] = string.Join("、", g.Select(x => x["running"]?.ToString()).Where(r => !string.IsNullOrEmpty(r)).Distinct()),
+            })
+            .OrderByDescending(g => N(g["mb"])).ToList();
+        var chats = new JsonArray();
+        if (st["folders"]?["chatApps"] is JsonObject ca)
+            foreach (var (k, v) in ca)
+                if (N(v?["sizeGB"]) >= 0.1) chats.Add(new JsonObject { ["name"] = k, ["sizeGB"] = N(v?["sizeGB"]), ["onC"] = v?["path"]?.ToString()?.StartsWith("C:", StringComparison.OrdinalIgnoreCase) == true });
+        return new JsonObject
+        {
+            ["volumes"] = st["volumes"]?.DeepClone(),
+            ["measured"] = st["junk"] != null,
+            ["cleanableMB"] = Math.Round(groups.Sum(g => N(g["mb"])), 1),
+            ["groups"] = new JsonArray(groups.Select(g => (JsonNode)g).ToArray()),
+            ["system"] = new JsonArray(items.Where(x => x["tier"]?.ToString() == "B" && N(x["sizeMB"]) >= 500)
+                .OrderByDescending(x => N(x["sizeMB"]))
+                .Select(x => (JsonNode)new JsonObject { ["name"] = x["name"]?.ToString(), ["mb"] = N(x["sizeMB"]), ["why"] = Junk.Get(x["id"]?.ToString() ?? "")?.Why }).ToArray()),
+            ["chatApps"] = chats,
+            ["downloadsGB"] = st["folders"]?["downloads"]?["sizeGB"]?.DeepClone(),
+            ["hiberfilGB"] = st["system"]?["hiberfilGB"]?.DeepClone(),
+            ["notCleaned"] = new JsonArray(Junk.Catalog.NotCleaned.Select(n => (JsonNode)new JsonObject { ["name"] = n.Name, ["why"] = n.Why }).ToArray()),
         };
     }
 
@@ -822,6 +949,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         p["marks"] = AppData.ReadJson(Path.Combine(dir, "feedback.json"))?.DeepClone() ?? new JsonObject();
         p["crossCheck"] = AppData.ReadJson(Path.Combine(dir, "crosscheck.json"))?.DeepClone();
         p["errorLog"] = RecentErrors();
+        if (AppData.ReadJson(Path.Combine(dir, "space.json")) is { } space) p["space"] = SpaceLabels.FeedbackSummary(space);
         p["journal"] = new JsonArray(AllEntries().Take(200).Select(e => (JsonNode)HandlingEntry(e)).ToArray());
         return p;
     }
@@ -935,6 +1063,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             items.Add($"研判结论：{(p["judge"]?["judgement"]?["findings"] as JsonArray)?.Count ?? 0} 条，以及健康分");
             items.Add($"你的回答和“判断不对”的标记：{(p["answers"] as JsonObject)?.Count ?? 0} 条回答、{(p["marks"] as JsonObject)?.Count ?? 0} 条标记（包括你写的说明）");
             items.Add("每一步的用时、程序版本、随机安装编号；这次有没有先做 Defender 扫描、扫了多久");
+            if (p["space"] != null) items.Add("C 盘空间的分布：只有系统已知位置（例如 Windows、下载文件夹、微信聊天文件）的大小，不含你自己建的文件夹和文件名");
             items.Add($"「处理」页的记录：{(p["journal"] as JsonArray)?.Count ?? 0} 步，每一步做了哪种操作、结果怎样（不含文件路径和备份）");
             if (((string?)p["errorLog"])?.Length > 0) items.Add("最近的错误记录（已打码）");
         }
@@ -942,7 +1071,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         {
             ["items"] = items, ["sizeKB"] = Math.Max(1, size / 1024),
             ["server"] = Cloud.FeedbackUrl != null ? "Iris 作者的服务器（阿里云中国香港）" : null,
-            ["excluded"] = new JsonArray("用户名、电脑名、邮箱（换成占位符）", "代理服务器、DNS、hosts 里的地址", "API Key",
+            ["excluded"] = new JsonArray("用户名、电脑名、邮箱（换成占位符）", "代理服务器、DNS、hosts 里的地址", "API Key", "你自己建的文件夹名和文件名（C 盘空间只发系统已知位置的大小）",
                                          "文档、照片、聊天记录、浏览记录、密码"),
         };
     }

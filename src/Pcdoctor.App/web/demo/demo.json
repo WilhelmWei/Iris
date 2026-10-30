@@ -329,14 +329,14 @@
      "flagIds": [
       "F019"
      ],
-     "object": "Microsoft Edge 后台运行",
+     "object": "Microsoft Edge",
      "verdict": "bloat",
      "confidence": 0.9,
-     "evidence": "Edge 设置“关闭后继续运行后台扩展和应用”已开启，关闭窗口后仍有 6 个 msedge.exe 进程。",
+     "evidence": "你主要用 Google Chrome。Microsoft Edge 已经 43 天没用它浏览过网页，但开机自启动（MicrosoftEdgeAutoLaunch）；此刻后台有 6 个进程，占约 310 MB 内存",
      "proposedAction": "browser.disable_background",
-     "actionName": "关闭 Edge 的后台运行",
+     "actionName": "关闭 Edge 后台",
      "risk": "green",
-     "userExplanation": "关掉浏览器窗口后，Edge 仍在后台占用内存。关闭这个选项后，窗口关了就是真的关了。",
+     "userExplanation": "你平时不用 Edge，它却开机就留在后台、占着内存。关掉启动增强和后台运行，不影响你偶尔打开它。",
      "questionForUser": null,
      "needsUser": false,
      "kbId": "edge-background"
@@ -345,14 +345,14 @@
      "flagIds": [
       "F024"
      ],
-     "object": "临时文件和缓存 6.4 GB",
+     "object": "可清理的缓存",
      "verdict": "problem",
      "confidence": 0.9,
-     "evidence": "%TEMP% 3.1 GB（2.8 GB 超过 30 天未改动）；npm / pip 缓存 2.2 GB；Windows 传递优化缓存 1.1 GB。",
+     "evidence": "6.4 GB 可以直接清理：浏览器缓存 3.1 GB、临时文件 2.2 GB、开发工具缓存 1.1 GB",
      "proposedAction": "cache.clean",
-     "actionName": "清理缓存（移到回收站）",
+     "actionName": "清理缓存",
      "risk": "green",
-     "userExplanation": "大部分是超过一个月没动过的临时文件。清理只移到回收站，你选类别和时间，默认什么都不勾。",
+     "userExplanation": "都是程序会自动重新生成的缓存：临时文件、浏览器缓存、错误报告等。直接删除（不进回收站才真正腾出空间），浏览器开着时会跳过它的缓存。",
      "questionForUser": null,
      "needsUser": false
     },

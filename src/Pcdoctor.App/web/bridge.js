@@ -43,8 +43,67 @@
                 showLessons: true, lessonIndex: 0, showTips: true, onboarded: /[?&]onboarded\b/.test(location.search), betaConsent: null, feedbackServer: true },
     report: null, journal: [], answers: {}, privacyAccepted: true,
   };
-  const EXEC = ['startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'cache.clean', 'defender.scan',
+  const EXEC = ['startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'browser.disable_chrome_background', 'cache.clean', 'defender.scan',
                 'service.set_manual', 'service.delete_orphan', 'app.uninstall', 'driver.delete_old_version', 'power.disable_fast_startup'];
+
+  // ---- 「空间」卡片的模拟数据（虚构的电脑）：采集时量到的缓存，以及报告出来后继续跑的「C 盘空间去哪了」
+  const GB = 1073741824;
+  const STORAGE = {
+    volumes: [{ drive: 'C:', sizeGB: 475.6, freeGB: 18.2, freePct: 4 }, { drive: 'D:', sizeGB: 931.5, freeGB: 400.2, freePct: 43 }],
+    measured: true, cleanableMB: 6553,
+    groups: [{ group: '浏览器缓存', mb: 3174, names: ['Google Chrome 缓存', 'Microsoft Edge 缓存'], running: 'chrome' },
+             { group: '临时文件', mb: 2252, names: ['临时文件（你的账户）', '临时文件（Windows）'], running: '' },
+             { group: '开发工具缓存', mb: 717, names: ['npm 缓存', 'pip 下载缓存'], running: '' },
+             { group: '错误报告和崩溃转储', mb: 410, names: ['Windows 错误报告'], running: '' }],
+    system: [{ name: '旧版 Windows（Windows.old）', mb: 18636, why: '升级 Windows 大版本后留下的旧系统，用来回退。通常 10 天后 Windows 会自己删。' },
+             { name: '传递优化缓存', mb: 1126, why: 'Windows 更新时为了给局域网里其他电脑分享而留的副本。' }],
+    chatApps: [{ name: '微信', sizeGB: 23.4, onC: true }, { name: 'QQ', sizeGB: 2.1, onC: true }], downloadsGB: 12.6, hiberfilGB: 6.3,
+    notCleaned: [{ name: '预取数据（Prefetch）', why: '删掉后开机和打开软件反而会变慢，过几天又长回来。这是典型的伪优化。' },
+                 { name: 'Windows 安装程序缓存（C:\\Windows\\Installer）', why: '软件卸载、修复、打补丁时要用到这里的安装包。直接删会让软件卸载不掉、修复不了。' },
+                 { name: '回收站', why: '回收站里是你删掉的文件，要不要彻底删除由你决定。Iris 不替你清空。' },
+                 { name: '注册表清理', why: '注册表里多几条无用的记录不会让电脑变慢，清错了反而会出问题。这是典型的伪优化。' }],
+  };
+  const L = (name, kind, advice) => ({ name, kind, advice });
+  const SPACE_TREE = { name: 'C:\\', path: 'C:\\', bytes: 457 * GB, children: [
+    { name: 'Users', path: 'C:\\Users', bytes: 196 * GB, label: L('用户文件夹', 'yours', '每个 Windows 账户的文件和设置'), children: [
+      { name: 'Alice', path: 'C:\\Users\\Alice', bytes: 194 * GB, children: [
+        { name: 'AppData', path: 'C:\\Users\\Alice\\AppData', bytes: 61 * GB, label: L('软件的数据和缓存', 'apps', '软件的设置、缓存和聊天记录等，跟着软件走；其中的缓存 Iris 可以清理') },
+        { name: 'Documents', path: 'C:\\Users\\Alice\\Documents', bytes: 38 * GB, label: L('文档', 'move', '你的文件；可以把整个文件夹挪到其他盘'), children: [
+          { name: 'WeChat Files', path: 'C:\\Users\\Alice\\Documents\\WeChat Files', bytes: 23.4 * GB, label: L('微信聊天文件', 'move', '可以在微信的设置里清理，或者把存储位置改到其他盘') },
+          { name: '其他 6 个文件夹', other: true, bytes: 14.6 * GB }] },
+        { name: 'Videos', path: 'C:\\Users\\Alice\\Videos', bytes: 31 * GB, label: L('视频', 'move', '你的文件；可以把整个文件夹挪到其他盘') },
+        { name: 'Downloads', path: 'C:\\Users\\Alice\\Downloads', bytes: 12.6 * GB, label: L('下载文件夹', 'move', '多是用过的安装包和文件，可以整理；也可以把整个文件夹挪到其他盘') },
+        { name: '其他 9 个文件夹', other: true, bytes: 51.4 * GB }] }] },
+    { name: 'Program Files', path: 'C:\\Program Files', bytes: 74 * GB, label: L('已安装的软件', 'apps', '大的软件可以卸载，或者卸载后重装到其他盘') },
+    { name: 'Windows', path: 'C:\\Windows', bytes: 41 * GB, label: L('Windows 系统', 'system', '系统本身，不要手动删除里面的文件'), children: [
+      { name: 'WinSxS', path: 'C:\\Windows\\WinSxS', bytes: 9.8 * GB, label: L('系统组件仓库', 'tool', 'Windows 更新留下的旧组件也在这里，只能交给 Windows 自带的清理，手动删会损坏系统') },
+      { name: 'Installer', path: 'C:\\Windows\\Installer', bytes: 6.1 * GB, label: L('安装程序缓存', 'system', '软件卸载、修复要用到这里的安装包，不能直接删') },
+      { name: '其他 112 个文件夹', other: true, bytes: 25.1 * GB }] },
+    { name: 'Program Files (x86)', path: 'C:\\Program Files (x86)', bytes: 33 * GB, label: L('已安装的软件（32 位）', 'apps', '大的软件可以卸载，或者卸载后重装到其他盘') },
+    { name: 'Windows.old', path: 'C:\\Windows.old', bytes: 18.2 * GB, label: L('旧版 Windows', 'tool', '升级前的旧系统，用 Windows 自带的「磁盘清理」删除；删除后不能退回旧版本') },
+    { name: 'ProgramData', path: 'C:\\ProgramData', bytes: 14 * GB, label: L('软件的公共数据', 'apps', '软件为所有用户保存的数据，跟着软件走') },
+    { name: 'pagefile.sys', path: 'C:\\pagefile.sys', bytes: 8 * GB, label: L('虚拟内存文件', 'system', 'Windows 自动管理，不要删；内存不够时它会变大') },
+    { name: 'hiberfil.sys', path: 'C:\\hiberfil.sys', bytes: 6.3 * GB, label: L('休眠文件', 'system', '关闭休眠后才会消失；笔记本合盖休眠要用到它，关之前想清楚') },
+    { name: '其他 14 个文件夹', other: true, bytes: 66.5 * GB }] };
+  const BIG = [['C:\\pagefile.sys', 8], ['C:\\Users\\Alice\\Videos\\年会录像.mp4', 7.4], ['C:\\hiberfil.sys', 6.3], ['C:\\Users\\Alice\\Downloads\\QuickVPN-setup.iso', 4.2]];
+  function spaceAt(f) {
+    const scale = n => Object.assign({}, n, { bytes: Math.round(n.bytes * f) }, n.children ? { children: n.children.map(scale) } : {});
+    return { schema: 'iris.space/1', root: 'C:\\', usedBytes: 457 * GB, scannedBytes: Math.round(457 * GB * f), scannedFiles: Math.round(1186402 * f),
+             finished: f >= 1, stopped: false, seconds: Math.round(96 * f * 10) / 10, tree: scale(SPACE_TREE),
+             bigFiles: BIG.filter((x, i) => i < 1 + f * 3).map(x => ({ path: x[0], bytes: x[1] * GB })) };
+  }
+  async function simulateSpace() {
+    if (M.spaceStarted || /[?&]nospace\b/.test(location.search)) return;
+    M.spaceStarted = true;
+    if (/[?&]spacedone\b/.test(location.search)) { M.space = spaceAt(1); return; }
+    M.spaceRunning = true;
+    for (let i = 1; i <= 14; i++) {
+      await sleep(800);
+      const f = i / 14;
+      emit('spaceProgress', { id: 'demo', scannedBytes: Math.round(457 * GB * f), usedBytes: 457 * GB, seconds: i * 7 });
+      if (i % 4 === 0 || i === 14) { M.space = spaceAt(f); if (i === 14) M.spaceRunning = false; emit(i === 14 ? 'spaceDone' : 'spaceUpdated', { id: 'demo', finished: i === 14 }); }
+    }
+  }
 
   async function load() {
     if (M.report) return M.report;
@@ -88,15 +147,16 @@
         const r = await load();
         const h = r ? r.history : [];
         return { version: '1.0.0-rc.1', isAdmin: false, settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
-                 privacy: { version: '2026-10-27.1', accepted: M.privacyAccepted },
+                 privacy: { version: '2026-10-30.1', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
                  pending: (M.selected || []).length, handled: (() => { const n = Object.values(handled()).filter(x => x.status === 'done').length; return n ? { count: n, time: '今天' } : null; })(),
                  handledBefore: /[?&]handledBefore\b/.test(location.search) ? { total: 3, still: 1 } : null };
       }
-      case 'getReport': { const r = await load(); await sleep(350); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search),
+      case 'getReport': { const r = await load(); await sleep(350); setTimeout(simulateSpace, 600); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search),
         handled: handled(), selected: { keys: (M.selected || []).slice(), carried: M.carried || 0, dropped: M.carried ? 1 : 0 },
+        storage: STORAGE, space: M.space || null, spaceRunning: !!M.spaceRunning || (!M.spaceStarted && !/[?&](nospace|spacedone)\b/.test(location.search)),
         defender: r.defender || { scanned: !!M.scanned && !/[?&]scanfail/.test(location.search), scanFailed: /[?&]scanfail/.test(location.search), realTime: true, quickScanAgeDays: M.scanned ? 0 : 12, fullScanAgeDays: 417, signatureAgeDays: 0 } }); }
       case 'storageInfo': await sleep(200); return M.storage = M.storage || { reports: { count: 9, local: 8, bytes: 14.2 * 1048576 }, backups: { count: 6, bytes: 412 * 1024, admin: 2 }, webview: { bytes: 38.5 * 1048576, pending: false }, outbox: { count: 1, bytes: 96 * 1024 } };
       case 'cleanStorage': {
@@ -120,7 +180,7 @@
                 `你的回答和“判断不对”的标记：${Object.keys(M.answers).length} 条回答、${Object.keys(M.marks || {}).length} 条标记（包括你写的说明）`, '每一步的用时、程序版本、随机安装编号；这次有没有先做 Defender 扫描、扫了多久',
                 '「处理」页的记录：3 步，每一步做了哪种操作、结果怎样（不含文件路径和备份）'],
         sizeKB: 38, server: M.settings.feedbackServer ? 'Iris 作者的服务器（阿里云中国香港）' : null,
-        excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '文档、照片、聊天记录、浏览记录、密码'] };
+        excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '你自己建的文件夹名和文件名（C 盘空间只发系统已知位置的大小）', '文档、照片、聊天记录、浏览记录、密码'] };
       case 'openUpdate': return {};
       case 'startCheckup': M.scanned = !!p.scan; runCheckup(p); return { started: true };
       case 'cancel': M.cancel = true; return {};
@@ -154,7 +214,7 @@
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-10-27.1', text };
+        return { version: '2026-10-30.1', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};
@@ -211,16 +271,26 @@
       'service.delete_orphan': ['删除只剩登记、文件已不存在的驱动登记（先完整备份）', '没有代价：驱动文件早已不在', '可以在「处理」页里一键恢复登记'],
       'browser.disable_background': ['关闭 Edge 的“关闭后继续运行后台扩展和应用”', '关掉窗口后，Edge 的扩展不再在后台工作', '可以在「处理」页里一键撤销'],
       'power.disable_fast_startup': ['关闭快速启动（HiberbootEnabled 改为 0）', '冷启动会慢几秒；以后点“关机”就是真正的关机', '可以在「处理」页里一键撤销'],
-      'cache.clean': ['把你选的类别里、超过所选天数的文件移到回收站', '程序第一次打开时可能慢一点，缓存会重新生成', '可以在回收站里还原'],
+      'cache.clean': ['把勾选的缓存直接删除（不进回收站，这样才真正腾出空间）', '这些都是程序会自动重新生成的缓存，不是你的文件；正在使用的文件和开着的浏览器会自动跳过', '不能撤销，也不需要撤销：用到时程序会重新生成'],
     };
     for (const key of p.keys || []) {
       const f = r.result.judgement.findings.find(x => x.flagIds.join('+') === key);
       if (!f) continue;
       const alt = r.altOps[key];
       const op = alt ? alt.op : f.proposedAction, c = CHANGE[op] || ['把这一项改回安全的状态', '没有明显代价', '可以在「处理」页里一键撤销'];
+      if (op === 'cache.clean') {
+        // 和桌面程序一样分两步：只清你账户里的缓存时不用弹管理员确认
+        const item = (id, name, group, sizeMB, running) => ({ id, name, group, sizeMB, running: running || null, why: '程序会自动重新生成的缓存。', cost: '没有代价。' });
+        const user = [item('browser-chrome', 'Google Chrome 缓存', '浏览器缓存', 2310, 'chrome'), item('temp-user', '临时文件（你的账户）', '临时文件', 1840),
+                      item('browser-edge', 'Microsoft Edge 缓存', '浏览器缓存', 864), item('dev-npm', 'npm 缓存', '开发工具缓存', 512), item('dev-pip', 'pip 下载缓存', '开发工具缓存', 205)];
+        const sys = [item('temp-windows', '临时文件（Windows）', '临时文件', 412), item('error-reports', 'Windows 错误报告', '错误报告和崩溃转储', 388), item('crash-dumps-system', '蓝屏转储', '错误报告和崩溃转储', 22)];
+        [['你账户里的缓存', user, false], ['Windows 的缓存', sys, true]].forEach(([title, items, admin], n) =>
+          steps.push({ key: key + '#' + n, findingKey: key, op, opName: '清理缓存', risk: 'green', title, change: c[0], cost: c[1], undo: c[2], reversible: false, needsAdmin: admin,
+                       cacheOptions: { items, categories: items.map(i => i.id), ages: [0, 7, 30, 90] } }));
+        continue;
+      }
       steps.push({ key: key + '#0', findingKey: key, op, opName: alt ? alt.name : f.actionName, risk: alt ? alt.risk : f.risk, title: f.object, change: c[0], cost: c[1], undo: c[2],
-                   reversible: op !== 'app.uninstall', needsAdmin: op !== 'startup.disable' && op !== 'browser.disable_background',
-                   cacheOptions: op === 'cache.clean' ? { categories: ['临时文件', '开发工具缓存', '传递优化缓存'], ages: [7, 30, 90, 180, 365] } : null });
+                   reversible: op !== 'app.uninstall', needsAdmin: op !== 'startup.disable' && op !== 'browser.disable_background', cacheOptions: null });
     }
     return { planId: 'plan-' + Date.now(), steps, needsAdmin: steps.some(s => s.needsAdmin), skipped };
   }
@@ -246,10 +316,12 @@
       emit('opProgress', { key: s.key, status: 'verifying', message: '重新检测中…' });
       await sleep(550);
       const ok = s.op !== 'service.delete_orphan';
+      const cache = s.op === 'cache.clean' ? (s.cacheOptions.items.filter(i => (s.cacheChoice || {}).categories.includes(i.id))) : null;
       const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(),
                       findingKey: s.findingKey, reportId: 'demo',
                       op: s.op, opName: s.opName, title: s.title, risk: s.risk, status: ok ? 'done' : 'rolledBack',
-                      message: ok ? '已完成，重新检测确认生效' : '重新检测发现系统又恢复了这条登记（可能有程序在守护它），已自动恢复原状，没有留下改动',
+                      message: cache ? `腾出了 ${(cache.filter(i => !i.running).reduce((a, i) => a + i.sizeMB, 0) / 1024).toFixed(1)} GB` + (cache.some(i => i.running) ? `。${cache.filter(i => i.running).map(i => i.running).join('、')} 正在运行，没有清「${cache.filter(i => i.running).map(i => i.name).join('、')}」，关掉后可以再清一次` : '')
+                             : ok ? '已完成，重新检测确认生效' : '重新检测发现系统又恢复了这条登记（可能有程序在守护它），已自动恢复原状，没有留下改动',
                       reversible: s.reversible !== false };
       M.journal.unshift(entry);
       emit('opProgress', { key: s.key, status: entry.status, message: entry.message });

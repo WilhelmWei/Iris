@@ -28,6 +28,7 @@
     down: '<path d="M6 9l6 6 6-6"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    disk: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 14h18"/><circle cx="16.5" cy="16.5" r=".6"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',
     spinner: '<path d="M12 3a9 9 0 1 0 9 9"/>',
     dot: '<circle cx="12" cy="12" r="3"/>',
@@ -103,7 +104,7 @@
     view: 'home', app: null, report: null, loading: false, filter: 'todo', cat: null,
     selected: new Set(), dismissed: new Set(), pro: false, mode: 'offline', scan: false,
     progress: null, stream: [], streamFresh: 0, sectionEvents: false, runStart: 0, running: false,
-    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, executing: false, lastRun: null, carried: null,
+    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), executing: false, lastRun: null, carried: null,
     journal: [], sheet: null, tip: 0, lessonConfirm: false, enter: true,
     markOpen: null, markKind: 'wrong', fb: {}, ob: null, seed: Math.floor(Math.random() * 1000),
   };
@@ -267,6 +268,8 @@
   }
   const markOf = (k) => state.report && state.report.marks && state.report.marks[k];
   const findingByKey = (k) => state.report && state.report.result.judgement.findings.find(f => keyOf(f) === k);
+  const fmtSize = b => b == null ? '—' : b >= 1073741824 ? `${(b / 1073741824).toFixed(b >= 10737418240 ? 0 : 1)} GB` : `${Math.max(1, Math.round(b / 1048576))} MB`;
+  const fmtMB = mb => fmtSize(mb * 1048576);
   const fmtSec = (s) => s == null ? '' : s >= 60 ? `${Math.floor(s / 60)} 分 ${Math.round(s % 60)} 秒` : `${s < 10 ? s.toFixed(1) : Math.round(s)} 秒`;
 
   // ------------------------------------------------------------------ 框架
@@ -535,6 +538,7 @@
       <section class="card cats" aria-label="分项得分">${cats.map(([k, v]) => `<button data-act="cat" data-cat="${esc(k)}" title="只看「${esc(k)}」相关的结论">
         <span class="k">${esc(k)}</span><span class="v">${Math.round(v.score)}</span><span class="bar"><i style="width:${Math.round(v.score)}%"></i></span></button>`).join('')}</section>
       ${verdictCard(j)}
+      ${spaceCard()}
       ${j.top3 && j.top3.length ? `<div class="section-head"><h2>最该先做的 ${j.top3.length} 件事</h2></div>
         <ol class="top3">${j.top3.map(t => { const f = findingForText(t);
           return f ? `<li class="card link" data-act="open" data-k="${esc(keyOf(f))}" tabindex="0" role="button">${esc(pii(t))}<span class="go">查看 ${icon('arrow')}</span></li>`
@@ -586,7 +590,92 @@
         ${!scanned && canScan ? `<button class="btn" data-act="scan-again">${icon('shield')}用 Defender 扫描后重新体检<span class="muted small">多 1–5 分钟</span></button>` : ''}
         <div class="note">查病毒交给 Windows 自带的 Microsoft Defender：Iris 只读取它的结果，不修改任何安全设置。</div></div></section>`;
   }
-  /** 一键加入：只挑低风险、不需要回答、没被标"先不管"或"不对"的；清理缓存要选范围，不自动加 */
+
+  /** 「空间」：C 盘还剩多少、能直接清理多少、更大的空间在哪；「C 盘空间去哪了」在报告出来后继续扫描，这张卡片原地更新 */
+  function spaceCard() {
+    const R = state.report, st = R && R.storage;
+    if (!st) return '';
+    const c = (st.volumes || []).find(v => (v.drive || '').toUpperCase() === 'C:');
+    const cacheF = R.result.judgement.findings.find(f => f.proposedAction === 'cache.clean');
+    const ck = cacheF && keyOf(cacheF), inPlan = ck && state.selected.has(ck), done = ck && handledOf(ck) && handledOf(ck).status === 'done';
+    const chatsOnC = (st.chatApps || []).filter(x => x.onC).sort((a, b) => b.sizeGB - a.sizeGB);
+    const big = [];
+    const pad = s => /[A-Za-z0-9]$/.test(s) ? s + ' ' : s, padL = s => /^[A-Za-z0-9]/.test(s) ? ' ' + s : s;
+    chatsOnC.forEach(x => big.push({ name: `${pad(x.name)}聊天文件`, mb: x.sizeGB * 1024, how: `在${padL(pad(x.name))}的设置里清理，或者把存储位置改到其他盘` }));
+    if (st.downloadsGB >= 2) big.push({ name: '下载文件夹', mb: st.downloadsGB * 1024, how: '多是用过的安装包和文件，可以自己整理' });
+    (st.system || []).forEach(x => big.push({ name: x.name, mb: x.mb, how: x.why }));
+    big.sort((a, b) => b.mb - a.mb);
+    const lead = [];
+    if (c) lead.push(`C 盘还剩 ${fmtMB(c.freeGB * 1024)}。`);
+    if (st.cleanableMB >= 100) lead.push(`清缓存能腾出约 ${fmtMB(st.cleanableMB)}`);
+    if (big.length && big[0].mb > st.cleanableMB) lead.push(`${lead.length > 1 ? '；' : ''}更大的是${big[0].name}（${fmtMB(big[0].mb)}）`);
+    const canDoIt = R.canExecute !== false && cacheF;
+    return `<section class="card space" id="space-card">${spaceInner(c, st, big, lead, { ck, inPlan, done, canDoIt })}</section>`;
+  }
+  function spaceInner(c, st, big, lead, a) {
+    const R = state.report;
+    const used = c ? Math.max(0, 100 - (c.freePct || 0)) : 0;
+    return `<div class="sp-head"><span class="glyph">${icon('disk')}</span>
+        <div><b>空间</b><p>${esc(lead.join('') + (lead.length > 1 ? '。' : ''))}</p></div>
+        ${c ? `<div class="sp-vol"><span class="muted small">C 盘</span><span class="bar ${c.freePct < 15 ? 'low' : ''}"><i style="width:${used}%"></i></span><span class="num small">剩 ${fmtMB(c.freeGB * 1024)} / ${fmtMB(c.sizeGB * 1024)}</span></div>` : ''}</div>
+      <div class="sp-grid">
+        <div class="sp-col"><h4>可以直接清理${st.cleanableMB >= 1 ? ` <span class="num">${fmtMB(st.cleanableMB)}</span>` : ''}</h4>
+          ${st.measured === false ? '<p class="muted small">这份报告是旧版采集的，没有按类别测量。重新体检后会列出来。</p>'
+            : (st.groups || []).length ? `<ul class="sp-list">${st.groups.map(g => `<li><span>${esc(g.group)}${g.running ? `<i class="muted small"> · ${esc(g.running)} 开着时跳过</i>` : ''}</span><span class="num">${fmtMB(g.mb)}</span></li>`).join('')}</ul>`
+            : '<p class="muted small">没有量到值得清理的缓存。</p>'}
+          ${a.canDoIt ? a.done ? `<span class="handled">${icon('check')}已清理</span>`
+            : a.inPlan ? `<span class="in-plan">${icon('check')}已加入处理清单</span>`
+            : `<button class="btn" data-act="space-add" data-k="${esc(a.ck)}">${icon('list')}加入处理清单</button>` : ''}
+          <p class="muted small">都是程序会自动重新生成的缓存，直接删除才真正腾出空间；不碰聊天记录、下载和你的文件。</p></div>
+        <div class="sp-col"><h4>更大的空间在这里</h4>
+          ${big.length ? `<ul class="sp-list">${big.slice(0, 5).map(x => `<li title="${esc(x.how || '')}"><span>${esc(x.name)}<i class="muted small">${esc(x.how ? ' · ' + x.how : '')}</i></span><span class="num">${fmtMB(x.mb)}</span></li>`).join('')}</ul>`
+            : '<p class="muted small">没有发现特别占地方的聊天文件或系统遗留。</p>'}
+          <p class="muted small">这些不是"垃圾"：聊天文件和下载是你的数据，系统遗留交给 Windows 自带的「磁盘清理」。把聊天文件挪到其他盘，Iris 下一版会帮你做。</p></div>
+      </div>
+      ${spaceTree()}
+      ${(st.notCleaned || []).length ? `<details class="fold"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}`;
+  }
+  const SP_KIND = { system: '系统', tool: '交给 Windows', clean: 'Iris 能清', move: '可以挪', yours: '你的文件', apps: '软件' };
+  function spaceTree() {
+    const R = state.report, sp = R.space, prog = state.spaceProg[R.id];
+    if (R.meta.source !== 'local') return '';
+    if (!sp && !R.spaceRunning) return '';
+    const running = R.spaceRunning && !(sp && sp.finished);
+    const scanned = prog ? prog.scannedBytes : sp ? sp.scannedBytes : 0, usedB = prog ? prog.usedBytes : sp ? sp.usedBytes : 0;
+    const pctDone = usedB ? Math.min(99, Math.round(scanned / usedB * 100)) : 0;
+    const status = running ? `正在分析，已看过 ${fmtSize(scanned)} / ${fmtSize(usedB)}`
+      : sp && sp.finished ? `看完了 ${(sp.scannedFiles || 0).toLocaleString()} 个文件${sp.seconds ? `，用了 ${fmtSec(sp.seconds)}` : ''}`
+      : sp ? `没扫完（看过 ${fmtSize(sp.scannedBytes)} / ${fmtSize(sp.usedBytes)}），下次体检会重新分析` : '';
+    const tree = sp && sp.tree;
+    const max = tree ? Math.max(1, ...(tree.children || []).map(k => k.bytes)) : 1;
+    const row = (n, depth) => {
+      const open = state.spaceOpen.has(n.path), kids = (n.children || []).filter(k => k.bytes > 0);
+      const l = n.label;
+      return `<div class="sp-row d${depth}" style="--d:${depth}">
+        <button class="sp-node" ${kids.length ? `data-act="space-open" data-p="${esc(n.path)}" aria-expanded="${open}"` : 'disabled'}>
+          <span class="chev">${kids.length ? icon('chev') : ''}</span>
+          <span class="nm">${esc(l ? l.name : pii(n.name))}${l ? `<i class="kind k-${esc(l.kind)}">${esc(SP_KIND[l.kind] || '')}</i>` : ''}${n.other ? '' : ''}</span>
+          <span class="bar"><i style="width:${Math.max(1, n.bytes / max * 100)}%"></i></span>
+          <span class="num">${fmtSize(n.bytes)}</span></button>
+        ${l && open ? `<p class="advice">${esc(l.advice)}</p>` : ''}
+        ${open ? kids.map(k => row(k, depth + 1)).join('') : ''}</div>`;
+    };
+    return `<div class="sp-tree"><div class="sp-tree-head"><h4>C 盘空间去哪了</h4><span class="muted small">${esc(status)}</span></div>
+      ${running ? `<div class="sp-progress" role="progressbar" aria-valuenow="${pctDone}"><i style="width:${pctDone}%"></i></div>
+        <p class="muted small">报告已经出来了，这一项在后台继续分析，不影响你看报告和用电脑；分析完这里会自动更新。</p>` : ''}
+      ${tree && tree.children ? `<div class="sp-rows">${tree.children.filter(k => k.bytes > 0).map(k => row(k, 0)).join('')}</div>` : ''}
+      ${sp && (sp.bigFiles || []).length ? `<details class="fold"><summary>最大的 ${Math.min(10, sp.bigFiles.length)} 个文件</summary><div class="fold-body"><ul class="sp-list">${sp.bigFiles.slice(0, 10).map(f =>
+        `<li><span class="mono small">${esc(pii(f.path))}</span><span class="num">${fmtSize(f.bytes)}</span></li>`).join('')}</ul></div></details>` : ''}</div>`;
+  }
+  function refreshSpace() {
+    if (state.view !== 'report') return;
+    const el = document.getElementById('space-card');
+    if (!el) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = spaceCard();
+    const fresh = tmp.firstElementChild;
+    if (fresh) { el.innerHTML = fresh.innerHTML; hydrate(el); }
+  }
+  /** 一键加入：只挑低风险、不需要回答、没被标"先不管"或"不对"的；清理缓存用目录表里的默认范围，也一起加 */
   function suggestions() {
     const R = state.report, out = { green: [], yellow: [] };
     if (!R || R.canExecute === false) return out;
@@ -594,7 +683,6 @@
       const k = keyOf(f);
       if (!canDo(f) || state.selected.has(k) || state.dismissed.has(k) || markOf(k) || (f.needsUser && !answerOf(k))) continue;
       const a = altOf(k), op = a ? a.op : f.proposedAction, risk = (a || f).risk;
-      if (op === 'cache.clean') continue;
       if (risk === 'green') out.green.push(k); else if (risk === 'yellow') out.yellow.push(k);
     }
     return out;
@@ -784,13 +872,13 @@
       ${R ? '<button class="btn" data-act="nav" data-to="report">去看报告</button>' : ''}</div>`;
     const carried = state.carried ? `<p class="muted small carried">${icon('info')}从上次体检的清单里带过来 ${state.carried.n} 项${state.carried.dropped ? `；另有 ${state.carried.dropped} 项这次体检已经没有了，不用再处理` : ''}。</p>` : '';
     if (!P) return `${head}${carried}<div class="skel" style="height:120px"></div><div class="skel" style="height:120px"></div>`;
-    const missing = P.steps.find(s => s.cacheOptions && !(((state.cacheChoice[s.key] || {}).categories || []).length && (state.cacheChoice[s.key] || {}).age));
+    const missing = P.steps.find(s => s.cacheOptions && !ccOf(s).categories.length);
     const irreversible = P.steps.filter(s => s.reversible === false).length;
     const statuses = Object.values(state.planStatus), finished = statuses.filter(x => ['done', 'info', 'failed', 'rolledBack', 'skipped'].includes(x.status)).length;
     let bar;
     if (state.confirming) bar = `<span class="sum"><b>等待你确认</b>Windows 确认框里逐项写着会改什么；点「取消」就什么也不做</span><button class="btn primary" disabled>${icon('spinner')}等待确认…</button>`;
     else if (state.executing) bar = `<span class="sum"><b>正在执行 ${Math.min(finished + 1, P.steps.length)} / ${P.steps.length}</b>每改完一项都会重新检测；请不要关闭 Iris</span><button class="btn primary" disabled>${icon('spinner')}执行中…</button>`;
-    else bar = `<span class="sum"><b>${P.steps.length} 项</b>${irreversible ? `${irreversible} 项不能自动撤销` : '全部可以撤销'}${P.needsAdmin ? ' · 需要一次管理员确认' : ''}${missing ? `<br><span style="color:var(--c-prob)">先为「${esc(pii(missing.title))}」选好清理范围</span>` : ''}</span>
+    else bar = `<span class="sum"><b>${P.steps.length} 项</b>${irreversible ? `${irreversible} 项不能自动撤销` : '全部可以撤销'}${P.needsAdmin ? ' · 需要一次管理员确认' : ''}${missing ? `<br><span style="color:var(--c-prob)">「${esc(pii(missing.title))}」一类都没选：选一类，或者把这一项移出清单</span>` : ''}</span>
       <button class="btn primary" data-act="execute" ${missing || !P.steps.length ? 'disabled' : ''}>执行 ${P.steps.length} 项 <span class="arrow">${icon('arrow')}</span></button>`;
     return `${head}${carried}<div class="steps">${P.steps.map(stepCard).join('')}</div>
       ${P.skipped && P.skipped.length ? `<div class="card pad"><h4 style="margin:0 0 8px">这些不会处理</h4><ul class="deduct">${P.skipped.map(x => `<li><b>${esc(pii(x.title))}</b>：${esc(x.reason)}</li>`).join('')}</ul></div>` : ''}
@@ -800,7 +888,7 @@
     const st = state.planStatus[s.key];
     const stTxt = st ? { running: ['run', '修改中', 'spinner'], verifying: ['run', '重新检测中', 'spinner'], done: ['ok', '已生效', 'check'], info: ['ok', '已完成', 'check'],
       failed: ['fail', '没有执行', 'alert'], rolledBack: ['fail', '没生效，已恢复', 'undo'], skipped: ['undone', '已跳过', 'dot'] }[st.status] : null;
-    const cc = state.cacheChoice[s.key] || { categories: [], age: null };
+    const cc = s.cacheOptions ? ccOf(s) : null;
     const locked = state.executing;
     return `<div class="step-card">
       <div class="hd"><span class="risk ${s.risk || ''}"></span><b>${esc(s.opName)}：${esc(pii(s.title))}</b>
@@ -810,12 +898,19 @@
         <div class="k">怎么撤销</div><div class="v">${esc(s.undo)}</div>
         ${st && st.message && st.status !== 'running' && st.status !== 'verifying' ? `<div class="k">结果</div><div class="v">${esc(st.message)}</div>` : ''}</div>
       ${s.cacheOptions && !locked ? `<div class="opts">
-        <span class="label">清理哪些（默认都不勾，由你决定；聊天软件里的图片、视频、文件属于你的数据，不在这里清理）</span>
-        <div class="choices">${s.cacheOptions.categories.map(c => `<button data-act="cc-cat" data-k="${esc(s.key)}" data-v="${esc(c)}" aria-pressed="${cc.categories.includes(c)}">${esc(c)}</button>`).join('')}</div>
-        <span class="label">只清理多久以前的</span>
-        <div class="choices">${s.cacheOptions.ages.map(d => `<button data-act="cc-age" data-k="${esc(s.key)}" data-v="${d}" aria-pressed="${cc.age === d}">${d} 天前</button>`).join('')}</div>
+        <span class="label">清理这些（体检时量到的大小；不需要的点一下取消）</span>
+        <div class="cc-items">${s.cacheOptions.items.map(c => `<button class="cc-item" data-act="cc-cat" data-k="${esc(s.key)}" data-v="${esc(c.id)}" aria-pressed="${cc.categories.includes(c.id)}" title="${esc(c.why + ' ' + c.cost)}">
+          <span class="box">${icon('check')}</span><span class="nm">${esc(c.name)}${c.running ? `<i class="muted small">体检时 ${esc(c.running)} 开着，清理时还开着就跳过</i>` : ''}</span>
+          <span class="num">${c.sizeMB == null ? '' : fmtMB(c.sizeMB)}</span></button>`).join('')}</div>
+        <details class="cc-more"><summary>只清更早的（可选）</summary>
+          <div class="choices">${s.cacheOptions.ages.map(d => `<button data-act="cc-age" data-k="${esc(s.key)}" data-v="${d}" aria-pressed="${(cc.age || 0) === d}">${d ? d + ' 天前' : '按默认'}</button>`).join('')}</div>
+          <span class="muted small">默认：临时文件只清 7 天前的、旧日志只清 30 天前的，其余缓存不限时间。</span></details>
       </div>` : ''}
     </div>`;
+  }
+  /** 清理缓存这一步当前的选择：没动过就是方案里的默认（全选） */
+  function ccOf(s) {
+    return state.cacheChoice[s.key] = state.cacheChoice[s.key] || { categories: (s.cacheOptions.categories || []).slice(), age: null };
   }
   /** 刚执行完的那一批：一句话说清结果，再给下一步 */
   function resultCard() {
@@ -1145,8 +1240,8 @@
           ? '同意后，每次体检完，Iris 会自动把<b>去隐私的反馈包</b>发到作者的服务器（阿里云中国香港），你不用再点任何按钮。'
           : '同意后，报告页会提示你导出<b>去隐私的反馈包</b>发给作者；以后的版本连上作者的服务器（阿里云中国香港）后，改为体检完自动发送。'}</p>
         <div class="ob-two">
-          <div><h4>会发送</h4><p>体检结果（软件的名称、版本、厂商、安装位置）、研判结论、你标记的“判断不对”和你写的说明、每一步的用时、错误记录、在「处理」页做了哪些操作和结果（不含路径和备份）、随机安装编号。</p></div>
-          <div><h4>不会发送</h4><p>用户名、电脑名、邮箱、代理和 DNS 地址、API Key，以及文档、照片、聊天记录、浏览记录、密码。</p></div>
+          <div><h4>会发送</h4><p>体检结果（软件的名称、版本、厂商、安装位置）、研判结论、你标记的“判断不对”和你写的说明、每一步的用时、错误记录、在「处理」页做了哪些操作和结果（不含路径和备份）、C 盘里系统已知位置的大小、随机安装编号。</p></div>
+          <div><h4>不会发送</h4><p>用户名、电脑名、邮箱、代理和 DNS 地址、API Key，你自己建的文件夹名和文件名，以及文档、照片、聊天记录、浏览记录、密码。</p></div>
         </div>
         <p class="muted small">不需要注册。随时可以在「设置 → 内测反馈」里关掉。不同意也可以照常使用全部功能。${s.betaConsent ? `你现在的选择：${s.betaConsent === 'yes' ? '同意' : '不同意'}。` : ''}</p>
         <div class="ob-acts"><button class="btn ghost big" data-act="ob-consent" data-v="no" data-count-btn disabled>不同意<span class="n"></span></button>
@@ -1287,6 +1382,17 @@
     });
     state.streamFresh = state.stream.length; updateRunning();
   });
+  // 「C 盘空间去哪了」在报告出来后继续跑：进度每秒一次，快照几秒一次，只更新那张卡片
+  api.on('spaceProgress', d => { state.spaceProg[d.id] = d; if (state.report && state.report.id === d.id) refreshSpace(); });
+  const spaceReload = async d => {
+    if (!state.report || state.report.id !== d.id) return;
+    const r = await call('getReport', { id: d.id });
+    if (!r || !state.report || state.report.id !== d.id) return;
+    state.report.space = r.space; state.report.spaceRunning = r.spaceRunning;
+    refreshSpace();
+  };
+  api.on('spaceUpdated', spaceReload);
+  api.on('spaceDone', d => { delete state.spaceProg[d.id]; spaceReload(d); });
   api.on('feedbackSent', d => { if (d && d.id) state.fb[d.id] = d; if (state.view === 'report') render(); });
   api.on('update', d => { state.app.update = d; if (state.view === 'home') render(); });
   api.on('checkupDone', d => {
@@ -1484,15 +1590,17 @@
         break;
       }
       case 'cc-cat': {
-        const c = state.cacheChoice[k] = state.cacheChoice[k] || { categories: [], age: null };
+        const c = ccOf(state.plan.steps.find(s => s.key === k));
         const v = el.dataset.v; c.categories = c.categories.includes(v) ? c.categories.filter(x => x !== v) : c.categories.concat(v); renderPlan(); break;
       }
-      case 'cc-age': { const c = state.cacheChoice[k] = state.cacheChoice[k] || { categories: [], age: null }; c.age = +el.dataset.v; renderPlan(); break; }
+      case 'cc-age': { const c = ccOf(state.plan.steps.find(s => s.key === k)); c.age = +el.dataset.v || null; renderPlan(); break; }
+      case 'space-add': state.selected.add(k); state.dismissed.delete(k); saveSel(); toast('已加入处理清单。执行前会列出要清的每一类，再弹确认框'); setChrome(); refreshSpace(); refreshRows(); break;
+      case 'space-open': { const p = el.dataset.p; state.spaceOpen.has(p) ? state.spaceOpen.delete(p) : state.spaceOpen.add(p); refreshSpace(); break; }
       case 'execute': {
         if (state.executing || !state.plan) break;
         state.executing = true; state.confirming = true; state.planStatus = {}; state.lastRun = null; renderPlan();
         { const r = document.getElementById('plan-result'); if (r) r.innerHTML = ''; }
-        const steps = state.plan.steps.map(s => Object.assign({}, s, s.cacheOptions ? { cacheChoice: state.cacheChoice[s.key] } : {}));
+        const steps = state.plan.steps.map(s => Object.assign({}, s, s.cacheOptions ? { cacheChoice: ccOf(s) } : {}));
         try {
           // 桌面程序会先弹出 Windows 原生确认框，逐项写清改什么、能不能撤销；点了取消就什么也不做
           const r = await call('executePlan', { planId: state.plan.planId, reportId: state.report.id, steps });

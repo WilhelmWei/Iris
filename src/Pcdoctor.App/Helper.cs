@@ -51,7 +51,7 @@ public static class Helper
             if (!Path.GetFullPath(parent).Equals(Path.GetFullPath(AppData.Runs), StringComparison.OrdinalIgnoreCase)) return 3;
             return verb switch
             {
-                "collect" => Collect(dir, args.Contains("--scan")),
+                "collect" => Collect(dir, args.Contains("--scan"), args.Contains("--space"), int.TryParse(Arg(args, "--parent"), out var pp) ? pp : 0),
                 "execute" => Execute(dir, Arg(args, "--sha256") ?? ""),
                 "purge" => Purge(dir),
                 "prune" => Prune(dir, int.TryParse(Arg(args, "--days"), out var d) ? d : -1),
@@ -87,7 +87,7 @@ public static class Helper
     public static readonly string[] SectionTitles = ["资源占用", "进程", "开机自启动", "服务", "计划任务", "驱动（较慢）", "已装软件", "存储（较慢）",
                                                      "电源与电池", "安全设置", "浏览器与网络", "驱动与系统版本", "稳定性"];
 
-    static int Collect(string dir, bool scan)
+    static int Collect(string dir, bool scan, bool space = false, int parentPid = 0)
     {
         var sw = Stopwatch.StartNew();
         var elevated = Environment.IsPrivilegedProcess;
@@ -129,7 +129,10 @@ public static class Helper
             {
                 var dest = Path.Combine(dir, Path.GetFileName(report));
                 if (!dest.Equals(report, StringComparison.OrdinalIgnoreCase)) File.Copy(report, dest, true);
-                Done(dir, new JsonObject { ["ok"] = true, ["report"] = dest, ["isAdmin"] = elevated, ["elapsed"] = sw.Elapsed.TotalSeconds, ["scan"] = scanInfo });
+                Done(dir, new JsonObject { ["ok"] = true, ["report"] = dest, ["isAdmin"] = elevated, ["elapsed"] = sw.Elapsed.TotalSeconds, ["scan"] = scanInfo,
+                                           ["space"] = space });
+                // 报告已经交给主程序去研判；同一个进程接着扫 C 盘（不用再弹一次管理员确认），主程序随时取快照
+                if (space) Space(dir, elevated, parentPid);
             }
             return 0;
         }
@@ -141,6 +144,54 @@ public static class Helper
     }
 
     /// <summary>隐藏窗口运行 Windows PowerShell 5.1（全路径），输出按 UTF-8 读取并写进 collect.log。取消时结束整个进程树。</summary>
+    /// <summary>
+    /// 「C 盘空间去哪了」：低优先级遍历整个系统盘，每秒写进度、每 5 秒写快照（space.json），扫完写最终结果。
+    /// 主程序关掉（或写了 cancel）时停下，已经扫到的部分照样写出来。
+    /// </summary>
+    static void Space(string dir, bool elevated, int parentPid)
+    {
+        WindowsSpaceSource.EnterBackgroundMode();
+        var root = Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
+        var drive = new DriveInfo(root);
+        var used = drive.TotalSize - drive.TotalFreeSpace;
+        var scan = new SpaceScan(new WindowsSpaceSource(), root, used, dedupeUnder: Environment.GetFolderPath(Environment.SpecialFolder.Windows));
+        var sw = Stopwatch.StartNew();
+        var lastSnap = TimeSpan.Zero; var lastCheck = TimeSpan.Zero; var stop = false;
+        void Write()
+        {
+            var snap = scan.Snapshot(p => SpaceLabels.Json(root, p));
+            snap["seconds"] = Math.Round(sw.Elapsed.TotalSeconds, 1);
+            snap["isAdmin"] = elevated;
+            AppData.WriteAtomic(Path.Combine(dir, "space.json"), snap.ToJsonString());
+        }
+        bool Stop()
+        {
+            if (sw.Elapsed - lastCheck < TimeSpan.FromMilliseconds(500)) return stop;
+            lastCheck = sw.Elapsed;
+            return stop = Cancelled(dir) || !ParentAlive(parentPid);
+        }
+        try
+        {
+            scan.Run(Stop, () =>
+            {
+                AppData.WriteAtomic(Path.Combine(dir, "space-progress.json"), new JsonObject
+                {
+                    ["scannedBytes"] = scan.ScannedBytes, ["usedBytes"] = used, ["files"] = scan.ScannedFiles,
+                    ["seconds"] = Math.Round(sw.Elapsed.TotalSeconds, 1),
+                }.ToJsonString());
+                if (sw.Elapsed - lastSnap > TimeSpan.FromSeconds(5)) { lastSnap = sw.Elapsed; Write(); }
+            });
+        }
+        finally { Write(); }
+    }
+
+    static bool ParentAlive(int pid)
+    {
+        if (pid <= 0) return true;
+        try { using var p = Process.GetProcessById(pid); return !p.HasExited; }
+        catch { return false; }
+    }
+
     static int RunPowerShell(string dir, string command, Action<string>? onLine, int timeoutSec)
     {
         var full = "[Console]::OutputEncoding = [Text.Encoding]::UTF8; $ProgressPreference = 'SilentlyContinue'; " + command;

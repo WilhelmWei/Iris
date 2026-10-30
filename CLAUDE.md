@@ -24,17 +24,19 @@
 
 开发过程的完整记录（每一轮实测和研判复核的细节、内测审批、服务器和运维信息）在**私有仓库 `WilhelmWei/iris-cloud` 的 `docs/internal/`**（`pcdoctor-CLAUDE-full.md`、`pcdoctor-roadmap-full.md`、开通服务的提示词等）。会话里能访问 iris-cloud 时，处理内测、服务器、反馈相关的事先读那里。
 
-## 当前状态（2026-10-27）
+## 当前状态（2026-10-30）
 
 - 命令行原型（`collector/`、`judge/`、`kb/`、`prompts/`、`run.ps1`、`remote/`）：采集 13 个方面、规则预筛、知识库、AI / 纯规则研判、误判复核表、远程体检包，已在真实电脑上多轮验证
 - 桌面版 1.0 内测 **1.0.0-beta.5**：.NET 10 WinForms + WebView2；快速设定、体检（实时发现流、可先 Defender 扫描）、报告（证据、交叉校验、"判断不对"、和上次比）、「处理」页（待处理 → 执行 → 刚刚完成 → 已处理，可撤销）、存储空间清理、三套主题和动效、内测反馈（同意后去隐私发送，含「处理」页的操作结果和 Defender 扫描是否正常结束）
+- 清理第一期（1.0.0-beta.6，已打包未发布）：清理目录表 `kb/junk.json`（A 类 Iris 直接删、B 类交给 Windows、不清理的伪优化）、报告里的「空间」卡片、「C 盘空间去哪了」（报告后继续扫描）、主力浏览器判断和不用的浏览器减负；第二期「搬到其他盘」、第三期 B 类交给 Windows 自带清理
 - 服务端和反馈控制台在私有仓库 iris-cloud（阿里云中国香港）
-- [ ] beta.4 / beta.5 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送未验证）
+- [ ] beta.4 / beta.5 / beta.6 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重未验证）
 - [ ] MVP 放行：10 台不同机器、规则和 AI 结论误判率的 95% 上限 < 10%
 
 ## 桌面版工程要点
 
 - `src/Pcdoctor.Core`：研判流水线的 C# 移植，`tests/golden/` 保证与 Python 逐字节一致。**改了 judge/*.py、kb/seed.json 或提示词后，先跑 `python3 tools/make_golden.py` 再跑 `dotnet test`**
+- 清理目录表 `kb/junk.json`：采集脚本按它测量（`-JunkCatalog`），操作库按它清理（嵌入资源）；要删的目录只能来自这张表。改它之后跑 `dotnet test`（`JunkCatalogTests` 检查每条路径不会指向用户文件夹）和 `pwsh tests/unit.ps1`
 - `src/Pcdoctor.Ops`：操作库。所有对 Windows 的读写走 `IWinSystem`，测试用 `FakeWinSystem`；红线写进代码；操作记录带 `FindingKey` 和 `ReportId`，`HandledStatus` 据此给报告标"已处理"
 - `src/Pcdoctor.App`：本机采集用 `-NoRedact`，原始报告只存在 `%LOCALAPPDATA%\pcdoctor`；研判一律对打码副本进行；朋友的报告只能看不能执行。管理员操作由同一个 exe 的 `--helper` 模式按需提权执行（方案按 SHA-256 校验，记录存在受保护目录），做完退出
 - 界面 `src/Pcdoctor.App/web/`：无框架、无构建；浏览器直接打开时用 `bridge.js` 的模拟实现（数据 `web/demo/demo.json`）。改界面后用 Playwright 截图检查
