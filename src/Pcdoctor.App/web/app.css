@@ -934,3 +934,22 @@ details.fold[open]::details-content { height: auto; }
   .sp-node .bar { display: none; }
 }
 details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展开：不再播一次展开动画 */
+
+/* 报告头部的三个状态（安全、空间、处理），点了跳到下面对应的位置 */
+.r-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.st-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; transition: background .2s, transform .15s var(--ease); }
+.st-chip:hover { background: var(--surface-2); }
+.st-chip:active { transform: scale(.97); }
+.st-chip .ico { width: 16px; height: 16px; color: var(--text-3); }
+.st-chip b { font-weight: 600; color: var(--text); margin-right: 6px; }
+.st-chip.ok .ico { color: var(--c-ok); }
+.st-chip.warn .ico, .st-chip.warn b { color: var(--c-prob); }
+.st-chip.bad { border-color: color-mix(in srgb, var(--c-sus) 45%, transparent); }
+.st-chip.bad .ico, .st-chip.bad b { color: var(--c-sus); }
+#sec-safety, #space-card, #sec-list, #sec-topics { scroll-margin-top: 20px; }
+.pulse { animation: pulse-ring 1.2s var(--ease) 1; }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+.reduce .pulse { animation: none; }
+.section-head + div > .cats, div > .bulk + .cats { margin-bottom: 14px; }
+.cats button[aria-pressed="true"] { background: var(--surface-2); }

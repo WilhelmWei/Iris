@@ -525,36 +525,40 @@
     const cats = Object.entries(sc.categories);
     const tabs = [['todo', '建议处理'], ['ask', '需要你确认'], ['done', '已处理'], ['normal', '正常'], ['all', '全部']].filter(t => t[0] !== 'done' || B.done.length);
     const list = visible();
+    const alarm = safetyAlarm(j);
     return `<div class="page">
       <section class="r-head">${ring(sc.total, 168, '健康分', state.enter)}
         <div><div class="eyebrow">${esc(R.meta.reportTime || res.generatedAt)} · ${mode}${R.meta.machine ? ' · ' + esc(pii(R.meta.machine)) : ''}</div>
           <p class="headline">${esc(pii(j.headline))}</p>
           ${R.meta.source === 'file' ? '<p class="muted small" style="margin:-6px 0 12px">这份报告来自别的电脑，只能查看，不能在这台电脑上执行处理。</p>' : ''}
+          ${statusChips(j)}
           <div class="r-actions">
             <button class="btn" data-act="export">导出报告</button>
             <button class="btn" data-act="rejudge" title="用你回答过的问题重新研判这份报告">重新研判</button>
             <button class="btn ghost" data-act="toggle-demo" aria-pressed="${!!s.demoMode}">${icon(s.demoMode ? 'eyeoff' : 'eye')}${s.demoMode ? '演示模式：开' : '演示模式'}</button>
           </div></div></section>
-      <section class="card cats" aria-label="分项得分">${cats.map(([k, v]) => `<button data-act="cat" data-cat="${esc(k)}" title="只看「${esc(k)}」相关的结论">
-        <span class="k">${esc(k)}</span><span class="v">${Math.round(v.score)}</span><span class="bar"><i style="width:${Math.round(v.score)}%"></i></span></button>`).join('')}</section>
-      ${verdictCard(j)}
-      ${spaceCard()}
+      ${alarm ? verdictCard(j) : ''}
       ${j.top3 && j.top3.length ? `<div class="section-head"><h2>最该先做的 ${j.top3.length} 件事</h2></div>
         <ol class="top3">${j.top3.map(t => { const f = findingForText(t);
           return f ? `<li class="card link" data-act="open" data-k="${esc(keyOf(f))}" tabindex="0" role="button">${esc(pii(t))}<span class="go">查看 ${icon('arrow')}</span></li>`
                    : `<li class="card">${esc(pii(t))}</li>`; }).join('')}</ol>` : ''}
-      ${feedbackCard()}
-      <div class="section-head"><h2>逐项结论</h2>${state.cat ? `<button class="chip" data-act="cat-clear" style="cursor:pointer">只看：${esc(state.cat.name)} ${icon('x')}</button>` : ''}
+      <div class="section-head" id="sec-list"><h2>逐项结论</h2>${state.cat ? `<button class="chip" data-act="cat-clear" style="cursor:pointer">只看：${esc(state.cat.name)} ${icon('x')}</button>` : ''}
         <span class="more muted hint" style="cursor:default">点一条看详情 · <kbd>↑</kbd><kbd>↓</kbd> 切换</span></div>
       <div>
         ${bulkBar()}
+        <section class="card cats" aria-label="分项得分（点一项只看相关的结论）">${cats.map(([k, v]) => `<button data-act="cat" data-cat="${esc(k)}" title="只看「${esc(k)}」相关的结论" aria-pressed="${!!(state.cat && state.cat.name === k)}">
+          <span class="k">${esc(k)}</span><span class="v">${Math.round(v.score)}</span><span class="bar"><i style="width:${Math.round(v.score)}%"></i></span></button>`).join('')}</section>
         <div class="tabs" role="group" aria-label="筛选">${tabs.map(([k, t]) =>
           `<button data-act="filter" data-f="${k}" aria-pressed="${state.filter === k}">${t}<span class="n">${B[k].length}</span></button>`).join('')}</div>
         <div class="card list" style="margin-top:14px">${list.map(rowHtml).join('') || '<div class="empty">这一类没有项目</div>'}</div>
         ${R.meta.source === 'local' ? '<button class="missed" data-act="missed">Iris 漏掉了什么？告诉我们</button>' : ''}
       </div>
+      ${!alarm || R.storage ? `<div class="section-head" id="sec-topics"><h2>专题</h2><span class="more muted hint" style="cursor:default">安全和空间的完整说明</span></div>` : ''}
+      ${alarm ? '' : verdictCard(j)}
+      ${spaceCard()}
       ${s.showTips !== false && j.tips && j.tips.length ? `<div class="section-head"><h2>小知识</h2><button class="more" data-act="tips-off">不再显示</button></div>
         <div class="tips">${j.tips.map(t => `<div class="card tip"><span class="tag">小知识</span><b>${esc(t.title)}</b><p>${esc(t.body)}</p></div>`).join('')}${managerNote()}</div>` : ''}
+      ${feedbackCard()}
       <div>
         <details class="fold"><summary>健康分是怎么算的</summary><div class="fold-body">
           <div class="muted small">健康分由代码按规则计算，AI 不参与打分。同一个原因的多条结果合并扣分，避免“吓唬式低分”。</div>
@@ -568,6 +572,32 @@
       </div>
     </div>`;
   }
+  /** 安全上需要马上看的情况：发现可疑迹象、Defender 实时保护关着、很久没扫描。这时完整的安全卡片放在头部下面，不往下藏 */
+  function safetyAlarm(j) {
+    const D = state.report.defender;
+    const stale = D && !D.scanned && Math.min(D.quickScanAgeDays == null ? 1e9 : D.quickScanAgeDays, D.fullScanAgeDays == null ? 1e9 : D.fullScanAgeDays) > 30;
+    return !!(j.malwareSuspected || (D && D.realTime === false) || stale);
+  }
+  /** 头部的三个状态：安全、空间、处理。点了跳到下面对应的位置（处理跳到「处理」页） */
+  function statusChips(j) {
+    const R = state.report, D = R.defender, st = R.storage;
+    const chips = [];
+    const sus = j.malwareSuspected, alarm = safetyAlarm(j);
+    const safeText = sus ? '发现需要核实的迹象' : D && D.realTime === false ? 'Defender 实时保护关着' : alarm ? 'Defender 很久没扫描'
+      : D && D.scanned ? 'Defender 扫描没有发现威胁' : '没有看到中毒迹象';
+    chips.push(`<button class="st-chip ${sus ? 'bad' : alarm ? 'warn' : 'ok'}" data-act="jump" data-to="${alarm ? 'sec-safety' : 'sec-safety'}">${icon('shield')}<span><b>安全</b>${esc(safeText)}</span></button>`);
+    if (st) {
+      const c = (st.volumes || []).find(v => (v.drive || '').toUpperCase() === 'C:');
+      const parts = [c ? `C 盘剩 ${fmtMB(c.freeGB * 1024)}` : null, st.cleanableMB >= 100 ? `可清理 ${fmtMB(st.cleanableMB)}` : null].filter(Boolean);
+      if (parts.length) chips.push(`<button class="st-chip ${c && c.freePct < 15 ? 'warn' : ''}" data-act="jump" data-to="space-card">${icon('disk')}<span><b>空间</b>${esc(parts.join(' · '))}</span></button>`);
+    }
+    if (R.canExecute !== false) {
+      const pending = state.selected.size, done = Object.values(R.handled || {}).filter(h => h.status === 'done').length;
+      const txt = pending ? `清单里 ${pending} 项` : done ? `处理过 ${done} 项` : '还没有加入处理清单';
+      chips.push(`<button class="st-chip" data-act="nav" data-to="plan">${icon('list')}<span><b>处理</b>${esc(txt)}</span></button>`);
+    }
+    return `<div class="r-status">${chips.join('')}</div>`;
+  }
   /** "有没有中毒"：分清这次有没有让 Defender 扫描，不把"Iris 没看到"说成"没有病毒" */
   function verdictCard(j) {
     const R = state.report, D = R.defender || null, sus = j.malwareSuspected, scanned = !!(D && D.scanned);
@@ -579,7 +609,7 @@
     const warn = D && D.realTime === false
       ? `<div class="warn">${icon('alert')}<span>Defender 的实时保护是关着的。装了其他杀毒软件时这是正常的；没有装的话，建议在 Windows 安全中心里打开。</span><button class="btn small" data-act="defender">打开安全中心</button></div>`
       : stale ? `<div class="warn">${icon('alert')}<span>Defender 已经 ${Math.round(Math.min(D.quickScanAgeDays, D.fullScanAgeDays))} 天没有扫描过这台电脑。</span></div>` : '';
-    return `<section class="card verdict"><span class="glyph ${sus ? 'v-suspicious' : stale || (D && D.realTime === false) ? 'v-problem' : 'v-normal'}">${icon(sus ? 'alert' : 'shield')}</span>
+    return `<section class="card verdict" id="sec-safety"><span class="glyph ${sus ? 'v-suspicious' : stale || (D && D.realTime === false) ? 'v-problem' : 'v-normal'}">${icon(sus ? 'alert' : 'shield')}</span>
       <div><b>${title}</b><p>${esc(pii(j.malwareReasoning))}</p>
         <div class="scope"><span class="k">检查范围</span><span>${scanned
           ? '体检前，Microsoft Defender 刚做完一次快速扫描；Iris 读取了它的结果，再用自己的规则检查了自启动、驱动、排除项和放行记录。'
@@ -1614,6 +1644,11 @@
       }
       case 'cc-age': { const c = ccOf(state.plan.steps.find(s => s.key === k)); c.age = +el.dataset.v || null; renderPlan(); break; }
       case 'space-add': state.selected.add(k); state.dismissed.delete(k); saveSel(); toast('已加入处理清单。执行前会列出要清的每一类，再弹确认框'); setChrome(); refreshSpace(); refreshRows(); break;
+      case 'jump': {
+        const target = document.getElementById(el.dataset.to);
+        if (target) { target.scrollIntoView({ behavior: S().reduceMotion ? 'auto' : 'smooth', block: 'start' }); target.classList.remove('pulse'); void target.offsetWidth; target.classList.add('pulse'); }
+        break;
+      }
       case 'space-open': { const p = el.dataset.p; state.spaceOpen.has(p) ? state.spaceOpen.delete(p) : state.spaceOpen.add(p); refreshSpace(); break; }
       case 'execute': {
         if (state.executing || !state.plan) break;
