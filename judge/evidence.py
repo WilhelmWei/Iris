@@ -148,6 +148,8 @@ def _context_for(flag, S):
         sw = S.get('software', {})
         if rule == 'duplicate-category':
             return {'apps': sw.get('duplicateCategories', {}).get(obj)}
+        if rule == 'leftover-dir':
+            return _find(sw.get('leftoverDirs'), 'name', obj)
         return _find(sw.get('items'), 'name', obj)
     if sec == 'security':
         sc = S.get('security', {})
@@ -170,6 +172,9 @@ def _context_for(flag, S):
                               for x in junk.get('items', []) if x.get('tier') == 'A' and (x.get('cleanableMB') or 0) > 0]}
         if rule == 'system-leftover':
             return _find(junk.get('items'), 'name', obj)
+        if rule == 'downloads-installers':
+            d = folders.get('downloads') or {}
+            return {'path': d.get('path'), 'sizeGB': d.get('sizeGB'), 'installers': d.get('installers')}
         if rule == 'system-drive-low':
             big_on_c = [{'name': a.get('name'), 'sizeMB': a.get('sizeMB')}
                         for a in S.get('software', {}).get('items', [])

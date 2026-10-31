@@ -199,6 +199,8 @@ public static class Evidence
                 var sw = Py.Get(S, "software");
                 if (rule == "duplicate-category")
                     return new JsonObject { ["apps"] = Py.Clone(objKey is null ? null : Py.Get(Py.Get(sw, "duplicateCategories"), objKey)) };
+                if (rule == "leftover-dir")
+                    return Find(Py.Get(sw, "leftoverDirs"), "name", obj);
                 return Find(Py.Get(sw, "items"), "name", obj);
             }
             case "security":
@@ -233,6 +235,14 @@ public static class Evidence
                     };
                 if (rule == "system-leftover")
                     return Find(Py.Get(junk, "items"), "name", obj);
+                if (rule == "downloads-installers")
+                {
+                    var d = Py.Or(Py.Get(folders, "downloads"), new JsonObject());
+                    return new JsonObject
+                    {
+                        ["path"] = Py.Clone(Py.Get(d, "path")), ["sizeGB"] = Py.Clone(Py.Get(d, "sizeGB")), ["installers"] = Py.Clone(Py.Get(d, "installers")),
+                    };
+                }
                 if (rule == "system-drive-low")
                 {
                     var bigOnC = Py.Iter(Py.Get(Py.Get(S, "software"), "items"))

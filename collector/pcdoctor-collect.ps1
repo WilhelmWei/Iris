@@ -43,7 +43,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.2.9'
+$ScriptVersion = '0.3.0'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -431,6 +431,85 @@ if (-not $Quick) {
 
 $Sections = [ordered]@{}
 
+# 下载文件夹里很久以前的安装包：只统计数量和大小，不记文件名
+function Measure-Installers([string]$Path, [int]$MinAgeDays = 30, [int]$CapSeconds = 10) {
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) { return $null }
+    $t = [Diagnostics.Stopwatch]::StartNew()
+    $cutoff = (Get-Date).AddDays(-$MinAgeDays)
+    $count = 0; $sum = [int64]0; $partial = $false
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Path)
+    while ($stack.Count -gt 0) {
+        if ($t.Elapsed.TotalSeconds -gt $CapSeconds) { $partial = $true; break }
+        $dir = New-Object IO.DirectoryInfo ([string]$stack.Pop())
+        try {
+            foreach ($fi in $dir.GetFiles()) {
+                if ($fi.Name -match '(?i)\.(exe|msi|msix|msixbundle|appx|appxbundle)$' -and $fi.LastWriteTime -lt $cutoff) { $count++; $sum += $fi.Length }
+            }
+        } catch {}
+        try {
+            foreach ($sub in $dir.GetDirectories()) {
+                if (($sub.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { $stack.Push($sub.FullName) }
+            }
+        } catch {}
+    }
+    return [ordered]@{ count = $count; sizeGB = [math]::Round($sum / 1GB, 2); olderThanDays = $MinAgeDays; partial = $partial }
+}
+
+# 卸载残留的文件夹：Program Files 下面一层，里面没有程序文件，没有已装软件、服务、驱动、计划任务、自启动和进程用到它，
+# 名字也对不上任何已装软件或厂商（厂商文件夹里常装着别的产品），最近一个月没人改过
+function Find-LeftoverDirs([string[]]$Roots, [string[]]$Refs, [string[]]$Names, [int]$MinAgeDays = 30, [int]$Max = 20) {
+    $protected = '(?i)^(Common Files|Microsoft.*|Windows.*|WindowsApps|ModifiableWindowsApps|Internet Explorer|dotnet|MSBuild|Reference Assemblies|Uninstall Information|WindowsPowerShell|PowerShell|Package Cache|pcdoctor.*|Iris.*|Intel|AMD|NVIDIA.*|Realtek)$'
+    $progExt = '(?i)\.(exe|dll|sys|com|scr|ocx|cpl|msi|drv|efi)$'
+    $refs = @($Refs | Where-Object { $_ } | ForEach-Object { ([string]$_).ToLowerInvariant() })
+    $normNames = @($Names | Where-Object { $_ } | ForEach-Object { ([string]$_).ToLowerInvariant() -replace '[\s\-_\.\(\),]', '' } | Where-Object { $_.Length -ge 3 })
+    $now = Get-Date
+    $out = New-Object System.Collections.ArrayList
+    foreach ($root in @($Roots | Where-Object { $_ } | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue)) {
+            if ($out.Count -ge $Max) { break }
+            if ($d.Name -match $protected) { continue }
+            if (($d.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+            $full = ([string]$d.FullName).TrimEnd('\', '/')
+            $fl = $full.ToLowerInvariant()
+            $used = $false
+            foreach ($r in $refs) {
+                if ($r.Contains($fl + '\') -or $r.Contains($fl + '/') -or $r.Trim('"', '\', ' ') -eq $fl) { $used = $true; break }
+            }
+            if ($used) { continue }
+            $n = ([string]$d.Name).ToLowerInvariant() -replace '[\s\-_\.\(\),]', ''
+            $named = $false
+            if ($n.Length -ge 3) { foreach ($x in $normNames) { if ($x.Contains($n) -or $n.Contains($x)) { $named = $true; break } } }
+            if ($named) { continue }
+            $files = 0; $bytes = [int64]0; $newest = $null; $skip = $false
+            $stack = New-Object System.Collections.Stack
+            $stack.Push($full)
+            while ($stack.Count -gt 0 -and -not $skip) {
+                $dir = New-Object IO.DirectoryInfo ([string]$stack.Pop())
+                try {
+                    foreach ($fi in $dir.GetFiles()) {
+                        if ($fi.Name -match $progExt) { $skip = $true; break }
+                        $files++; $bytes += $fi.Length
+                        if (-not $newest -or $fi.LastWriteTime -gt $newest) { $newest = $fi.LastWriteTime }
+                        if ($files -gt 5000) { $skip = $true; break }
+                    }
+                    foreach ($sub in $dir.GetDirectories()) {
+                        if (($sub.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { $skip = $true; break }
+                        $stack.Push($sub.FullName)
+                    }
+                } catch { $skip = $true }
+            }
+            if ($skip) { continue }
+            if (-not $newest) { $newest = $d.LastWriteTime }
+            $age = [int][math]::Floor(($now - $newest).TotalDays)
+            if ($age -lt $MinAgeDays) { continue }
+            [void]$out.Add([ordered]@{ name = $full; sizeMB = [math]::Round($bytes / 1MB, 1); files = $files; lastWriteDays = $age })
+        }
+    }
+    return @($out)
+}
+
 # 1. 资源占用 ------------------------------------------------------------------
 $Sections['resources'] = Invoke-Section 'resources' '资源占用' {
     $os  = Get-Cim Win32_OperatingSystem
@@ -815,7 +894,33 @@ $Sections['software'] = Invoke-Section 'software' '已装软件' {
     }
     $appxAll = Safe 'Get-AppxPackage' { Get-AppxPackage }
     $appx = @($appxAll | Where-Object { $_ -and -not $_.IsFramework -and $_.SignatureKind -ne 'System' })
-    [ordered]@{ total = $apps.Count; storeAppCount = $appx.Count; duplicateCategories = $dupCats; items = $apps }
+
+    # 卸载残留的文件夹（只在完整体检时找；对象是完整路径，Program Files 下面不含用户名）
+    $leftovers = @()
+    if (-not $Quick) {
+        $refs = New-Object System.Collections.ArrayList
+        foreach ($k in $keys) {
+            foreach ($e in @(Get-ItemProperty $k)) {
+                foreach ($v in @($e.InstallLocation, $e.UninstallString, $e.DisplayIcon, $e.QuietUninstallString)) { if ($v) { [void]$refs.Add([Environment]::ExpandEnvironmentVariables([string]$v)) } }
+            }
+        }
+        foreach ($sec in @('processes', 'startup', 'services', 'scheduledTasks')) {
+            if (-not $Sections[$sec] -or -not $Sections[$sec].items) { continue }
+            foreach ($it in @($Sections[$sec].items)) {
+                foreach ($f in @('path', 'serviceDll', 'exe', 'command')) { if ($it[$f]) { [void]$refs.Add([string]$it[$f]) } }
+                foreach ($act in @($it['actions'])) { if ($act -and $act['execute']) { [void]$refs.Add([string]$act['execute']) } }
+            }
+        }
+        if ($Sections['drivers'] -and $Sections['drivers'].kernelDrivers) {
+            foreach ($it in @($Sections['drivers'].kernelDrivers.items)) { if ($it -and $it['path']) { [void]$refs.Add([string]$it['path']) } }
+        }
+        $names = @(); foreach ($a in $apps) { $names += [string]$a.name; $names += [string]$a.publisher }
+        $leftovers = Find-LeftoverDirs @($env:ProgramFiles, ${env:ProgramFiles(x86)}) @($refs) $names
+        foreach ($x in $leftovers) {
+            Add-Flag 'software' 'leftover-dir' 'info' $x.name "$(Format-Size $x.sizeMB)，$($x.files) 个文件，没有程序文件，也没有已装软件和服务用到它；$($x.lastWriteDays) 天没改过"
+        }
+    }
+    [ordered]@{ total = $apps.Count; storeAppCount = $appx.Count; duplicateCategories = $dupCats; items = $apps; leftoverDirs = @($leftovers) }
 }
 
 # 8. 存储 ----------------------------------------------------------------------
@@ -886,6 +991,16 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
         $folders.chatApps = $chat
         if ($folders.condaPkgs -and $folders.condaPkgs.sizeGB -ge 2) { Add-Flag 'storage' 'conda-cache' 'low' 'conda pkgs' "安装包缓存 $($folders.condaPkgs.sizeGB) GB，可用 conda clean -a 清理" }
         if ($folders.downloads -and $folders.downloads.sizeGB -ge 10) { Add-Flag 'storage' 'downloads-large' 'info' 'Downloads' "下载文件夹 $($folders.downloads.sizeGB) GB" }
+        if ($folders.downloads) {
+            $inst = Measure-Installers $cands.downloads 30 10
+            if ($inst) {
+                $folders.downloads.installers = $inst
+                if ($inst.sizeGB -ge 0.5) {
+                    $atLeast = ''; if ($inst.partial) { $atLeast = '至少 ' }
+                    Add-Flag 'storage' 'downloads-installers' 'info' '下载文件夹里的旧安装包' "$atLeast$($inst.count) 个，共 $(Format-Size ($inst.sizeGB * 1024))，都是一个月以前下载的"
+                }
+            }
+        }
     }
 
     # 按清理目录表量各类缓存和系统遗留文件（kb/junk.json；A 类 Iris 可以直接清理，B 类交给 Windows 自带的清理）

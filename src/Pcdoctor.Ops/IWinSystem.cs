@@ -107,6 +107,8 @@ public interface IWinSystem
     /// <summary>复制一个文件（自动建上级文件夹，不覆盖已有文件，保留修改时间）；没复制成功返回 false。</summary>
     bool CopyFile(string source, string destination);
     void CreateDirectory(string path);
+    /// <summary>把整个文件夹挪到同一个盘的另一个位置（只是改位置，不复制）；没挪成返回 false。</summary>
+    bool MoveDirectory(string source, string destination);
     /// <summary>从下往上删掉空文件夹（包括 root 自己，如果它也空了）；不进入联接点和符号链接。</summary>
     void DeleteEmptyDirectories(string root);
     /// <summary>Windows 的"已知文件夹"（文档、下载……）当前指向哪里；guid 不带大括号。</summary>

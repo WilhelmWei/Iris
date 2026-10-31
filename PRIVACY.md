@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Iris · AI 电脑体检 · 版本 2026-10-30.1**
+**Iris · AI 电脑体检 · 版本 2026-10-31.1**
 
 [中文](#中文) · [English](#english)
 
@@ -18,11 +18,11 @@
 
 - 系统和硬件概况：Windows 版本、电脑型号、CPU、内存、硬盘型号和类型（SSD / 机械硬盘）、各磁盘空间、开机时长、电池状态
 - 正在运行的程序、开机自启动、服务、计划任务、驱动的名称、路径、厂商和数字签名状态
-- 已装软件的名称和厂商
+- 已装软件的名称和厂商；Program Files 下面里面已经没有程序文件、也没有已装软件和服务用到的文件夹（卸载残留）的位置和大小
 - 安全设置的状态：Microsoft Defender（含排除项、被允许的威胁、近期检测记录）、防火墙是否开启、UAC、安全启动、内存完整性
 - 网络设置：系统代理、hosts 文件中的自定义条目、DNS 服务器地址；浏览器扩展的名称和权限
 - 浏览器：默认浏览器是哪个，每个浏览器最近一次浏览网页是多少天前（**只看历史记录文件的修改时间，不读浏览记录**），后台进程数和占用的内存，有没有开机自启动
-- 几个常见文件夹和各类缓存（临时文件、浏览器缓存、错误报告等）的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）
+- 几个常见文件夹和各类缓存（临时文件、浏览器缓存、错误报告等）的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）；下载文件夹里一个月以前的安装包有几个、一共多大（**不记文件名**）
 - 「C 盘空间去哪了」：报告出来后在后台继续统计系统盘上各文件夹的大小和最大的几个文件的名字（只统计大小，**不读取文件内容**，结果只保存在本机）
 - 最近的蓝屏和程序崩溃记录
 
@@ -92,11 +92,11 @@ The check-up is read-only and changes nothing. It reads:
 
 - System and hardware overview: Windows version, device model, CPU, memory, disk model and type (SSD / HDD), disk space, uptime, battery status
 - Names, paths, vendors and digital-signature status of running programs, startup entries, services, scheduled tasks and drivers
-- Names and publishers of installed software
+- Names and publishers of installed software; location and size of folders under Program Files that no longer contain any program files and are not used by any installed software or service (uninstall leftovers)
 - Status of security settings: Microsoft Defender (including exclusions, allowed threats and recent detections), whether the firewall is on, UAC, Secure Boot, Memory Integrity
 - Network settings: system proxy, custom entries in the hosts file, DNS server addresses; names and permissions of browser extensions
 - Browsers: which one is the default, how many days ago each browser was last used to browse (**only the modification time of the history file is checked; browsing history is never read**), background processes and memory, whether it starts with Windows
-- Sizes of a few common folders and of caches (temporary files, browser caches, error reports, etc.) and statistics by file age (sizes only — **file contents are never read**)
+- Sizes of a few common folders and of caches (temporary files, browser caches, error reports, etc.) and statistics by file age (sizes only — **file contents are never read**); how many installers older than a month are in the Downloads folder and their total size (**file names are not recorded**)
 - "Where did the C: drive space go": after the report is ready, the app keeps adding up folder sizes on the system drive in the background and notes the names of the largest files (sizes only — **file contents are never read**; the result stays on this computer)
 - Recent blue-screen and application-crash records
 

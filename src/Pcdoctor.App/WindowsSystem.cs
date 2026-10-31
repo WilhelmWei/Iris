@@ -293,6 +293,17 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
 
     public void CreateDirectory(string path) => Directory.CreateDirectory(path);
 
+    public bool MoveDirectory(string source, string destination)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            Directory.Move(source, destination);
+            return true;
+        }
+        catch { return false; }
+    }
+
     public void DeleteEmptyDirectories(string root)
     {
         if (!Directory.Exists(root) || IsReparsePoint(root)) return;

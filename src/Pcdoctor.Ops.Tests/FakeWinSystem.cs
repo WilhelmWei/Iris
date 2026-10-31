@@ -172,6 +172,14 @@ public sealed class FakeWinSystem : IWinSystem
         OnCopied?.Invoke(source);
         return true;
     }
+    public bool MoveDirectory(string source, string destination)
+    {
+        var s = source.TrimEnd('\\');
+        if (!DirectoryExists(s) || DirectoryExists(destination) || Files.Keys.Any(f => Under(f, s) && Locked.Contains(f))) return false;
+        foreach (var f in Files.Keys.Where(f => Under(f, s)).ToList()) { var e = Files[f]; Files.Remove(f); Files[destination + f[s.Length..]] = e with { Path = destination + f[s.Length..] }; }
+        foreach (var d in Dirs.Where(d => d.Equals(s, StringComparison.OrdinalIgnoreCase) || Under(d, s)).ToList()) { Dirs.Remove(d); Dirs.Add(destination + d[s.Length..]); }
+        return true;
+    }
     public void CreateDirectory(string path) { if (!DirectoryExists(path)) Dirs.Add(path.TrimEnd('\\')); }
     public void DeleteEmptyDirectories(string root)
     {

@@ -46,6 +46,7 @@ RULES = {
     # 软件
     'duplicate-category':      ('normal', 0.6, 'none', '同类软件装了好几个（{object}），不常用的可以卸载'),
     'large-on-c':              ('problem', 0.6, 'none', '{object} 装在 C 盘且占用很大，C 盘紧张时可以考虑卸载或改装到其他盘'),
+    'leftover-dir':            ('leftover', 0.75, 'leftover.remove_dir', '{object} 文件夹里已经没有程序，也没有已装的软件、服务或计划任务用到它，是卸载后留下的残留'),
     # 存储
     'system-drive-low':        ('problem', 0.9, 'cache.clean', 'C 盘空间不足，会影响系统更新和运行速度'),
     'chat-cache-large':        ('problem', 0.8, 'none', '{object} 的聊天文件很大。图片、视频、文件属于你的数据，可以在软件设置里清理，或者把存储位置改到其他盘'),
@@ -55,7 +56,8 @@ RULES = {
     'conda-cache':             ('problem', 0.7, 'none', 'conda 的软件包缓存可以用 conda clean -a 清理（不影响已建好的环境）'),
     'dev-cache':               ('problem', 0.6, 'cache.clean', '{object} 是开发工具的缓存，可以清理，之后需要时会重新下载'),
     'games-on-c':              ('problem', 0.6, 'none', '{object} 游戏库在 C 盘，C 盘紧张时可以在启动器里把游戏移到其他盘'),
-    'system-leftover':         ('leftover', 0.8, 'none', '{object} 是系统升级或更新留下的文件，确认系统正常后，可以用 Windows 自带的「磁盘清理 → 清理系统文件」删除'),
+    'system-leftover':         ('leftover', 0.8, 'system.cleanup', '{object} 是系统升级或更新留下的文件，确认系统正常后，可以交给 Windows 自带的磁盘清理删除'),
+    'downloads-installers':    ('leftover', 0.7, 'downloads.recycle_installers', '下载文件夹里有不少很久以前下载的安装包，软件装好以后就用不上了，可以移到回收站'),
     # 安全
     'active-threat':           ('suspicious', 0.9, 'defender.scan', 'Defender 报告了尚未处理的威胁：{object}'),
     'detection-not-remediated': ('suspicious', 0.7, 'defender.scan', 'Defender 检测到的威胁没有处理成功：{object}'),

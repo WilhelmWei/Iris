@@ -3,7 +3,7 @@
 $src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
 if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
-$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory' }, $true)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs' }, $true)
 foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
 $env:windir = 'C:\Windows'
 $cases = @(
@@ -126,3 +126,40 @@ $p7=0; foreach ($c in $jchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p7++ }
 if (-not $linked) { 'note: 这台机器不能创建符号链接，跳过"不进入链接"的检查' }
 Remove-Item -LiteralPath $jr -Recurse -Force
 "junk: $p7/$($jchecks.Count) passed"
+
+# 第三期：旧安装包统计、卸载残留文件夹
+$lr = Join-Path ([IO.Path]::GetTempPath()) ("pcdoctor-left-" + [guid]::NewGuid().ToString('N'))
+function New-OldFile([string]$Rel, [int]$KB, [int]$DaysOld) {
+    $f = [IO.Path]::Combine([string[]](@($lr) + $Rel.Split('\')))
+    [void](New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($f)))
+    [IO.File]::WriteAllBytes($f, (New-Object byte[] ($KB * 1024)))
+    (Get-Item -LiteralPath $f).LastWriteTime = (Get-Date).AddDays(-$DaysOld)
+}
+New-OldFile 'DL\setup.exe' 2048 90
+New-OldFile 'DL\sub\tool.MSI' 1024 60
+New-OldFile 'DL\fresh-setup.exe' 4096 2
+New-OldFile 'DL\notes.txt' 4096 400
+New-OldFile 'PF\OldTool\logs\a.log' 512 400
+New-OldFile 'PF\OldTool\config.ini' 1 400
+New-OldFile 'PF\LiveApp\app.exe' 10 400
+New-OldFile 'PF\RefApp\data.bin' 10 400
+New-OldFile 'PF\Google\Update\x.dat' 10 400
+New-OldFile 'PF\Fresh\x.log' 10 3
+New-OldFile 'PF\Common Files\x.log' 10 400
+New-OldFile 'PF\Lib\x.DLL' 10 400
+$lchecks = @()
+$mi = Measure-Installers ([IO.Path]::Combine($lr, 'DL')) 30
+$lchecks += ,@('installers count', $mi.count, 2)
+$lchecks += ,@('installers size', $mi.sizeGB, 0)
+$lchecks += ,@('installers missing', (Measure-Installers ([IO.Path]::Combine($lr, 'nope'))), $null)
+$pf = [IO.Path]::Combine($lr, 'PF')
+$refApp = [IO.Path]::Combine($pf, 'RefApp')
+$found = @(Find-LeftoverDirs @($pf) @("`"$([IO.Path]::Combine($refApp, 'uninst.exe'))`" /S") @('Google Chrome', 'Google LLC'))
+$lchecks += ,@('leftover only OldTool', (@($found | ForEach-Object { Split-Path $_.name -Leaf }) -join ','), 'OldTool')
+$lchecks += ,@('leftover files', $found[0].files, 2)
+$lchecks += ,@('leftover size', $found[0].sizeMB, 0.5)
+$lchecks += ,@('leftover age', ($found[0].lastWriteDays -ge 399), $true)
+$lchecks += ,@('leftover ref by install location', (@(Find-LeftoverDirs @($pf) @($refApp, ([IO.Path]::Combine($pf, 'OldTool'))) @()) | ForEach-Object { Split-Path $_.name -Leaf }) -join ',', 'Google')
+$p8=0; foreach ($c in $lchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p8++ } else { "FAIL leftover $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+Remove-Item -LiteralPath $lr -Recurse -Force
+"leftover: $p8/$($lchecks.Count) passed"

@@ -977,3 +977,7 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 #plan-move .deduct .linkish { margin-left: 6px; }
 .move-card .plan-bar { position: static; }
 .mv-row.moved .cc-item .box { opacity: 1; border-color: transparent; color: var(--c-ok); }
+
+/* 选项多的步骤（旧安装包）：全选 / 合计，列表限高可滚动 */
+.cc-all { display: flex; align-items: baseline; gap: 10px; }
+.cc-items.scroll { max-height: 340px; overflow: auto; padding-right: 4px; }

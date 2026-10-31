@@ -24,14 +24,15 @@
 
 开发过程的完整记录（每一轮实测和研判复核的细节、内测审批、服务器和运维信息）在**私有仓库 `WilhelmWei/iris-cloud` 的 `docs/internal/`**（`pcdoctor-CLAUDE-full.md`、`pcdoctor-roadmap-full.md`、开通服务的提示词等）。会话里能访问 iris-cloud 时，处理内测、服务器、反馈相关的事先读那里。
 
-## 当前状态（2026-10-30）
+## 当前状态（2026-10-31）
 
 - 命令行原型（`collector/`、`judge/`、`kb/`、`prompts/`、`run.ps1`、`remote/`）：采集 13 个方面、规则预筛、知识库、AI / 纯规则研判、误判复核表、远程体检包，已在真实电脑上多轮验证
 - 桌面版 1.0 内测 **1.0.0-beta.5**：.NET 10 WinForms + WebView2；快速设定、体检（实时发现流、可先 Defender 扫描）、报告（证据、交叉校验、"判断不对"、和上次比）、「处理」页（待处理 → 执行 → 刚刚完成 → 已处理，可撤销）、存储空间清理、三套主题和动效、内测反馈（同意后去隐私发送，含「处理」页的操作结果和 Defender 扫描是否正常结束）
-- 清理第一期（1.0.0-beta.6，已打包未发布）：清理目录表 `kb/junk.json`（A 类 Iris 直接删、B 类交给 Windows、不清理的伪优化）、报告里的「空间」卡片、「C 盘空间去哪了」（报告后继续扫描）、主力浏览器判断和不用的浏览器减负；第三期 B 类交给 Windows 自带清理
+- 清理第一期（1.0.0-beta.6，已打包未发布）：清理目录表 `kb/junk.json`（A 类 Iris 直接删、B 类交给 Windows、不清理的伪优化）、报告里的「空间」卡片、「C 盘空间去哪了」（报告后继续扫描）、主力浏览器判断和不用的浏览器减负
 - 清理第二期（1.0.0-beta.7，已打包未发布）：「处理」页的「搬到其他盘」（`src/Pcdoctor.Ops/FolderMove.cs`，操作 `folder.move`，只在用户自己的权限里执行；和建议清单分开，不走研判）
+- 清理第三期（1.0.0-beta.8，已打包未发布）：`src/Pcdoctor.Ops/Leftovers.cs`——系统遗留交给 Windows 磁盘清理（`system.cleanup`，cleanmgr /sagerun:7421，结束后恢复 StateFlags）、旧安装包移到回收站（`downloads.recycle_installers`，执行时现列文件）、卸载残留文件夹挪到备份区（`leftover.remove_dir`，执行前现场再查没有程序文件、没被引用）
 - 服务端和反馈控制台在私有仓库 iris-cloud（阿里云中国香港）
-- [ ] beta.4 ~ beta.7 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重、搬文件夹的速度和移动硬盘识别未验证）
+- [ ] beta.4 ~ beta.8 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重、搬文件夹的速度和移动硬盘识别、cleanmgr /sagerun 在 Windows 11 上的表现、卸载残留的误报率未验证）
 - [ ] MVP 放行：10 台不同机器、规则和 AI 结论误判率的 95% 上限 < 10%
 
 ## 桌面版工程要点

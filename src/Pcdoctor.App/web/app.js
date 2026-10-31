@@ -949,13 +949,15 @@
         <div class="k">怎么撤销</div><div class="v">${esc(s.undo)}</div>
         ${st && st.message && st.status !== 'running' && st.status !== 'verifying' ? `<div class="k">结果</div><div class="v">${esc(st.message)}</div>` : ''}</div>
       ${s.cacheOptions && !locked ? `<div class="opts">
-        <span class="label">清理这些（体检时量到的大小；不需要的点一下取消）</span>
-        <div class="cc-items">${s.cacheOptions.items.map(c => `<button class="cc-item" data-act="cc-cat" data-k="${esc(s.key)}" data-v="${esc(c.id)}" aria-pressed="${cc.categories.includes(c.id)}" title="${esc(c.why + ' ' + c.cost)}">
-          <span class="box">${icon('check')}</span><span class="nm">${esc(c.name)}${c.running ? `<i class="muted small">体检时 ${esc(c.running)} 开着，清理时还开着就跳过</i>` : ''}</span>
+        <span class="label">${esc(OPT_LABEL[s.op] || OPT_LABEL['cache.clean'])}</span>
+        ${s.cacheOptions.items.length > 3 ? `<div class="cc-all"><button class="linkish" data-act="cc-all" data-k="${esc(s.key)}">${cc.categories.length === s.cacheOptions.items.length ? '全部取消' : '全选'}</button>
+          <span class="muted small">已选 ${cc.categories.length} / ${s.cacheOptions.items.length}${optTotal(s, cc)}</span></div>` : ''}
+        <div class="cc-items ${s.cacheOptions.items.length > 8 ? 'scroll' : ''}">${s.cacheOptions.items.map(c => `<button class="cc-item" data-act="cc-cat" data-k="${esc(s.key)}" data-v="${esc(c.id)}" aria-pressed="${cc.categories.includes(c.id)}" title="${esc(c.why + ' ' + c.cost)}">
+          <span class="box">${icon('check')}</span><span class="nm">${esc(pii(c.name))}${c.running ? `<i class="muted small">体检时 ${esc(c.running)} 开着，清理时还开着就跳过</i>` : ''}${optNote(s, c)}</span>
           <span class="num">${c.sizeMB == null ? '' : fmtMB(c.sizeMB)}</span></button>`).join('')}</div>
-        <details class="cc-more"><summary>只清更早的（可选）</summary>
+        ${(s.cacheOptions.ages || []).length ? `<details class="cc-more"><summary>只清更早的（可选）</summary>
           <div class="choices">${s.cacheOptions.ages.map(d => `<button data-act="cc-age" data-k="${esc(s.key)}" data-v="${d}" aria-pressed="${(cc.age || 0) === d}">${d ? d + ' 天前' : '按默认'}</button>`).join('')}</div>
-          <span class="muted small">默认：临时文件只清 7 天前的、旧日志只清 30 天前的，其余缓存不限时间。</span></details>
+          <span class="muted small">默认：临时文件只清 7 天前的、旧日志只清 30 天前的，其余缓存不限时间。</span></details>` : ''}
       </div>` : ''}
     </div>`;
   }
@@ -1041,6 +1043,21 @@
     </ul></div></details>`;
   }
 
+  /** 带选项的步骤：选项上面那句话，以及每一项下面的小字 */
+  const OPT_LABEL = {
+    'cache.clean': '清理这些（体检时量到的大小；不需要的点一下取消）',
+    'system.cleanup': '交给 Windows 磁盘清理的项目（体检时量到的大小）',
+    'downloads.recycle_installers': '移到回收站的安装包（刚才现列的；要留着的点一下取消）',
+  };
+  function optNote(s, c) {
+    if (s.op === 'system.cleanup') return `<i class="muted small">${esc(c.cost)}</i>`;
+    if (s.op === 'downloads.recycle_installers') return `<i class="muted small">${esc(c.why)}</i>`;
+    return '';
+  }
+  function optTotal(s, cc) {
+    const mb = s.cacheOptions.items.filter(i => cc.categories.includes(i.id)).reduce((a, i) => a + (i.sizeMB || 0), 0);
+    return mb ? ` · ${fmtMB(mb)}` : '';
+  }
   /** 清理缓存这一步当前的选择：没动过就是方案里的默认（全选） */
   function ccOf(s) {
     return state.cacheChoice[s.key] = state.cacheChoice[s.key] || { categories: (s.cacheOptions.categories || []).slice(), age: null };
@@ -1740,6 +1757,10 @@
       case 'cc-cat': {
         const c = ccOf(state.plan.steps.find(s => s.key === k));
         const v = el.dataset.v; c.categories = c.categories.includes(v) ? c.categories.filter(x => x !== v) : c.categories.concat(v); renderPlan(); break;
+      }
+      case 'cc-all': {
+        const s = state.plan.steps.find(x => x.key === k), c = ccOf(s);
+        c.categories = c.categories.length === s.cacheOptions.items.length ? [] : s.cacheOptions.items.map(i => i.id); renderPlan(); break;
       }
       case 'cc-age': { const c = ccOf(state.plan.steps.find(s => s.key === k)); c.age = +el.dataset.v || null; renderPlan(); break; }
       case 'space-add': state.selected.add(k); state.dismissed.delete(k); saveSel(); toast('已加入处理清单。执行前会列出要清的每一类，再弹确认框'); setChrome(); refreshSpace(); refreshRows(); break;

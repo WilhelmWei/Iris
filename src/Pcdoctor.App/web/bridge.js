@@ -43,7 +43,7 @@
                 showLessons: true, lessonIndex: 0, showTips: true, onboarded: /[?&]onboarded\b/.test(location.search), betaConsent: null, feedbackServer: true },
     report: null, journal: [], answers: {}, privacyAccepted: true,
   };
-  const EXEC = ['startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'browser.disable_chrome_background', 'cache.clean', 'defender.scan',
+  const EXEC = ['system.cleanup', 'downloads.recycle_installers', 'leftover.remove_dir', 'startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'browser.disable_chrome_background', 'cache.clean', 'defender.scan',
                 'service.set_manual', 'service.delete_orphan', 'app.uninstall', 'driver.delete_old_version', 'power.disable_fast_startup'];
 
   // ---- 「空间」卡片的模拟数据（虚构的电脑）：采集时量到的缓存，以及报告出来后继续跑的「C 盘空间去哪了」
@@ -147,7 +147,7 @@
         const r = await load();
         const h = r ? r.history : [];
         return { version: '1.0.0-rc.1', isAdmin: false, settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
-                 privacy: { version: '2026-10-30.1', accepted: M.privacyAccepted },
+                 privacy: { version: '2026-10-31.1', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
@@ -222,7 +222,7 @@
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-10-30.1', text };
+        return { version: '2026-10-31.1', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};
@@ -280,6 +280,23 @@
       'browser.disable_background': ['关闭 Edge 的“关闭后继续运行后台扩展和应用”', '关掉窗口后，Edge 的扩展不再在后台工作', '可以在「处理」页里一键撤销'],
       'power.disable_fast_startup': ['关闭快速启动（HiberbootEnabled 改为 0）', '冷启动会慢几秒；以后点“关机”就是真正的关机', '可以在「处理」页里一键撤销'],
       'cache.clean': ['把勾选的缓存直接删除（不进回收站，这样才真正腾出空间）', '这些都是程序会自动重新生成的缓存，不是你的文件；正在使用的文件和开着的浏览器会自动跳过', '不能撤销，也不需要撤销：用到时程序会重新生成'],
+      'system.cleanup': ['给勾选的项目做上标记，运行 Windows 自带的磁盘清理（cleanmgr）把它们删掉，结束后把标记恢复原样', '删掉的是系统升级和更新留下的文件；选了 Windows.old 的，之后不能退回升级前的版本。磁盘清理会弹出它自己的进度窗口，可能要几分钟到十几分钟', '不能撤销：文件由 Windows 删除'],
+      'downloads.recycle_installers': ['把勾选的安装包移到回收站（不永久删除）', '软件已经装好了，安装包一般用不上；以后要重装可以再下载。清空回收站后才真正腾出空间', '打开回收站，选中文件后点「还原选定的项目」'],
+      'leftover.remove_dir': ['把这个文件夹整个挪到 Iris 的备份区（同一个盘，只改位置）', '里面已经没有程序文件，也没有已装软件和服务用到它；挪走后真正删除要等清理旧备份', '在操作记录里点撤销，会挪回原处'],
+    };
+    const OPTS = {
+      'system.cleanup': () => {
+        const items = [{ id: 'windows-old', name: '旧版 Windows（Windows.old）', sizeMB: 18636.8, why: '升级 Windows 大版本后留下的旧系统，用来回退。', cost: '删除后就不能退回升级前的 Windows 版本。' },
+                       { id: 'windows-upgrade-temp', name: '升级临时文件和日志', sizeMB: 2900, why: '', cost: '没有代价；如果升级还没完成，Windows 会重新下载。' },
+                       { id: 'update-cleanup', name: '被替换掉的旧系统更新', sizeMB: null, why: '', cost: '清理后不能再卸载这些已经被替换的更新；可能要十几分钟。' }];
+        return { items, categories: ['windows-old', 'windows-upgrade-temp'], ages: [] };
+      },
+      'downloads.recycle_installers': () => {
+        const names = [['QuickVPN-setup.exe', 812, 412], ['OfficeSetup.exe', 640, 300], ['python-3.11.4-amd64.exe', 25.2, 260], ['WeChatSetup.exe', 210, 190], ['node-v18.17.0-x64.msi', 30.1, 180],
+                       ['GoogleChromeStandaloneEnterprise64.msi', 112, 150], ['vlc-3.0.18-win64.exe', 41, 120], ['Steam安装程序.exe', 2.3, 90], ['ToDesk_Setup.exe', 88, 64], ['QQ_9.7.exe', 220, 45]];
+        const items = names.map(([n, mb, d]) => ({ id: 'C:\\Users\\Alice\\Downloads\\' + n, name: n, sizeMB: mb, why: d + ' 天前下载', cost: '' }));
+        return { items, categories: items.map(i => i.id), ages: [] };
+      },
     };
     for (const key of p.keys || []) {
       const f = r.result.judgement.findings.find(x => x.flagIds.join('+') === key);
@@ -298,7 +315,8 @@
         continue;
       }
       steps.push({ key: key + '#0', findingKey: key, op, opName: alt ? alt.name : f.actionName, risk: alt ? alt.risk : f.risk, title: f.object, change: c[0], cost: c[1], undo: c[2],
-                   reversible: op !== 'app.uninstall', needsAdmin: op !== 'startup.disable' && op !== 'browser.disable_background', cacheOptions: null });
+                   reversible: !['app.uninstall', 'system.cleanup', 'downloads.recycle_installers'].includes(op),
+                   needsAdmin: !['startup.disable', 'browser.disable_background', 'downloads.recycle_installers'].includes(op), cacheOptions: OPTS[op] ? OPTS[op]() : null });
     }
     return { planId: 'plan-' + Date.now(), steps, needsAdmin: steps.some(s => s.needsAdmin), skipped };
   }
@@ -315,6 +333,7 @@
     return out;
   }
   if (/[?&]carried\b/.test(location.search)) { M.selected = ['F012', 'F017']; M.carried = 2; }
+  if (/[?&]p3\b/.test(location.search)) M.selected = ['F051', 'F052', 'F053'];
 
   // 搬到其他盘：?nodrive 模拟只有一个盘
   const GBb = 1024 * 1024 * 1024;
@@ -366,9 +385,12 @@
       const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(),
                       findingKey: s.findingKey, reportId: 'demo',
                       op: s.op, opName: s.opName, title: s.title, risk: s.risk, status: ok ? 'done' : 'rolledBack',
-                      message: cache ? `腾出了 ${(cache.filter(i => !i.running).reduce((a, i) => a + i.sizeMB, 0) / 1024).toFixed(1)} GB` + (cache.some(i => i.running) ? `。${cache.filter(i => i.running).map(i => i.running).join('、')} 正在运行，没有清「${cache.filter(i => i.running).map(i => i.name).join('、')}」，关掉后可以再清一次` : '')
+                      message: s.op === 'system.cleanup' ? 'Windows 磁盘清理已完成，C 盘多出了 21.3 GB'
+                             : s.op === 'downloads.recycle_installers' ? `已把 ${(s.cacheChoice || {}).categories.length} 个旧安装包移到回收站。确认不需要后清空回收站，才真正腾出空间`
+                             : s.op === 'leftover.remove_dir' ? '已把这个残留文件夹（12 MB）挪到 Iris 的备份区；需要时可以撤销，清理旧备份时才真正删除'
+                             : cache ? `腾出了 ${(cache.filter(i => !i.running).reduce((a, i) => a + i.sizeMB, 0) / 1024).toFixed(1)} GB` + (cache.some(i => i.running) ? `。${cache.filter(i => i.running).map(i => i.running).join('、')} 正在运行，没有清「${cache.filter(i => i.running).map(i => i.name).join('、')}」，关掉后可以再清一次` : '')
                              : ok ? '已完成，重新检测确认生效' : '重新检测发现系统又恢复了这条登记（可能有程序在守护它），已自动恢复原状，没有留下改动',
-                      reversible: s.reversible !== false };
+                      reversible: s.reversible !== false, undoHint: s.reversible === false ? s.undo : null };
       M.journal.unshift(entry);
       emit('opProgress', { key: s.key, status: entry.status, message: entry.message });
     }

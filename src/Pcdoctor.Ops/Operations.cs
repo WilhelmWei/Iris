@@ -71,7 +71,7 @@ public static class Operations
     {
         new StartupDisable(), new TaskDisable(), new TaskDeleteLeftover(), new ServiceSetManual(), new ServiceDeleteOrphan(),
         new BrowserDisableBackground(), new ChromeDisableBackground(), new PowerDisableFastStartup(), new CacheClean(), new DefenderScan(), new AppUninstall(),
-        new DriverDeleteOldVersion(), new FolderMoveOp(),
+        new DriverDeleteOldVersion(), new FolderMoveOp(), new SystemCleanupOp(), new InstallersRecycleOp(), new LeftoverDirOp(),
     }.ToDictionary(o => o.Id);
 
     public static Operation? Get(string id) => All.TryGetValue(id, out var o) ? o : null;
@@ -107,6 +107,8 @@ public static class Operations
             case "service.set_manual":
             case "service.delete_orphan":
                 return SafeName.IsMatch(V("name")) ? null : "服务名称不合法";
+            case "leftover.remove_dir":
+                return LeftoverDirs.PathProblem(V("path"));
             case "folder.move":
                 if (FolderMove.Get(V("folder")) == null) return "不支持搬这个文件夹";
                 return System.Text.RegularExpressions.Regex.IsMatch(V("drive"), "^[D-Zd-z]:$") ? null : "目标盘不合法";

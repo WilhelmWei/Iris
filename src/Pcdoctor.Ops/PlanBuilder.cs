@@ -33,6 +33,13 @@ public static class Catalog
             "没有代价：没有设备在用它；删除前会导出备份", "在操作记录里点撤销，会把导出的驱动包加回去", true, true),
         ["folder.move"] = new("搬到其他盘", "yellow", "把文件复制到新位置、逐个核对大小，再把系统里这个文件夹的位置改过去，最后删掉 C 盘上已经复制好的原件",
             "需要几分钟到几十分钟，期间请不要关闭 Iris；个别软件记着旧位置，会在 C 盘重新建一个同名文件夹", "在操作记录里点撤销，会全部搬回 C 盘（C 盘需要有足够空间）", true, false),
+        ["system.cleanup"] = new("交给 Windows 磁盘清理", "yellow", "给勾选的项目做上标记，运行 Windows 自带的磁盘清理（cleanmgr）把它们删掉，结束后把标记恢复原样",
+            "删掉的是系统升级和更新留下的文件；选了 Windows.old 的，之后不能退回升级前的版本。磁盘清理会弹出它自己的进度窗口，可能要几分钟到十几分钟",
+            "不能撤销：文件由 Windows 删除", false, true),
+        ["downloads.recycle_installers"] = new("移走旧安装包", "green", "把勾选的安装包移到回收站（不永久删除）",
+            "软件已经装好了，安装包一般用不上；以后要重装可以再下载。清空回收站后才真正腾出空间", "打开回收站，选中文件后点「还原选定的项目」", false, false),
+        ["leftover.remove_dir"] = new("移走卸载残留", "yellow", "把这个文件夹整个挪到 Iris 的备份区（同一个盘，只改位置）",
+            "里面已经没有程序文件，也没有已装软件和服务用到它；挪走后真正删除要等清理旧备份", "在操作记录里点撤销，会挪回原处", true, true),
         ["power.disable_fast_startup"] = new("关闭快速启动", "yellow", "关闭 Windows 的快速启动，休眠照常保留",
             "开机可能慢几秒；换来的是每次「关机」都是真正的关机，不再积累内存占用和小毛病", "在操作记录里点撤销", true, true),
     };
@@ -69,14 +76,15 @@ public static class PlanBuilder
         return map;
     }
 
+    /// <param name="sys">本机系统接口：有些步骤的选项要当场列（例如下载文件夹里现在有哪些旧安装包）；为空时这些步骤跳过</param>
     public static Plan Build(JsonNode report, JsonNode judge, IEnumerable<string> keys, string windowsDir,
-                             IReadOnlyDictionary<string, string>? overrides = null)
+                             IReadOnlyDictionary<string, string>? overrides = null, IWinSystem? sys = null)
     {
         var plan = new Plan { PlanId = "plan-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") };
         var findings = judge["judgement"]!["findings"]!.AsArray();
         var flags = report["flags"]!.AsArray().ToDictionary(f => f!["id"]!.ToString(), f => f!);
         var S = report["sections"]!;
-        bool cacheAdded = false, scanAdded = false, browserAdded = false, chromeAdded = false, powerAdded = false;
+        bool cacheAdded = false, sysCleanAdded = false, installersAdded = false, scanAdded = false, browserAdded = false, chromeAdded = false, powerAdded = false;
 
         foreach (var key in keys.Distinct())
         {
@@ -162,6 +170,24 @@ public static class PlanBuilder
                     }
                     else reason = "已合并到上面的清理缓存";
                     break;
+                case "system.cleanup":
+                    if (sysCleanAdded) reason = "已合并到上面的磁盘清理";
+                    else if (SystemCleanup.Options(report).Items.Count == 0) reason = "这台电脑上没有量到值得交给磁盘清理的项目";
+                    else { sysCleanAdded = true; targets.Add(("Windows 自带的磁盘清理", new JsonObject(), null)); }
+                    break;
+                case "downloads.recycle_installers":
+                    if (installersAdded) reason = "已合并";
+                    else if (sys == null || OldInstallers.Options(sys).Items.Count == 0) reason = "下载文件夹里现在没有一个月以前的安装包了";
+                    else { installersAdded = true; targets.Add(("下载文件夹里的旧安装包", new JsonObject(), null)); }
+                    break;
+                case "leftover.remove_dir":
+                    foreach (var fl in its.Where(x => x["rule"]?.ToString() == "leftover-dir"))
+                    {
+                        var path = fl["object"]?.ToString() ?? "";
+                        if (LeftoverDirs.PathProblem(path) is { } bad) { reason = bad; continue; }
+                        targets.Add((path, new JsonObject { ["path"] = path }, null));
+                    }
+                    break;
                 case "defender.scan":
                     if (!scanAdded) { scanAdded = true; targets.Add(("这台电脑", new JsonObject(), null)); } else reason = "已合并到上面的扫描";
                     break;
@@ -184,7 +210,13 @@ public static class PlanBuilder
                     Key = $"{key}#{n++}", FindingKey = key, Op = op, OpName = info.Name, Title = t, Risk = info.Risk,
                     Change = info.Change, Cost = info.Cost, Undo = info.Undo, Reversible = info.Reversible,
                     NeedsAdmin = admin ?? info.NeedsAdmin, Target = target,
-                    CacheOptions = op == "cache.clean" ? CacheClean.Options(report, admin ?? info.NeedsAdmin) : null,
+                    CacheOptions = op switch
+                    {
+                        "cache.clean" => CacheClean.Options(report, admin ?? info.NeedsAdmin),
+                        "system.cleanup" => SystemCleanup.Options(report),
+                        "downloads.recycle_installers" => OldInstallers.Options(sys!),
+                        _ => null,
+                    },
                 });
         }
         return plan;

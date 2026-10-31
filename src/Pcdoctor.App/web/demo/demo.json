@@ -358,6 +358,51 @@
     },
     {
      "flagIds": [
+      "F051"
+     ],
+     "object": "旧版 Windows（Windows.old）",
+     "verdict": "leftover",
+     "confidence": 0.8,
+     "evidence": "占 18.2 GB",
+     "proposedAction": "system.cleanup",
+     "actionName": "交给 Windows 磁盘清理",
+     "risk": "yellow",
+     "userExplanation": "升级 Windows 大版本后留下的旧系统，用来回退。系统用了一段时间、没有问题的话，可以交给 Windows 自带的磁盘清理删除；删除后就不能退回升级前的版本。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F052"
+     ],
+     "object": "下载文件夹里的旧安装包",
+     "verdict": "leftover",
+     "confidence": 0.8,
+     "evidence": "14 个，共 3.6 GB，都是一个月以前下载的",
+     "proposedAction": "downloads.recycle_installers",
+     "actionName": "移走旧安装包",
+     "risk": "green",
+     "userExplanation": "软件装好以后，安装包一般就用不上了；以后要重装可以再下载。Iris 只把它们移到回收站，不永久删除。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F053"
+     ],
+     "object": "C:\\Program Files (x86)\\QuickVPN",
+     "verdict": "leftover",
+     "confidence": 0.8,
+     "evidence": "12 MB，36 个文件，没有程序文件，也没有已装软件和服务用到它；420 天没改过",
+     "proposedAction": "leftover.remove_dir",
+     "actionName": "移走卸载残留",
+     "risk": "yellow",
+     "userExplanation": "QuickVPN 卸载以后留下的文件夹，里面只剩日志和配置。Iris 把它挪到自己的备份区，随时可以撤销。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
       "F025"
      ],
      "object": "C 盘剩余 8.2 GB（6%）",

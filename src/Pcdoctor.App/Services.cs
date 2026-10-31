@@ -628,7 +628,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var meta = AppData.ReadJson(Path.Combine(dir, "meta.json"))!;
         if (meta["source"]?.ToString() != "local") throw new InvalidOperationException("这份报告来自别的电脑，只能查看，不能在这台电脑上执行");
         var plan = PlanBuilder.Build(AppData.ReadJson(Path.Combine(dir, "report.json"))!, AppData.ReadJson(Path.Combine(dir, "judge.json"))!,
-                                     keys, Environment.GetFolderPath(Environment.SpecialFolder.Windows), Overrides(dir, answers));
+                                     keys, Environment.GetFolderPath(Environment.SpecialFolder.Windows), Overrides(dir, answers),
+                                     new WindowsSystem(Path.GetTempPath()));
         plans[plan.PlanId] = plan;
         return JsonSerializer.SerializeToNode(plan, OpsJson.Default.Plan)!.AsObject().Also(o => o["needsAdmin"] = plan.NeedsAdmin);
     }
@@ -651,7 +652,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         // 只采用界面传回来的"保留了哪些步骤"和缓存清理的勾选，步骤内容以程序生成的为准
         var keep = uiSteps.Select(s => s?["key"]?.ToString()).ToHashSet();
         var steps = plan.Steps.Where(s => keep.Contains(s.Key)).ToList();
-        foreach (var s in steps.Where(s => s.Op == "cache.clean"))
+        foreach (var s in steps.Where(s => s.CacheOptions != null))
         {
             // 界面只能在这一步列出的类别里取舍；没传就是默认（全部列出的类别）
             var offered = s.CacheOptions?.Items.Select(i => i.Id).ToHashSet() ?? [];
@@ -661,18 +662,24 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             s.CacheChoice = new CacheChoice
             {
                 Categories = picked,
-                Age = ui?["age"] is JsonValue v && v.TryGetValue<int>(out var a) && a > 0 ? a : null,
+                Age = s.Op == "cache.clean" && ui?["age"] is JsonValue v && v.TryGetValue<int>(out var a) && a > 0 ? a : null,
             };
         }
         if (steps.Count == 0) throw new InvalidOperationException("没有要执行的步骤");
         string CacheText(PlanStep s)
         {
-            var names = s.CacheChoice!.Categories.Select(id => s.CacheOptions?.Items.FirstOrDefault(i => i.Id == id)?.Name ?? id);
-            return $"直接删除这些缓存：{string.Join("、", names)}" + (s.CacheChoice.Age is { } d ? $"（只删 {d} 天以前的）" : "")
-                   + "。不进回收站，不能撤销；都是程序会自动重新生成的缓存";
+            var names = s.CacheChoice!.Categories.Select(id => s.CacheOptions?.Items.FirstOrDefault(i => i.Id == id)?.Name ?? id).ToList();
+            return s.Op switch
+            {
+                "system.cleanup" => $"让 Windows 自带的磁盘清理删除：{string.Join("、", names)}。不能撤销"
+                                    + (s.CacheChoice.Categories.Contains("windows-old") ? "；删除 Windows.old 后就不能退回升级前的 Windows 版本" : ""),
+                "downloads.recycle_installers" => $"把 {names.Count} 个旧安装包移到回收站：{string.Join("、", names.Take(8))}{(names.Count > 8 ? " 等" : "")}。需要时可以从回收站还原",
+                _ => $"直接删除这些缓存：{string.Join("、", names)}" + (s.CacheChoice.Age is { } d ? $"（只删 {d} 天以前的）" : "")
+                     + "。不进回收站，不能撤销；都是程序会自动重新生成的缓存",
+            };
         }
         var items = steps.Select(s => new ChangeItem($"{s.OpName}：{s.Title}",
-            s.Op == "cache.clean" && s.CacheChoice != null ? CacheText(s) : s.Change,
+            s.CacheChoice != null ? CacheText(s) : s.Change,
             s.Reversible, s.Undo, s.NeedsAdmin)).ToList();
         if (!Confirm($"确认执行这 {steps.Count} 项修改？", items)) return new JsonObject { ["cancelled"] = true };
         var batch = "batch-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];

@@ -132,6 +132,14 @@ public static class BackupPruner
     /// <summary>删除旧版驱动包时导出的备份文件夹（WorkDir\driver-&lt;oemNN.inf&gt;）。名字来自记录，只认 oem数字.inf，防止路径穿越。</summary>
     static string? DriverExportDir(string workDir, JournalEntry e)
     {
+        if (e.Op == "leftover.remove_dir")
+        {
+            // 挪到备份区的残留文件夹：只认备份区 leftovers 下面一层
+            var moved = e.Backup["moved"]?.ToString() ?? "";
+            var root = workDir.TrimEnd('\\', '/') + "\\leftovers\\";
+            return moved.StartsWith(root, StringComparison.OrdinalIgnoreCase) && !moved[root.Length..].Contains('\\') && !moved.Contains("..")
+                   && Directory.Exists(moved) ? moved : null;
+        }
         if (e.Op != "driver.delete_old_version") return null;
         var name = e.Target["publishedName"]?.ToString() ?? "";
         if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^oem\d{1,5}\.inf$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return null;
