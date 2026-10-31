@@ -554,6 +554,7 @@ public sealed class CacheClean : Operation
     {
         var results = new JsonArray();
         long bytes = 0; int deleted = 0, skipped = 0;
+        var list = new System.Text.StringBuilder();
         foreach (var cat in s.CacheChoice!.Categories.Distinct().Select(Junk.Get).OfType<JunkCategory>())
         {
             var r = new JsonObject { ["id"] = cat.Id, ["name"] = cat.Name };
@@ -565,12 +566,15 @@ public sealed class CacheClean : Operation
             foreach (var chunk in files.Chunk(500))
             {
                 var done = new HashSet<string>(c.Sys.DeleteFiles(chunk.Select(f => f.Path).ToList()), StringComparer.OrdinalIgnoreCase);
-                foreach (var f in chunk) if (done.Contains(f.Path)) { catDeleted++; catBytes += f.Size; } else skipped++;
+                foreach (var f in chunk)
+                    if (done.Contains(f.Path)) { catDeleted++; catBytes += f.Size; list.Append(f.Path).Append('\t').Append(f.Size).Append('\t').Append(cat.Id).Append('\n'); }
+                    else skipped++;
             }
             r["deleted"] = catDeleted; r["bytes"] = catBytes;
             deleted += catDeleted; bytes += catBytes;
         }
         b["categories"] = results; b["deleted"] = deleted; b["skipped"] = skipped; b["bytes"] = bytes;
+        if (deleted > 0 && OpLists.Write(c.WorkDir, "cache", list.ToString()) is { } name) b["list"] = name;
     }
     /// <summary>重新测量：清过的类别里还剩多少符合条件的文件（被占用、没删掉的）。只用于告诉用户，不算失败。</summary>
     protected override string? Verify(PlanStep s, OpContext c, JsonObject b)
@@ -717,3 +721,28 @@ public sealed class DriverDeleteOldVersion : Operation
     }
     protected override string DoneMessage(PlanStep s, OpContext c, JsonObject b) => "已删除这个没有设备在用的旧版驱动包（删除前已导出备份，可以撤销）";
 }
+
+/// <summary>删掉的文件很多时（清缓存动辄几万个），完整清单不放进操作记录，单独存一个文本文件（每行：路径、大小、类别），
+/// 界面上「查看全部文件」时再读。和备份放在同一个目录，清理旧备份时一起删。</summary>
+public static class OpLists
+{
+    static readonly System.Text.RegularExpressions.Regex Name = new(@"^[a-z]+-\d{14}-[0-9a-f]{6}\.tsv$");
+
+    public static string? Write(string workDir, string kind, string content)
+    {
+        try
+        {
+            var name = $"{kind}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6]}.tsv";
+            var dir = Path.Combine(workDir, "lists");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, name), content);
+            return name;
+        }
+        catch { return null; }  // 清单写不下来不影响清理本身
+    }
+
+    /// <summary>记录里的清单文件名对应的完整路径；名字不合规矩（可能被改过）时返回 null。</summary>
+    public static string? PathOf(string workDir, string? name) =>
+        name != null && Name.IsMatch(name) ? Path.Combine(workDir, "lists", name) : null;
+}
+

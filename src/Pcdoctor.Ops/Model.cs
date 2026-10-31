@@ -20,7 +20,19 @@ public sealed class PlanStep
     public JsonObject Target { get; set; } = new();
     public CacheOptions? CacheOptions { get; set; }
     public CacheChoice? CacheChoice { get; set; }
+    /// <summary>预计腾出多少（搬文件夹、卸载残留这类没有选项的步骤）；界面上汇总"空间"这一组。</summary>
+    public double? SizeMB { get; set; }
+    /// <summary>搬文件夹这一步可以选的盘（Drive 是默认的，剩余空间最大的那个）。</summary>
+    public MoveChoice? Move { get; set; }
 }
+
+public sealed class MoveChoice
+{
+    public List<DriveOption> Drives { get; set; } = [];
+    public string Drive { get; set; } = "";
+}
+
+public sealed record DriveOption(string Root, string Name, string? Label, double FreeGB);
 
 /// <summary>清理缓存这一步可以选的类别（清理目录表里的 A 类）和体检时量到的大小；Categories 是默认勾选的。</summary>
 public sealed class CacheOptions

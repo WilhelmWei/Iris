@@ -60,6 +60,10 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["update"] = update?.DeepClone(),
             ["outbox"] = Directory.GetFiles(AppData.Outbox, "*.json.gz").Length,
             ["isAdmin"] = Environment.IsPrivilegedProcess,
+            // 演示模式要遮住的名字：只给本机界面用，不写进任何报告和反馈
+            ["identity"] = new JsonArray(new[] { Environment.UserName, Environment.MachineName,
+                    Path.GetFileName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).TrimEnd('\\')) }
+                .Where(n => !string.IsNullOrWhiteSpace(n) && n.Length >= 2).Distinct(StringComparer.OrdinalIgnoreCase).Select(n => (JsonNode?)n).ToArray()),
             ["settings"] = AppData.SettingsForUi(s),
             ["executableOps"] = new JsonArray(Catalog.Ops.Keys.Select(k => (JsonNode?)k).ToArray()),
             ["guideOps"] = new JsonArray(Catalog.GuideOps.Select(k => (JsonNode?)k).ToArray()),
@@ -465,7 +469,9 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var done = Handled(prev.Id).Where(kv => kv.Value?["status"]?.ToString() == "done").Select(kv => kv.Key).ToHashSet();
         var keys = SelectedKeys(prev.Id).Where(k => !done.Contains(k)).ToList();
         if (keys.Count == 0) return;
-        var carried = Insights.CarryKeys(ReadReport(prev.Id)!, prev.Judge, keys, ReadReport(id)!, reports[^1].Judge);
+        // 搬文件夹不是研判结论，编号不会变，原样带过来
+        var moves = keys.Where(k => k.StartsWith("move:", StringComparison.Ordinal)).ToList();
+        var carried = Insights.CarryKeys(ReadReport(prev.Id)!, prev.Judge, keys.Except(moves).ToList(), ReadReport(id)!, reports[^1].Judge).Concat(moves).ToList();
         AppData.WriteJson(SelectedPath(id), new JsonObject
         {
             ["keys"] = new JsonArray(carried.Select(k => (JsonNode?)k).ToArray()),
@@ -514,7 +520,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["selected"] = AppData.ReadJson(Path.Combine(dir, "selected.json")) ?? new JsonObject(),
             ["sent"] = meta["feedbackSent"]?.DeepClone(),
             ["canExecute"] = meta["source"]?.ToString() == "local",
-            ["storage"] = StorageSummary(report),
+            ["storage"] = StorageSummary(report)?.Also(o => o["freeNow"] = meta["source"]?.ToString() == "local" ? SystemFree() : null),
             ["space"] = AppData.ReadJson(Path.Combine(dir, "space.json")),
             ["spaceRunning"] = spaceRuns.ContainsKey(id),
         };
@@ -548,7 +554,9 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["groups"] = new JsonArray(groups.Select(g => (JsonNode)g).ToArray()),
             ["system"] = new JsonArray(items.Where(x => x["tier"]?.ToString() == "B" && N(x["sizeMB"]) >= 500)
                 .OrderByDescending(x => N(x["sizeMB"]))
-                .Select(x => (JsonNode)new JsonObject { ["name"] = x["name"]?.ToString(), ["mb"] = N(x["sizeMB"]), ["why"] = Junk.Get(x["id"]?.ToString() ?? "")?.Why }).ToArray()),
+                .Select(x => (JsonNode)new JsonObject { ["id"] = x["id"]?.ToString(), ["name"] = x["name"]?.ToString(), ["mb"] = N(x["sizeMB"]), ["why"] = Junk.Get(x["id"]?.ToString() ?? "")?.Why }).ToArray()),
+            ["installers"] = st["folders"]?["downloads"]?["installers"]?.DeepClone(),
+            ["leftoverDirs"] = report?["sections"]?["software"]?["leftoverDirs"]?.DeepClone(),
             ["chatApps"] = chats,
             ["downloadsGB"] = st["folders"]?["downloads"]?["sizeGB"]?.DeepClone(),
             ["hiberfilGB"] = st["system"]?["hiberfilGB"]?.DeepClone(),
@@ -627,9 +635,23 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var dir = AppData.ReportDir(id) ?? throw new ArgumentException("报告编号不对");
         var meta = AppData.ReadJson(Path.Combine(dir, "meta.json"))!;
         if (meta["source"]?.ToString() != "local") throw new InvalidOperationException("这份报告来自别的电脑，只能查看，不能在这台电脑上执行");
+        var sys = new WindowsSystem(Path.GetTempPath());
+        var all = keys.Distinct().ToList();
+        var moves = all.Where(k => k.StartsWith("move:", StringComparison.Ordinal)).ToList();
         var plan = PlanBuilder.Build(AppData.ReadJson(Path.Combine(dir, "report.json"))!, AppData.ReadJson(Path.Combine(dir, "judge.json"))!,
-                                     keys, Environment.GetFolderPath(Environment.SpecialFolder.Windows), Overrides(dir, answers),
-                                     new WindowsSystem(Path.GetTempPath()));
+                                     all.Except(moves), Environment.GetFolderPath(Environment.SpecialFolder.Windows), Overrides(dir, answers), sys);
+        if (moves.Count > 0)
+        {
+            // 搬文件夹：用户自己从「空间」卡片加的，不来自研判结论
+            var targets = FolderMove.Targets(sys);
+            var cands = MoveCandidates(sys);
+            foreach (var k in moves)
+            {
+                var c = cands.FirstOrDefault(x => "move:" + x.Folder.Id == k);
+                if (c != null && FolderMove.Step(sys, c, targets) is { } step) plan.Steps.Add(step);
+                else plan.Skipped.Add(new(k, c?.Folder.Name ?? k, c?.MovedTo != null ? "已经不在 C 盘的默认位置了" : targets.Count == 0 ? "没有别的内置硬盘可以搬过去" : "这个文件夹现在不能搬"));
+            }
+        }
         plans[plan.PlanId] = plan;
         return JsonSerializer.SerializeToNode(plan, OpsJson.Default.Plan)!.AsObject().Also(o => o["needsAdmin"] = plan.NeedsAdmin);
     }
@@ -665,6 +687,14 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
                 Age = s.Op == "cache.clean" && ui?["age"] is JsonValue v && v.TryGetValue<int>(out var a) && a > 0 ? a : null,
             };
         }
+        foreach (var s in steps.Where(s => s.Op == "folder.move" && s.Move != null))
+        {
+            // 只能在这一步列出的盘里选
+            var want = uiSteps.FirstOrDefault(x => x?["key"]?.ToString() == s.Key)?["drive"]?.ToString();
+            var pick = s.Move!.Drives.FirstOrDefault(d => d.Root.Equals(want, StringComparison.OrdinalIgnoreCase))?.Root ?? s.Move.Drive;
+            s.Target["drive"] = pick;
+            s.Title = $"{FolderMove.Get(s.Target["folder"]!.ToString())!.Name} → {FolderMove.DriveName(pick)}";
+        }
         if (steps.Count == 0) throw new InvalidOperationException("没有要执行的步骤");
         string CacheText(PlanStep s)
         {
@@ -678,8 +708,15 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
                      + "。不进回收站，不能撤销；都是程序会自动重新生成的缓存",
             };
         }
+        var msys = new WindowsSystem(Path.GetTempPath());
+        string MoveText(PlanStep s)
+        {
+            var f = FolderMove.Get(s.Target["folder"]!.ToString())!;
+            return $"把 {FolderMove.DefaultPath(msys, f)} 搬到 {FolderMove.TargetPath(msys, f, s.Target["drive"]!.ToString())}：先复制、逐个核对大小，"
+                   + $"再把系统里「{f.Name}」的位置改过去，最后删掉 C 盘上已经复制好的原件" + (f.Id == "documents" ? "。微信、QQ、Outlook 的文件夹留在原处" : "");
+        }
         var items = steps.Select(s => new ChangeItem($"{s.OpName}：{s.Title}",
-            s.CacheChoice != null ? CacheText(s) : s.Change,
+            s.CacheChoice != null ? CacheText(s) : s.Op == "folder.move" ? MoveText(s) : s.Change,
             s.Reversible, s.Undo, s.NeedsAdmin)).ToList();
         if (!Confirm($"确认执行这 {steps.Count} 项修改？", items)) return new JsonObject { ["cancelled"] = true };
         var batch = "batch-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];
@@ -687,15 +724,28 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         return new JsonObject { ["started"] = true };
     }
 
+    /// <summary>系统盘现在的剩余空间（字节）；读不到时为 null。</summary>
+    static long? SystemFree()
+    {
+        try { return new DriveInfo(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!).AvailableFreeSpace; }
+        catch { return null; }
+    }
+
     async Task RunSteps(List<PlanStep> steps, string reportId, string batch)
     {
+        var freeBefore = SystemFree();
+        var moving = steps.Any(s => s.Op == "folder.move");
+        if (moving) moveRunning = true;
         try
         {
-            // 先在普通权限里执行不需要管理员的步骤（当前用户的自启动、卸载软件）
-            var ctx = Helper.UserContext();
+            // 先在普通权限里执行不需要管理员的步骤（当前用户的自启动、卸载软件、搬文件夹、旧安装包）
             foreach (var s in steps.Where(s => !s.NeedsAdmin))
             {
                 emit("opProgress", new JsonObject { ["key"] = s.Key, ["status"] = "running", ["message"] = "正在执行…" });
+                var ctx = Helper.UserContext() with
+                {
+                    Progress = m => emit("opProgress", new JsonObject { ["key"] = s.Key, ["status"] = "running", ["message"] = m }),
+                };
                 var e = await Task.Run(() => Executor.RunStep(s, ctx, reportId, batch));
                 e.Owner = Me;
                 journal.Save(e);
@@ -720,15 +770,31 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         catch (Exception ex) { AppData.LogError("执行", ex); emit("planError", new JsonObject { ["message"] = "执行时出错：" + ex.Message }); }
         finally
         {
-            emit("planDone", new JsonObject { ["batchId"] = batch });
+            moveRunning = false;
+            if (moving) lock (moveLock) moveCache = null;
+            emit("planDone", new JsonObject { ["batchId"] = batch, ["freeBefore"] = freeBefore, ["freeAfter"] = SystemFree() });
             AutoSendHandling("execute", e => e.BatchId == batch);
         }
     }
 
     // ================================================================== 搬到其他盘
-    // 和处理清单分开：清单里是报告给出的建议，这里是用户自己挑要搬的文件夹和盘。列表每次现量，不依赖报告
+    // 清单里的一种步骤（编号 move:文件夹），由用户在「空间」卡片里自己加，「一键加入建议」不会加。
+    // 文件夹大小要现量（大文件夹要几秒），量过的结果留 10 分钟，搬过以后重新量
     volatile bool moveRunning;
     public bool MoveRunning => moveRunning;
+    (DateTime At, List<MoveCandidate> List)? moveCache;
+    readonly object moveLock = new();
+
+    List<MoveCandidate> MoveCandidates(IWinSystem sys, bool fresh = false)
+    {
+        lock (moveLock)
+        {
+            if (!fresh && moveCache is { } c && DateTime.UtcNow - c.At < TimeSpan.FromMinutes(10)) return c.List;
+            var list = FolderMove.Candidates(sys);
+            moveCache = (DateTime.UtcNow, list);
+            return list;
+        }
+    }
 
     static JsonObject DriveJson(DriveFact d) => new()
     {
@@ -736,7 +802,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         ["freeGB"] = Math.Round(d.FreeBytes / (double)(1L << 30), 1), ["totalGB"] = Math.Round(d.TotalBytes / (double)(1L << 30), 1),
     };
 
-    public JsonObject MoveOptions()
+    public JsonObject MoveOptions(bool fresh = false)
     {
         var sys = new WindowsSystem(Path.GetTempPath());
         var sysDrive = sys.Drives().FirstOrDefault(d => d.Root.Equals(FolderMove.SystemDrive(sys), StringComparison.OrdinalIgnoreCase));
@@ -745,7 +811,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["running"] = moveRunning,
             ["system"] = sysDrive == null ? null : DriveJson(sysDrive),
             ["drives"] = new JsonArray(FolderMove.Targets(sys).Select(d => (JsonNode)DriveJson(d)).ToArray()),
-            ["folders"] = new JsonArray(FolderMove.Candidates(sys).Select(c => (JsonNode)new JsonObject
+            ["folders"] = new JsonArray(MoveCandidates(sys, fresh).Select(c => (JsonNode)new JsonObject
             {
                 ["id"] = c.Folder.Id, ["name"] = c.Folder.Name, ["path"] = c.Path, ["bytes"] = c.Bytes, ["files"] = c.Files, ["partial"] = c.Partial,
                 ["problem"] = c.Problem, ["movedTo"] = c.MovedTo,
@@ -753,65 +819,6 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
                 ["kept"] = new JsonArray(c.Kept.Select(k => (JsonNode)new JsonObject { ["name"] = FolderMove.KeptLabel(k.Name), ["bytes"] = k.Bytes }).ToArray()),
             }).ToArray()),
         };
-    }
-
-    public JsonObject MoveFolders(JsonArray items, string? reportId)
-    {
-        if (moveRunning) throw new InvalidOperationException("正在搬文件夹，请等这一次搬完");
-        var sys = new WindowsSystem(Path.GetTempPath());
-        var targets = FolderMove.Targets(sys);
-        var info = Catalog.Ops["folder.move"];
-        var steps = new List<PlanStep>();
-        foreach (var it in items)
-        {
-            var f = FolderMove.Get(it?["id"]?.ToString() ?? "");
-            var drive = targets.FirstOrDefault(d => d.Root.Equals(it?["drive"]?.ToString(), StringComparison.OrdinalIgnoreCase));
-            if (f == null || drive == null) throw new ArgumentException("选择的文件夹或盘不对，请刷新后重试");
-            if (steps.Any(x => x.Target["folder"]?.ToString() == f.Id)) continue;
-            steps.Add(new PlanStep
-            {
-                Key = $"move:{f.Id}#0", FindingKey = $"move:{f.Id}", Op = "folder.move", OpName = info.Name, Risk = info.Risk,
-                Title = $"{f.Name} → {FolderMove.DriveName(drive.Root)}",
-                Change = $"把 {FolderMove.DefaultPath(sys, f)} 搬到 {FolderMove.TargetPath(sys, f, drive.Root)}：先复制、逐个核对大小，"
-                         + $"再把系统里「{f.Name}」的位置改过去，最后删掉 C 盘上已经复制好的原件"
-                         + (f.Id == "documents" ? "。微信、QQ、Outlook 的文件夹留在原处" : ""),
-                Cost = info.Cost, Undo = info.Undo, Reversible = true, NeedsAdmin = false,
-                Target = new JsonObject { ["folder"] = f.Id, ["drive"] = drive.Root },
-            });
-        }
-        if (steps.Count == 0) throw new InvalidOperationException("没有选择要搬的文件夹");
-        var changes = steps.Select(s => new ChangeItem($"{s.OpName}：{s.Title}", s.Change, true, s.Undo, false)).ToList();
-        if (!Confirm($"确认把这 {steps.Count} 个文件夹搬到其他盘？", changes)) return new JsonObject { ["cancelled"] = true };
-        var batch = "batch-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];
-        moveRunning = true;
-        _ = Task.Run(() => RunMoves(steps, reportId, batch));
-        return new JsonObject { ["started"] = true, ["batchId"] = batch };
-    }
-
-    void RunMoves(List<PlanStep> steps, string? reportId, string batch)
-    {
-        try
-        {
-            foreach (var s in steps)
-            {
-                emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = "running", ["message"] = "正在检查…" });
-                var ctx = Helper.UserContext() with
-                {
-                    Progress = m => emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = "running", ["message"] = m }),
-                };
-                var e = Executor.RunStep(s, ctx, reportId, batch);
-                e.Owner = Me;
-                journal.Save(e);
-                emit("moveProgress", new JsonObject { ["key"] = s.Key, ["folder"] = s.Target["folder"]?.ToString(), ["status"] = e.Status, ["message"] = e.Message });
-            }
-        }
-        catch (Exception ex) { AppData.LogError("搬文件夹", ex); emit("planError", new JsonObject { ["message"] = "搬文件夹时出错：" + ex.Message }); }
-        finally
-        {
-            moveRunning = false;
-            emit("moveDone", new JsonObject { ["batchId"] = batch });
-            AutoSendHandling("execute", e => e.BatchId == batch);
-        }
     }
 
     // ================================================================== 操作记录
@@ -834,7 +841,84 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         ["title"] = e.Title, ["risk"] = e.Risk, ["status"] = e.Status, ["findingKey"] = e.FindingKey, ["reportId"] = e.ReportId,
         ["message"] = e.Status == Status.Undone ? $"已于 {e.UndoneUtc?.ToLocalTime():MM-dd HH:mm} 撤销：{e.UndoMessage}" : e.Message,
         ["reversible"] = e.Reversible, ["undoHint"] = e.UndoHint,
+        ["details"] = Details(e),
     }).ToArray());
+
+    /// <summary>"清了什么"：从这一步的记录里取，只给本机界面看（反馈包里的处理记录不含这些）。</summary>
+    static JsonObject? Details(JournalEntry e)
+    {
+        var b = e.Backup;
+        JsonNode? C(string k) => b[k]?.DeepClone();
+        return e.Op switch
+        {
+            "cache.clean" => new JsonObject
+            {
+                ["kind"] = "cache", ["categories"] = C("categories"), ["deleted"] = C("deleted"), ["skipped"] = C("skipped"), ["bytes"] = C("bytes"),
+                ["hasList"] = b["list"] != null,
+            },
+            "system.cleanup" => new JsonObject { ["kind"] = "system", ["chosen"] = C("chosen"), ["freed"] = C("freed") },
+            "downloads.recycle_installers" => new JsonObject { ["kind"] = "files", ["files"] = C("files"), ["bytes"] = C("bytes") },
+            "folder.move" => new JsonObject
+            {
+                ["kind"] = "move", ["from"] = C("original"), ["to"] = C("target"), ["files"] = C("files"), ["bytes"] = C("bytes"),
+                ["left"] = C("left"), ["leftNames"] = C("leftNames"),
+            },
+            "leftover.remove_dir" => new JsonObject { ["kind"] = "dir", ["path"] = e.Target["path"]?.DeepClone(), ["bytes"] = C("bytes") },
+            _ => null,
+        };
+    }
+
+    // ================================================================== 文件清单窗口
+    // 清缓存动辄几万个文件：完整清单不塞进记录和界面，按页读（每页最多 500 行），可以按名字搜
+    static JsonObject Page(IEnumerable<(string Path, long Size, string Cat)> rows, int offset, int limit, string? q)
+    {
+        var all = string.IsNullOrWhiteSpace(q) ? rows : rows.Where(r => r.Path.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase));
+        var list = all.ToList();
+        limit = Math.Clamp(limit, 1, 500);
+        var names = new Dictionary<string, string>();
+        string Cat(string id) => names.TryGetValue(id, out var n) ? n : names[id] = Junk.Get(id)?.Name ?? id;
+        var groups = new JsonArray(list.GroupBy(r => r.Cat).OrderByDescending(g => g.Sum(r => r.Size))
+            .Select(g => (JsonNode?)new JsonObject { ["name"] = Cat(g.Key), ["count"] = g.Count(), ["bytes"] = g.Sum(r => r.Size) }).ToArray());
+        return new JsonObject
+        {
+            ["total"] = list.Count, ["bytes"] = list.Sum(r => r.Size), ["groups"] = groups, ["offset"] = offset,
+            ["items"] = new JsonArray(list.Skip(Math.Max(0, offset)).Take(limit)
+                .Select(r => (JsonNode?)new JsonObject { ["path"] = r.Path, ["size"] = r.Size, ["cat"] = Cat(r.Cat) }).ToArray()),
+        };
+    }
+
+    /// <summary>已经清掉的文件（操作记录旁边的清单文件）。</summary>
+    public JsonObject JournalFiles(string id, int offset, int limit, string? q)
+    {
+        var e = AllEntries().FirstOrDefault(x => x.Id == id) ?? throw new ArgumentException("找不到这条记录");
+        var path = OpLists.PathOf(e.NeedsAdmin ? Helper.AdminBackups : UserBackups, e.Backup["list"]?.ToString());
+        if (path == null || !File.Exists(path)) throw new InvalidOperationException("这一步的文件清单已经随旧备份清理掉了");
+        var rows = File.ReadLines(path).Select(l => l.Split('\t')).Where(a => a.Length >= 3)
+            .Select(a => (a[0], long.TryParse(a[1], out var n) ? n : 0, a[2]));
+        return Page(rows, offset, limit, q);
+    }
+
+    /// <summary>执行前预览要清的缓存：用你自己的权限当场列（Windows 目录里需要管理员权限的位置可能列不全）。同一组选择列一次，翻页用缓存。</summary>
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, List<(string, long, string)>> previews = new();
+    public JsonObject PreviewCache(string planId, string key, IEnumerable<string> categories, int age, int offset, int limit, string? q)
+    {
+        if (!plans.TryGetValue(planId, out var plan)) throw new InvalidOperationException("处理方案已过期，请回到报告重新选择");
+        var step = plan.Steps.FirstOrDefault(s => s.Key == key && s.Op == "cache.clean") ?? throw new ArgumentException("找不到这一步");
+        var offered = step.CacheOptions?.Items.Select(i => i.Id).ToHashSet() ?? [];
+        var cats = categories.Where(offered.Contains).Distinct().OrderBy(x => x).ToList();
+        var cacheKey = $"{planId}|{key}|{string.Join(",", cats)}|{age}";
+        var rows = previews.GetOrAdd(cacheKey, _ =>
+        {
+            var sys = new WindowsSystem(Path.GetTempPath());
+            var list = new List<(string, long, string)>();
+            foreach (var cat in cats.Select(Junk.Get).OfType<JunkCategory>())
+                foreach (var f in Junk.Eligible(sys, cat, DateTime.UtcNow, age, CacheClean.MaxFiles - list.Count)) list.Add((f.Path, f.Size, cat.Id));
+            return list.OrderByDescending(r => r.Item2).ToList();
+        });
+        var page = Page(rows.Select(r => (r.Item1, r.Item2, r.Item3)), offset, limit, q);
+        page["partial"] = step.NeedsAdmin;
+        return page;
+    }
 
     /// <summary>撤销一条，或者一键撤销同一批里所有还能撤销的步骤（后做的先撤）。撤销同样会修改系统，执行前也要确认。</summary>
     public async Task<JsonObject> Undo(string? id, string? batchId)

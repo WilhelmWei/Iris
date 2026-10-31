@@ -93,7 +93,8 @@ public class Phase3Tests
             """)!;
         var o = SystemCleanup.Options(report);
         Assert.Equal(["windows-old", "update-cleanup"], o.Items.Select(i => i.Id));
-        Assert.Equal(["windows-old"], o.Categories);  // 量不出大小的旧更新默认不勾
+        Assert.Empty(o.Categories);  // Windows.old 没被选上时不默认勾；量不出大小的旧更新也不勾
+        Assert.Equal(["windows-old"], SystemCleanup.Options(report, ["旧版 Windows（Windows.old）"]).Categories);
         Assert.Empty(o.Ages);
     }
 

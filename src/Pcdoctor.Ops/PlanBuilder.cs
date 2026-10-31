@@ -84,6 +84,10 @@ public static class PlanBuilder
         var findings = judge["judgement"]!["findings"]!.AsArray();
         var flags = report["flags"]!.AsArray().ToDictionary(f => f!["id"]!.ToString(), f => f!);
         var S = report["sections"]!;
+        // 清单里选了哪些系统遗留（结论的对象名就是清理目录表里的名字）：Windows.old 只有选了才默认勾
+        var pickedLeftovers = keys.SelectMany(k => k.Split('+')).Select(id => flags.GetValueOrDefault(id))
+            .Where(f => f?["rule"]?.ToString() == "system-leftover").Select(f => f!["object"]?.ToString() ?? "").ToHashSet();
+        var leftoverMB = new Dictionary<string, double?>(StringComparer.OrdinalIgnoreCase);
         bool cacheAdded = false, sysCleanAdded = false, installersAdded = false, scanAdded = false, browserAdded = false, chromeAdded = false, powerAdded = false;
 
         foreach (var key in keys.Distinct())
@@ -186,6 +190,7 @@ public static class PlanBuilder
                         var path = fl["object"]?.ToString() ?? "";
                         if (LeftoverDirs.PathProblem(path) is { } bad) { reason = bad; continue; }
                         targets.Add((path, new JsonObject { ["path"] = path }, null));
+                        leftoverMB[path] = Operations.Num(Find(S["software"]?["leftoverDirs"], "name", path)?["sizeMB"]);
                     }
                     break;
                 case "defender.scan":
@@ -213,10 +218,11 @@ public static class PlanBuilder
                     CacheOptions = op switch
                     {
                         "cache.clean" => CacheClean.Options(report, admin ?? info.NeedsAdmin),
-                        "system.cleanup" => SystemCleanup.Options(report),
+                        "system.cleanup" => SystemCleanup.Options(report, pickedLeftovers),
                         "downloads.recycle_installers" => OldInstallers.Options(sys!),
                         _ => null,
                     },
+                    SizeMB = op == "leftover.remove_dir" ? leftoverMB.GetValueOrDefault(t) : null,
                 });
         }
         return plan;

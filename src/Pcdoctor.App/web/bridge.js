@@ -58,6 +58,7 @@
     system: [{ name: '旧版 Windows（Windows.old）', mb: 18636, why: '升级 Windows 大版本后留下的旧系统，用来回退。通常 10 天后 Windows 会自己删。' },
              { name: '传递优化缓存', mb: 1126, why: 'Windows 更新时为了给局域网里其他电脑分享而留的副本。' }],
     chatApps: [{ name: '微信', sizeGB: 23.4, onC: true }, { name: 'QQ', sizeGB: 2.1, onC: true }], downloadsGB: 12.6, hiberfilGB: 6.3,
+    installers: { count: 14, sizeGB: 3.6, olderThanDays: 30 }, leftoverDirs: [{ name: 'C:\\Program Files (x86)\\QuickVPN', sizeMB: 12.4, files: 36, lastWriteDays: 420 }],
     notCleaned: [{ name: '预取数据（Prefetch）', why: '删掉后开机和打开软件反而会变慢，过几天又长回来。这是典型的伪优化。' },
                  { name: 'Windows 安装程序缓存（C:\\Windows\\Installer）', why: '软件卸载、修复、打补丁时要用到这里的安装包。直接删会让软件卸载不掉、修复不了。' },
                  { name: '回收站', why: '回收站里是你删掉的文件，要不要彻底删除由你决定。Iris 不替你清空。' },
@@ -95,7 +96,7 @@
   async function simulateSpace() {
     if (M.spaceStarted || /[?&]nospace\b/.test(location.search)) return;
     M.spaceStarted = true;
-    if (/[?&]spacedone\b/.test(location.search)) { M.space = spaceAt(1); return; }
+    if (/[?&]spacedone\b/.test(location.search)) { M.space = spaceAt(1); emit('spaceDone', { id: 'demo', finished: true }); return; }
     M.spaceRunning = true;
     for (let i = 1; i <= 14; i++) {
       await sleep(800);
@@ -146,7 +147,7 @@
       case 'getState': {
         const r = await load();
         const h = r ? r.history : [];
-        return { version: '1.0.0-rc.1', isAdmin: false, settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
+        return { version: '1.0.0-rc.1', isAdmin: false, identity: ['Alice', 'LAPTOP-TEST01'], settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
                  privacy: { version: '2026-10-31.1', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
@@ -156,7 +157,7 @@
       }
       case 'getReport': { const r = await load(); await sleep(350); setTimeout(simulateSpace, 600); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search),
         handled: handled(), selected: { keys: (M.selected || []).slice(), carried: M.carried || 0, dropped: M.carried ? 1 : 0 },
-        storage: STORAGE, space: M.space || null, spaceRunning: !!M.spaceRunning || (!M.spaceStarted && !/[?&](nospace|spacedone)\b/.test(location.search)),
+        storage: Object.assign({}, STORAGE, { freeNow: M.move ? M.move.system.freeGB * GBb : null }), space: M.space || null, spaceRunning: !!M.spaceRunning || (!M.spaceStarted && !/[?&](nospace|spacedone)\b/.test(location.search)),
         defender: r.defender || { scanned: !!M.scanned && !/[?&]scanfail/.test(location.search), scanFailed: /[?&]scanfail/.test(location.search), realTime: true, quickScanAgeDays: M.scanned ? 0 : 12, fullScanAgeDays: 417, signatureAgeDays: 0 } }); }
       case 'storageInfo': await sleep(200); return M.storage = M.storage || { reports: { count: 9, local: 8, bytes: 14.2 * 1048576 }, backups: { count: 6, bytes: 412 * 1024, admin: 2 }, webview: { bytes: 38.5 * 1048576, pending: false }, outbox: { count: 1, bytes: 96 * 1024 } };
       case 'cleanStorage': {
@@ -195,12 +196,7 @@
       }
       case 'getJournal': return M.journal.map(e => Object.assign({}, e));
       case 'moveOptions': await sleep(500); return moveOptions();
-      case 'moveFolders': {
-        const ok = await nativeConfirm(`确认把这 ${p.items.length} 个文件夹搬到其他盘？`, p.items.map(it => { const f = M.move.folders.find(x => x.id === it.id);
-          return `<b style="font-size:13.5px;color:#1b1b1b">搬到其他盘：${esc(f.name)} → ${esc(it.drive.replace(':', ' 盘'))}</b><br>会改：先复制、逐个核对大小，再把系统里「${esc(f.name)}」的位置改过去，最后删掉 C 盘上已经复制好的原件<br>可以撤销`; }));
-        if (!ok) return { cancelled: true };
-        runMove(p); return { started: true };
-      }
+      case 'journalFiles': case 'previewCache': await sleep(250); return fakeFiles(p);
       case 'openSettings': return {};
       case 'setSelected': M.selected = p.keys.slice(); return { saved: true };
       case 'undo': {
@@ -299,6 +295,15 @@
       },
     };
     for (const key of p.keys || []) {
+      if (key.startsWith('move:')) {
+        const mf = moveOptions().folders.find(x => 'move:' + x.id === key), D = M.move;
+        if (!mf || mf.movedTo) { skipped.push({ key, title: mf ? mf.name : key, reason: '已经不在 C 盘的默认位置了' }); continue; }
+        steps.push({ key: key + '#0', findingKey: key, op: 'folder.move', opName: '搬到其他盘', risk: 'yellow', title: mf.name, reversible: true, needsAdmin: false,
+          change: '把文件复制到新位置、逐个核对大小，再把系统里这个文件夹的位置改过去，最后删掉 C 盘上已经复制好的原件',
+          cost: '需要几分钟到几十分钟，期间请不要关闭 Iris；个别软件记着旧位置，会在 C 盘重新建一个同名文件夹', undo: '在操作记录里点撤销，会全部搬回 C 盘（C 盘需要有足够空间）',
+          sizeMB: Math.round(mf.bytes / 1048576), move: { drive: D.drives[0].root, drives: D.drives.map(d => ({ root: d.root, name: d.name, label: d.label, freeGB: d.freeGB })) }, cacheOptions: null });
+        continue;
+      }
       const f = r.result.judgement.findings.find(x => x.flagIds.join('+') === key);
       if (!f) continue;
       const alt = r.altOps[key];
@@ -351,42 +356,51 @@
     };
     return JSON.parse(JSON.stringify(Object.assign({ running: !!M.moving }, M.move)));
   }
-  async function runMove(p) {
-    const batch = 'batch-' + Date.now(); M.moving = true;
-    for (const it of p.items) {
-      const f = M.move.folders.find(x => x.id === it.id), key = 'move:' + f.id + '#0';
-      for (let i = 0; i <= 5; i++) {
-        emit('moveProgress', { key, folder: f.id, status: 'running', message: i < 5 ? `正在复制「${f.name}」：${(f.bytes / GBb * i / 5).toFixed(1)} GB / ${(f.bytes / GBb).toFixed(1)} GB` : `正在把「${f.name}」的位置改到新文件夹…` });
-        await sleep(450);
-      }
-      const drive = it.drive.replace(':', ' 盘');
-      const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(),
-        findingKey: 'move:' + f.id, reportId: 'demo', op: 'folder.move', opName: '搬到其他盘', title: `${f.name} → ${drive}`, risk: 'yellow', status: 'done',
-        message: `已把「${f.name}」搬到 ${drive}（${(f.bytes / GBb).toFixed(1)} GB，${f.files} 个文件），资源管理器里的「${f.name}」已经指向新位置` + (f.id === 'documents' ? '。微信、QQ、Outlook 的文件夹留在原处，聊天文件可以在软件设置里改存储位置' : ''),
-        reversible: true };
-      M.journal.unshift(entry);
-      f.movedTo = it.drive + '\\Alice\\' + f.path.split('\\').pop(); f.movedName = drive;
-      M.move.system.freeGB = +(M.move.system.freeGB + f.bytes / GBb).toFixed(1);
-      emit('moveProgress', { key, folder: f.id, status: 'done', message: entry.message });
+  /** 文件清单窗口的假数据：几千个缓存文件，按名字搜、翻页 */
+  function fakeFiles(p) {
+    if (!M.files) {
+      const cats = [['Google Chrome 缓存', 'C:\\Users\\Alice\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cache\\Cache_Data\\f_', 2310], ['临时文件（你的账户）', 'C:\\Users\\Alice\\AppData\\Local\\Temp\\tmp', 1840],
+                    ['npm 缓存', 'C:\\Users\\Alice\\AppData\\Local\\npm-cache\\_cacache\\content-v2\\sha512\\', 512]];
+      M.files = [];
+      cats.forEach(([cat, pre, mb], ci) => { const n = [2412, 1305, 640][ci]; for (let i = 0; i < n; i++) M.files.push({ path: pre + (i * 7919 % 100000).toString(16).padStart(6, '0') + (ci === 1 ? '.tmp' : ''), size: Math.round(mb * 1048576 / n * (0.3 + (i % 7) / 4)), cat }); });
+      M.files.sort((a, b) => b.size - a.size);
     }
-    M.moving = false;
-    emit('moveDone', { batchId: batch });
+    const q = (p.q || '').trim().toLowerCase(), all = q ? M.files.filter(f => f.path.toLowerCase().includes(q)) : M.files;
+    const groups = {}; all.forEach(f => { const g = groups[f.cat] = groups[f.cat] || { name: f.cat, count: 0, bytes: 0 }; g.count++; g.bytes += f.size; });
+    return { total: all.length, bytes: all.reduce((a, f) => a + f.size, 0), groups: Object.values(groups), offset: p.offset || 0,
+             items: all.slice(p.offset || 0, (p.offset || 0) + (p.limit || 200)), partial: p.method === 'previewCache' };
   }
 
   async function runExecute(p) {
-    const batch = 'batch-' + Date.now();
+    const batch = 'batch-' + Date.now(), freeBefore = Math.round((M.move ? M.move.system.freeGB : 18.6) * GBb);
+    let freed = 0;
     for (const s of p.steps) {
       emit('opProgress', { key: s.key, status: 'running', message: '正在修改…' });
+      if (s.op === 'folder.move') for (let i = 1; i <= 4; i++) { await sleep(400); emit('opProgress', { key: s.key, status: 'running', message: `正在复制「${s.title}」：${(s.sizeMB / 1024 * i / 4).toFixed(1)} GB / ${(s.sizeMB / 1024).toFixed(1)} GB` }); }
       await sleep(650);
       emit('opProgress', { key: s.key, status: 'verifying', message: '重新检测中…' });
       await sleep(550);
       const ok = s.op !== 'service.delete_orphan';
       const cache = s.op === 'cache.clean' ? (s.cacheOptions.items.filter(i => (s.cacheChoice || {}).categories.includes(i.id))) : null;
-      const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(),
+      const chosen = (s.cacheChoice || {}).categories || [];
+      const picked = s.cacheOptions ? s.cacheOptions.items.filter(i => chosen.includes(i.id)) : [];
+      const drive = (s.drive || (s.move && s.move.drive) || 'D:').replace(':', ' 盘');
+      const details = s.op === 'cache.clean' ? { kind: 'cache', categories: picked.map(i => ({ name: i.name, bytes: i.running ? 0 : i.sizeMB * 1048576, deleted: i.running ? 0 : Math.round(i.sizeMB * 1.7), running: i.running })), deleted: picked.filter(i => !i.running).reduce((a, i) => a + Math.round(i.sizeMB * 1.7), 0), skipped: 12, hasList: true }
+        : s.op === 'system.cleanup' ? { kind: 'system', chosen: picked.map(i => i.name), freed: 21.3 * GBb }
+        : s.op === 'downloads.recycle_installers' ? { kind: 'files', files: picked.map(i => ({ path: i.id, size: i.sizeMB * 1048576 })) }
+        : s.op === 'leftover.remove_dir' ? { kind: 'dir', path: s.title, bytes: 12 * 1048576 }
+        : s.op === 'folder.move' ? { kind: 'move', from: 'C:\\Users\\Alice\\' + s.title, to: (s.drive || 'D:') + '\\Alice\\' + s.title, files: 18342, bytes: s.sizeMB * 1048576, left: 2, leftNames: ['合同.docx', 'Default.rdp'] } : null;
+      if (s.op === 'folder.move') {
+        const f = M.move && M.move.folders.find(x => x.name === s.title);
+        if (f) { f.movedTo = (s.drive || 'D:') + '\\Alice\\' + f.path.split('\\').pop(); f.movedName = drive; }
+      }
+      freed += s.op === 'cache.clean' ? picked.filter(i => !i.running).reduce((a, i) => a + i.sizeMB, 0) * 1048576 : s.op === 'system.cleanup' ? 21.3 * GBb : s.op === 'folder.move' ? s.sizeMB * 1048576 : 0;
+      const entry = { id: 'j' + Date.now() + Math.random().toString(16).slice(2, 6), batchId: batch, time: '今天 ' + new Date().toTimeString().slice(0, 5), t: Date.now(), details,
                       findingKey: s.findingKey, reportId: 'demo',
                       op: s.op, opName: s.opName, title: s.title, risk: s.risk, status: ok ? 'done' : 'rolledBack',
                       message: s.op === 'system.cleanup' ? 'Windows 磁盘清理已完成，C 盘多出了 21.3 GB'
                              : s.op === 'downloads.recycle_installers' ? `已把 ${(s.cacheChoice || {}).categories.length} 个旧安装包移到回收站。确认不需要后清空回收站，才真正腾出空间`
+                             : s.op === 'folder.move' ? `已把「${s.title}」搬到 ${drive}（${(s.sizeMB / 1024).toFixed(1)} GB，18342 个文件），资源管理器里的「${s.title}」已经指向新位置`
                              : s.op === 'leftover.remove_dir' ? '已把这个残留文件夹（12 MB）挪到 Iris 的备份区；需要时可以撤销，清理旧备份时才真正删除'
                              : cache ? `腾出了 ${(cache.filter(i => !i.running).reduce((a, i) => a + i.sizeMB, 0) / 1024).toFixed(1)} GB` + (cache.some(i => i.running) ? `。${cache.filter(i => i.running).map(i => i.running).join('、')} 正在运行，没有清「${cache.filter(i => i.running).map(i => i.name).join('、')}」，关掉后可以再清一次` : '')
                              : ok ? '已完成，重新检测确认生效' : '重新检测发现系统又恢复了这条登记（可能有程序在守护它），已自动恢复原状，没有留下改动',
@@ -394,6 +408,7 @@
       M.journal.unshift(entry);
       emit('opProgress', { key: s.key, status: entry.status, message: entry.message });
     }
-    emit('planDone', { batchId: batch });
+    if (M.move) M.move.system.freeGB = +((freeBefore + freed) / GBb).toFixed(1);
+    emit('planDone', { batchId: batch, freeBefore, freeAfter: freeBefore + freed });
   }
 })();

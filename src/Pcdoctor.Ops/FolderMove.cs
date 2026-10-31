@@ -97,6 +97,26 @@ public static class FolderMove
         return list;
     }
 
+    /// <summary>清单里"搬到其他盘"的一步（处理清单里的编号是 move:文件夹）。没有可去的盘、不能搬时返回 null。</summary>
+    public static PlanStep? Step(IWinSystem sys, MoveCandidate c, IReadOnlyList<DriveFact> targets)
+    {
+        if (c.MovedTo != null || c.Problem != null || targets.Count == 0) return null;
+        var info = Catalog.Ops["folder.move"];
+        var drive = targets[0];
+        return new PlanStep
+        {
+            Key = $"move:{c.Folder.Id}#0", FindingKey = $"move:{c.Folder.Id}", Op = "folder.move", OpName = info.Name, Risk = info.Risk,
+            Title = c.Folder.Name, Change = info.Change + (c.Folder.Id == "documents" ? "。微信、QQ、Outlook 的文件夹留在原处" : ""),
+            Cost = info.Cost, Undo = info.Undo, Reversible = true, NeedsAdmin = false, SizeMB = Math.Round(c.Bytes / 1048576.0, 1),
+            Target = new JsonObject { ["folder"] = c.Folder.Id, ["drive"] = drive.Root },
+            Move = new MoveChoice
+            {
+                Drive = drive.Root,
+                Drives = targets.Select(d => new DriveOption(d.Root, DriveName(d.Root), d.Label, Math.Round(d.FreeBytes / (double)(1L << 30), 1))).ToList(),
+            },
+        };
+    }
+
     /// <summary>列出可以搬的文件夹和大小（每个文件夹最多量 capSeconds 秒，量不完标 Partial）。</summary>
     public static List<MoveCandidate> Candidates(IWinSystem sys, double capSeconds = 15)
     {

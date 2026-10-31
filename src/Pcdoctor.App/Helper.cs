@@ -79,6 +79,8 @@ public static class Helper
     public static string ProtectedRoot =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "pcdoctor-data");
     public static string AdminJournal => Path.Combine(ProtectedRoot, "journal");
+    /// <summary>管理员步骤的备份和清单（普通用户能读，不能写）。</summary>
+    public static string AdminBackups => Path.Combine(ProtectedRoot, "backups");
     static string ProtectedDir(string name) => Directory.CreateDirectory(Path.Combine(ProtectedRoot, name)).FullName;
 
     public static string PowerShellExe => Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe");

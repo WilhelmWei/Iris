@@ -981,3 +981,43 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 /* 选项多的步骤（旧安装包）：全选 / 合计，列表限高可滚动 */
 .cc-all { display: flex; align-items: baseline; gap: 10px; }
 .cc-items.scroll { max-height: 340px; overflow: auto; padding-right: 4px; }
+
+/* 「空间」卡片：能腾出的每一项都能直接加入清单 */
+.sp-acts { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.sp-acts li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.sp-acts li.off { opacity: .6; }
+.sp-acts li b { font-weight: 500; font-size: 13.5px; display: block; }
+.sp-acts li i { display: block; font-style: normal; margin-top: 2px; line-height: 1.45; }
+.sp-acts .btn { height: 30px; padding: 0 14px; font-size: 12.5px; }
+.sp-in { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid transparent; background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; }
+.sp-in .ico { width: 13px; height: 13px; }
+.sp-in:hover { border-color: var(--accent); }
+.sp-tree-act { display: inline-flex; align-items: center; gap: 8px; margin-left: 8px; }
+.sp-tree-act .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+.sp-col .btn.primary { margin-bottom: 8px; }
+
+/* 「处理」页：按"空间 / 其他"分组，空间组写预计腾出多少 */
+.grp-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; }
+.grp-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.grp-head:first-child { margin-top: 4px; }
+
+/* 结果：C 盘前后、每一步清了什么 */
+.r-free { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; font-size: 14px; }
+.r-free .ico { width: 16px; height: 16px; color: var(--accent); }
+.r-list li { flex-wrap: wrap; }
+.r-detail { flex-basis: 100%; margin: 6px 0 4px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13px; display: grid; gap: 8px; }
+.r-detail p { margin: 0; }
+.r-detail .btn { justify-self: start; height: 32px; }
+.j-row .r-detail { margin-top: 8px; }
+
+/* 文件清单窗口 */
+.modal.wide { width: min(980px, 100%); }
+.fl-top { display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: var(--surface); padding: 6px 0 10px; z-index: 1; }
+.fl-q { flex: 1; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px; }
+.fl-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.fl-list { display: grid; }
+.fl-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px 80px; gap: 12px; padding: 6px 2px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.fl-row .mono { overflow-wrap: anywhere; }
+.fl-row .num { text-align: right; }
+.modal-body > .btn { margin-top: 12px; }
+.fl-groups .st-chip { height: 28px; padding: 0 10px; font-size: 12px; cursor: default; }

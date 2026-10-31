@@ -104,7 +104,7 @@
     view: 'home', app: null, report: null, loading: false, filter: 'todo', cat: null,
     selected: new Set(), dismissed: new Set(), pro: false, mode: 'offline', scan: false,
     progress: null, stream: [], streamFresh: 0, sectionEvents: false, runStart: 0, running: false,
-    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, executing: false, lastRun: null, carried: null,
+    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, moveDrive: {}, openDetail: new Set(), executing: false, lastRun: null, carried: null,
     journal: [], sheet: null, tip: 0, lessonConfirm: false, enter: true,
     markOpen: null, markKind: 'wrong', fb: {}, ob: null, seed: Math.floor(Math.random() * 1000),
   };
@@ -122,12 +122,51 @@
   };
   const quiet = (method, params) => api.call(method, params).catch(() => null);
 
-  /** 演示模式：遮住用户名、电脑名、邮箱，方便截图发给别人 */
+  /** 演示模式：遮住用户名、电脑名、邮箱，方便截图发给别人。
+   *  除了按写法猜（C:\Users\某某、邮箱、LAPTOP-xxx），还按这台电脑真实的用户名和电脑名遮（D:\Alice\Documents、自己改过的电脑名） */
+  let piiRx = null, piiKey = '';
   function pii(text) {
     const s = String(text == null ? '' : text);
     if (!state.app || !S().demoMode) return s;
-    return s.replace(/([A-Za-z]:\\Users\\)[^\\\s"“”，。]+/gi, '$1••••').replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '••••@••••')
+    const names = (state.app.identity || []).filter(n => n && n.length >= 2);
+    if (piiKey !== names.join('|')) {
+      piiKey = names.join('|');
+      piiRx = names.length ? new RegExp('(?<![A-Za-z0-9])(' + names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?![A-Za-z0-9])', 'gi') : null;
+    }
+    let out = s.replace(/([A-Za-z]:\\Users\\)[^\\\s"“”，。]+/gi, '$1••••').replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '••••@••••')
       .replace(/\b(LAPTOP|DESKTOP)-[A-Z0-9]+\b/g, '••••');
+    if (piiRx) out = out.replace(piiRx, '••••');
+    return out;
+  }
+  /** 演示模式兜底：页面上任何地方新出现的文字（包括没经过 pii() 的地方、弹出的详情、提示）都再遮一遍。
+   *  只改文字和 title，不碰 data-* 属性（里面的路径是给按钮用的） */
+  function maskText(n) {
+    const p = n.parentNode;
+    if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName)) return;
+    const t = n.nodeValue, m = pii(t);
+    if (m !== t) n.nodeValue = m;
+  }
+  function maskTree(root) {
+    if (!state.app || !S().demoMode) return;
+    if (root.nodeType === 3) { maskText(root); return; }
+    if (root.nodeType !== 1) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) maskText(n);
+    const withTitle = root.matches && root.matches('[title]') ? [root, ...root.querySelectorAll('[title]')] : root.querySelectorAll('[title]');
+    withTitle.forEach(el => { const t = el.getAttribute('title'), m = pii(t); if (m !== t) el.setAttribute('title', m); });
+  }
+  new MutationObserver(muts => {
+    if (!state.app || !S().demoMode) return;
+    for (const m of muts) {
+      if (m.type === 'characterData') maskText(m.target);
+      else m.addedNodes.forEach(maskTree);
+    }
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  /** 演示模式下，用户文件夹里的文件名也遮住（只留扩展名）：「最大的文件」里常有简历、合同这类名字 */
+  function piiFile(path) {
+    const p = pii(path);
+    if (!state.app || !S().demoMode || !/\\Users\\/i.test(String(path))) return p;
+    return p.replace(/[^\\]+?(\.[A-Za-z0-9]{1,8})?$/, (m, ext) => '••••' + (ext || ''));
   }
 
   // ------------------------------------------------------------------ 通用部件
@@ -314,7 +353,8 @@
       state.view = view; state.loading = true; state.enter = true; render();
       await loadReport(state.app.lastReport.id); state.loading = false;
     }
-    if (view === 'plan') { state.journal = await call('getJournal'); ensurePlan(); loadMove(); }
+    if (view === 'plan') { state.journal = await call('getJournal'); ensurePlan(); }
+    if (view === 'report' || view === 'plan') loadMove();
     const changed = state.view !== view;
     state.enter = changed || state.enter; state.view = view;
     pageSwap(changed, () => { render(); $main.scrollTop = 0; });
@@ -622,49 +662,114 @@
   }
 
   /** 「空间」：C 盘还剩多少、能直接清理多少、更大的空间在哪；「C 盘空间去哪了」在报告出来后继续扫描，这张卡片原地更新 */
+  // ------------------------------------------------------------------ 空间
+  // 报告里的「空间」卡片是空间这件事的唯一入口：能腾出的每一项都能直接加入处理清单，和其他建议一起执行、一起确认、一起撤销。
+  // 搬文件夹和删 Windows.old 改变的东西多，「一键加入」不会替你加，只能自己点
+  const GiB = 1024 * 1024 * 1024;
+  const SPACE_OPS = ['cache.clean', 'system.cleanup', 'downloads.recycle_installers', 'leftover.remove_dir', 'folder.move'];
+  const isOldWin = (f) => f.proposedAction === 'system.cleanup' && /Windows\.old/i.test(f.object || '');
+  const FOLDER_OF = { documents: 'Documents', downloads: 'Downloads', pictures: 'Pictures', videos: 'Videos', music: 'Music' };
+  /** 「空间」卡片里能处理的每一行：名字、说明、大小（MB）、对应的清单编号 */
+  function spaceRows() {
+    const R = state.report, st = R.storage || {}, rows = [];
+    const byOp = op => R.result.judgement.findings.filter(f => f.proposedAction === op && executable(f));
+    const cacheF = byOp('cache.clean')[0];
+    if (cacheF && st.cleanableMB >= 1)
+      rows.push({ id: 'cache', name: '程序缓存', mb: st.cleanableMB, keys: [keyOf(cacheF)],
+        note: (st.groups || []).slice(0, 3).map(g => `${g.group} ${fmtMB(g.mb)}`).join('、') + '；直接删除，程序会自动重建' });
+    for (const f of byOp('system.cleanup')) {
+      const m = (st.system || []).find(x => x.name === f.object);
+      rows.push({ id: isOldWin(f) ? 'windows-old' : 'sys-' + keyOf(f), name: f.object, mb: m ? m.mb : null, keys: [keyOf(f)], yours: isOldWin(f),
+        note: isOldWin(f) ? '交给 Windows 磁盘清理；删了就不能退回升级前的版本，请自己决定' : '交给 Windows 自带的磁盘清理' });
+    }
+    const inst = byOp('downloads.recycle_installers')[0];
+    if (inst) rows.push({ id: 'installers', name: '下载文件夹里的旧安装包', mb: st.installers ? st.installers.sizeGB * 1024 : null, keys: [keyOf(inst)], recycle: true,
+      note: `${st.installers ? st.installers.count + ' 个，' : ''}一个月以前下载的；移到回收站，可以还原` });
+    const left = byOp('leftover.remove_dir');
+    if (left.length) rows.push({ id: 'leftovers', name: `卸载残留的文件夹 ${left.length} 个`, keys: left.map(keyOf),
+      mb: (st.leftoverDirs || []).filter(d => left.some(f => f.object === d.name)).reduce((a, d) => a + (d.sizeMB || 0), 0),
+      note: '已经没有程序文件、也没有软件在用；挪到 Iris 备份区，可以撤销' });
+    const D = R.meta.source === 'local' && state.move && state.move.data;
+    if (D) for (const f of D.folders) {
+      if (f.movedTo) { rows.push({ id: 'move-' + f.id, name: `「${f.name}」已经在${f.movedName === 'OneDrive' ? ' OneDrive 里' : ' ' + f.movedName}`, keys: [], moved: true, note: '' }); continue; }
+      if (!D.drives.length || f.problem || f.bytes < GiB) continue;
+      rows.push({ id: 'move-' + f.id, name: `把「${f.name}」搬到其他盘`, mb: f.bytes / 1048576, keys: ['move:' + f.id], yours: true, move: f.id,
+        note: `整个文件夹搬过去，资源管理器里照样打开${(f.kept || []).some(k => k.bytes > 0) ? '；微信、QQ 的文件夹留在原处' : ''}；可以撤销` });
+    }
+    return rows;
+  }
+  function rowState(r) {
+    if (r.moved) return 'moved';
+    if (r.keys.length && r.keys.every(k => handledOf(k) && handledOf(k).status === 'done')) return 'done';
+    if (r.keys.length && r.keys.every(k => state.selected.has(k))) return 'in';
+    return 'out';
+  }
+  function rowButton(r) {
+    const s = rowState(r);
+    if (s === 'moved' || s === 'done') return `<span class="handled">${icon('check')}已处理</span>`;
+    if (state.report.canExecute === false) return '';
+    if (s === 'in') return `<button class="sp-in" data-act="space-remove" data-keys="${esc(r.keys.join('|'))}" title="从处理清单移出">${icon('check')}已加入</button>`;
+    return `<button class="btn" data-act="space-add" data-keys="${esc(r.keys.join('|'))}">加入</button>`;
+  }
   function spaceCard() {
     const R = state.report, st = R && R.storage;
     if (!st) return '';
     const c = (st.volumes || []).find(v => (v.drive || '').toUpperCase() === 'C:');
-    const cacheF = R.result.judgement.findings.find(f => f.proposedAction === 'cache.clean');
-    const ck = cacheF && keyOf(cacheF), inPlan = ck && state.selected.has(ck), done = ck && handledOf(ck) && handledOf(ck).status === 'done';
-    const chatsOnC = (st.chatApps || []).filter(x => x.onC).sort((a, b) => b.sizeGB - a.sizeGB);
-    const big = [];
-    const pad = s => /[A-Za-z0-9]$/.test(s) ? s + ' ' : s, padL = s => /^[A-Za-z0-9]/.test(s) ? ' ' + s : s;
-    chatsOnC.forEach(x => big.push({ name: `${pad(x.name)}聊天文件`, mb: x.sizeGB * 1024, how: `在${padL(pad(x.name))}的设置里清理，或者把存储位置改到其他盘` }));
-    if (st.downloadsGB >= 2) big.push({ name: '下载文件夹', mb: st.downloadsGB * 1024, how: '多是用过的安装包和文件，可以自己整理，或者整个搬到其他盘' });
-    (st.system || []).forEach(x => big.push({ name: x.name, mb: x.mb, how: x.why }));
-    big.sort((a, b) => b.mb - a.mb);
-    const lead = [];
-    if (c) lead.push(`C 盘还剩 ${fmtMB(c.freeGB * 1024)}。`);
-    if (st.cleanableMB >= 100) lead.push(`清缓存能腾出约 ${fmtMB(st.cleanableMB)}`);
-    if (big.length && big[0].mb > st.cleanableMB) lead.push(`${lead.length > 1 ? '；' : ''}更大的是${big[0].name}（${fmtMB(big[0].mb)}）`);
-    const canDoIt = R.canExecute !== false && cacheF;
-    return `<section class="card space" id="space-card">${spaceInner(c, st, big, lead, { ck, inPlan, done, canDoIt })}</section>`;
-  }
-  function spaceInner(c, st, big, lead, a) {
-    const R = state.report;
+    const rows = spaceRows(), live = rows.filter(r => !r.moved && rowState(r) !== 'done');
+    const total = live.reduce((a, r) => a + (r.mb || 0), 0), picked = live.filter(r => rowState(r) === 'in').reduce((a, r) => a + (r.mb || 0), 0);
+    const easy = live.filter(r => !r.yours && rowState(r) === 'out');
     const used = c ? Math.max(0, 100 - (c.freePct || 0)) : 0;
-    return `<div class="sp-head"><span class="glyph">${icon('disk')}</span>
-        <div><b>空间</b><p>${esc(lead.join('') + (lead.length > 1 ? '。' : ''))}</p></div>
+    const nowFree = st.freeNow != null ? st.freeNow : null;
+    const lead = [c ? `体检时 C 盘还剩 ${fmtMB(c.freeGB * 1024)}${nowFree != null && Math.abs(nowFree / GiB - c.freeGB) >= 0.5 ? `，现在剩 ${fmtSize(nowFree)}` : ''}。` : '',
+      total >= 1 ? `下面能腾出约 ${fmtMB(total)}${picked ? `，已加入清单 ${fmtMB(picked)}` : ''}。` : '没有发现能直接腾出的空间。'].join('');
+    const chatsOnC = (st.chatApps || []).filter(x => x.onC).sort((a, b) => b.sizeGB - a.sizeGB);
+    const pad = s => /[A-Za-z0-9]$/.test(s) ? s + ' ' : s, padL = s => /^[A-Za-z0-9]/.test(s) ? ' ' + s : s;
+    const big = chatsOnC.map(x => ({ name: `${pad(x.name)}聊天文件`, mb: x.sizeGB * 1024, how: `在${padL(pad(x.name))}的设置里清理，或者把存储位置改到其他盘` }));
+    if (st.downloadsGB >= 2) big.push({ name: '下载文件夹', mb: st.downloadsGB * 1024, how: '你下载的文件，可以自己整理；也可以把整个文件夹搬到其他盘' });
+    big.sort((a, b) => b.mb - a.mb);
+    const D = state.move && state.move.data;
+    return `<section class="card space" id="space-card">
+      <div class="sp-head"><span class="glyph">${icon('disk')}</span>
+        <div><b>空间</b><p>${esc(lead)}</p></div>
         ${c ? `<div class="sp-vol"><span class="muted small">C 盘</span><span class="bar ${c.freePct < 15 ? 'low' : ''}"><i style="width:${used}%"></i></span><span class="num small">剩 ${fmtMB(c.freeGB * 1024)} / ${fmtMB(c.sizeGB * 1024)}</span></div>` : ''}</div>
       <div class="sp-grid">
-        <div class="sp-col"><h4>可以直接清理${st.cleanableMB >= 1 ? ` <span class="num">${fmtMB(st.cleanableMB)}</span>` : ''}</h4>
-          ${st.measured === false ? '<p class="muted small">这份报告是旧版采集的，没有按类别测量。重新体检后会列出来。</p>'
-            : (st.groups || []).length ? `<ul class="sp-list">${st.groups.map(g => `<li><span>${esc(g.group)}${g.running ? `<i class="muted small"> · ${esc(g.running)} 开着时跳过</i>` : ''}</span><span class="num">${fmtMB(g.mb)}</span></li>`).join('')}</ul>`
-            : '<p class="muted small">没有量到值得清理的缓存。</p>'}
-          ${a.canDoIt ? a.done ? `<span class="handled">${icon('check')}已清理</span>`
-            : a.inPlan ? `<span class="in-plan">${icon('check')}已加入处理清单</span>`
-            : `<button class="btn" data-act="space-add" data-k="${esc(a.ck)}">${icon('list')}加入处理清单</button>` : ''}
-          <p class="muted small">都是程序会自动重新生成的缓存，直接删除才真正腾出空间；不碰聊天记录、下载和你的文件。</p></div>
+        <div class="sp-col"><h4>可以腾出的空间</h4>
+          ${st.measured === false ? '<p class="muted small">这份报告是旧版采集的，没有按类别测量。重新体检后会列出来。</p>' : ''}
+          ${rows.length ? `<ul class="sp-acts">${rows.map(r => `<li class="${r.moved || rowState(r) === 'done' ? 'off' : ''}"><div><b>${esc(r.name)}</b><i class="muted small">${esc(r.note)}</i></div>
+              <span class="num">${r.mb ? fmtMB(r.mb) : ''}</span>${rowButton(r)}</li>`).join('')}</ul>`
+            : st.measured === false ? '' : '<p class="muted small">没有量到值得处理的缓存、系统遗留或旧安装包。</p>'}
+          ${R.meta.source === 'local' && state.move && state.move.loading ? '<p class="muted small">正在看文档、下载这些文件夹有多大…</p>' : ''}
+          ${easy.length > 1 && R.canExecute !== false ? `<button class="btn primary" data-act="space-add" data-keys="${esc(easy.flatMap(r => r.keys).join('|'))}">${icon('list')}一键加入 ${easy.length} 项（${fmtMB(easy.reduce((a, r) => a + (r.mb || 0), 0))}）</button>
+            ${live.some(r => r.yours && rowState(r) === 'out') ? '<p class="muted small">搬文件夹、删 Windows.old 改变的东西多，不在一键里，需要的话单独点「加入」。</p>' : ''}` : ''}
+          <p class="muted small">加入后到「处理」页统一执行：执行前逐项写清改什么，执行后告诉你每一项清了什么、C 盘多出多少。</p></div>
         <div class="sp-col"><h4>更大的空间在这里</h4>
           ${big.length ? `<ul class="sp-list">${big.slice(0, 5).map(x => `<li title="${esc(x.how || '')}"><span>${esc(x.name)}<i class="muted small">${esc(x.how ? ' · ' + x.how : '')}</i></span><span class="num">${fmtMB(x.mb)}</span></li>`).join('')}</ul>`
-            : '<p class="muted small">没有发现特别占地方的聊天文件或系统遗留。</p>'}
-          <p class="muted small">这些不是"垃圾"：聊天文件和下载是你的数据，系统遗留交给 Windows 自带的「磁盘清理」。文档、下载这些文件夹可以整个搬到其他盘。</p>
-          ${R.meta.source === 'local' ? `<button class="btn" data-act="go-move">${icon('arrow')}搬到其他盘</button>` : ''}</div>
+            : '<p class="muted small">没有发现特别占地方的聊天文件。</p>'}
+          <p class="muted small">这些是你的数据，Iris 不替你删；聊天文件请在软件自己的设置里清理或改位置。</p>
+          ${D ? moveGuides(D) : ''}</div>
       </div>
       ${spaceTree()}
-      ${(st.notCleaned || []).length ? `<details class="fold" data-fold="not-cleaned"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}`;
+      ${(st.notCleaned || []).length ? `<details class="fold" data-fold="not-cleaned"><summary>这些有人当垃圾清，Iris 不清</summary><div class="fold-body"><ul class="deduct">${st.notCleaned.map(n => `<li><b>${esc(n.name)}</b>：${esc(n.why)}</li>`).join('')}</ul></div></details>` : ''}
+    </section>`;
+  }
+  /** 「C 盘空间去哪了」里能处理的文件夹：展开后在说明旁边直接给「加入」 */
+  function treeRow(n) {
+    let id = null;
+    const m = /\\Users\\[^\\]+\\(Documents|Downloads|Pictures|Videos|Music)$/i.exec(n.path || '');
+    if (m) id = 'move-' + Object.keys(FOLDER_OF).find(k => FOLDER_OF[k].toLowerCase() === m[1].toLowerCase());
+    else if (/^[A-Z]:\\Windows\.old$/i.test(n.path || '')) id = 'windows-old';
+    else if (/\\AppData\\Local\\Temp$/i.test(n.path || '')) id = 'cache';
+    return id && spaceRows().find(r => r.id === id) || null;
+  }
+  async function loadMove(force) {
+    if (!state.report || state.report.meta.source !== 'local') return;
+    if (state.move && state.move.loading) return;
+    if (state.move && state.move.data && !force) return;
+    state.move = { loading: true, data: state.move && state.move.data };
+    refreshSpace();
+    try { state.move.data = await quiet('moveOptions', force ? { fresh: true } : {}); } catch (e) {}
+    state.move.loading = false;
+    refreshSpace();
   }
   const SP_KIND = { system: '系统', tool: '交给 Windows', clean: 'Iris 能清', move: '可以搬', yours: '你的文件', apps: '软件' };
   function spaceTree() {
@@ -683,7 +788,7 @@
           <span class="nm">${esc(l ? l.name : pii(n.name))}${l ? `<i class="kind k-${esc(l.kind)}">${esc(SP_KIND[l.kind] || '')}</i>` : ''}${n.other ? '' : ''}</span>
           <span class="bar"><i style="width:${Math.max(1, n.bytes / max * 100)}%"></i></span>
           <span class="num">${fmtSize(n.bytes)}</span></button>
-        ${l && open ? `<p class="advice">${esc(l.advice)}</p>` : ''}
+        ${l && open ? `<p class="advice">${esc(l.advice)}${(() => { const r = treeRow(n); return r ? ` <span class="sp-tree-act">${r.mb ? fmtMB(r.mb) + ' · ' : ''}${rowButton(r)}</span>` : ''; })()}</p>` : ''}
         ${open ? kids.map(k => row(k, depth + 1)).join('') : ''}</div>`;
     };
     return `<div class="sp-tree"><div class="sp-tree-head"><h4>C 盘空间去哪了</h4><span class="muted small" id="sp-status">${esc(status)}</span></div>
@@ -691,7 +796,7 @@
         <p class="muted small">报告已经出来了，这一项在后台继续分析，不影响你看报告和用电脑；分析完这里会自动更新。</p>` : ''}
       ${tree && tree.children ? `<div class="sp-rows">${tree.children.filter(k => k.bytes > 0).map(k => row(k, 0)).join('')}</div>` : ''}
       ${sp && (sp.bigFiles || []).length ? `<details class="fold" data-fold="big-files"><summary>最大的 ${Math.min(10, sp.bigFiles.length)} 个文件</summary><div class="fold-body"><ul class="sp-list">${sp.bigFiles.slice(0, 10).map(f =>
-        `<li><span class="mono small">${esc(pii(f.path))}</span><span class="num">${fmtSize(f.bytes)}</span></li>`).join('')}</ul></div></details>` : ''}</div>`;
+        `<li><span class="mono small">${esc(piiFile(f.path))}</span><span class="num">${fmtSize(f.bytes)}</span></li>`).join('')}</ul></div></details>` : ''}</div>`;
   }
   /** 「C 盘空间去哪了」现在的进度：进度事件（每秒）优先，否则用报告里存的快照 */
   function spaceStatus() {
@@ -732,6 +837,7 @@
     for (const f of R.result.judgement.findings) {
       const k = keyOf(f);
       if (!canDo(f) || state.selected.has(k) || state.dismissed.has(k) || markOf(k) || (f.needsUser && !answerOf(k))) continue;
+      if (isOldWin(f)) continue;  // 删了就退不回旧版本：只能自己加
       const a = altOf(k), op = a ? a.op : f.proposedAction, risk = (a || f).risk;
       if (risk === 'green') out.green.push(k); else if (risk === 'yellow') out.yellow.push(k);
     }
@@ -908,7 +1014,6 @@
       <div><h1>处理</h1><p class="muted" style="margin:8px 0 0;max-width:48em">要改什么由你决定。改之前逐项写清会改什么、有什么代价、怎么撤销；改完重新检测，没生效的自动恢复原状。所有改动都记在下面，随时可以撤销。</p></div>
       <div id="plan-result">${resultCard()}</div>
       <section id="plan-pending">${pendingSection()}</section>
-      <section id="plan-move">${moveSection()}</section>
       <section><div class="section-head"><h2>已处理 · 可以撤销</h2></div>
         <div class="history">${historyHtml(state.journal || [])}</div></section>
     </div>`;
@@ -931,7 +1036,11 @@
     else if (state.executing) bar = `<span class="sum"><b>正在执行 ${Math.min(finished + 1, P.steps.length)} / ${P.steps.length}</b>每改完一项都会重新检测；请不要关闭 Iris</span><button class="btn primary" disabled>${icon('spinner')}执行中…</button>`;
     else bar = `<span class="sum"><b>${P.steps.length} 项</b>${irreversible ? `${irreversible} 项不能自动撤销` : '全部可以撤销'}${P.needsAdmin ? ' · 需要一次管理员确认' : ''}${missing ? `<br><span style="color:var(--c-prob)">「${esc(pii(missing.title))}」一类都没选：选一类，或者把这一项移出清单</span>` : ''}</span>
       <button class="btn primary" data-act="execute" ${missing || !P.steps.length ? 'disabled' : ''}>执行 ${P.steps.length} 项 <span class="arrow">${icon('arrow')}</span></button>`;
-    return `${head}${carried}<div class="steps">${P.steps.map(stepCard).join('')}</div>
+    const sp = P.steps.filter(s => SPACE_OPS.includes(s.op)), other = P.steps.filter(s => !SPACE_OPS.includes(s.op));
+    const grouped = sp.length && other.length
+      ? `${groupHead('空间', sp, true)}<div class="steps">${sp.map(stepCard).join('')}</div>${groupHead('其他', other)}<div class="steps">${other.map(stepCard).join('')}</div>`
+      : `${sp.length ? groupHead('空间', sp, true) : ''}<div class="steps">${P.steps.map(stepCard).join('')}</div>`;
+    return `${head}${carried}${grouped}
       ${P.skipped && P.skipped.length ? `<div class="card pad"><h4 style="margin:0 0 8px">这些不会处理</h4><ul class="deduct">${P.skipped.map(x => `<li><b>${esc(pii(x.title))}</b>：${esc(x.reason)}</li>`).join('')}</ul></div>` : ''}
       <div class="plan-bar">${bar}</div>`;
   }
@@ -947,7 +1056,11 @@
       <div class="spec"><div class="k">会改什么</div><div class="v">${esc(s.change)}</div>
         <div class="k">代价</div><div class="v">${esc(s.cost)}</div>
         <div class="k">怎么撤销</div><div class="v">${esc(s.undo)}</div>
-        ${st && st.message && st.status !== 'running' && st.status !== 'verifying' ? `<div class="k">结果</div><div class="v">${esc(st.message)}</div>` : ''}</div>
+        ${st && st.message && st.status !== 'running' && st.status !== 'verifying' ? `<div class="k">结果</div><div class="v">${esc(pii(st.message))}</div>` : ''}
+        ${st && st.status === 'running' && st.message && st.message !== '正在执行…' ? `<div class="k">进度</div><div class="v">${esc(st.message)}</div>` : ''}
+        ${s.sizeMB ? `<div class="k">大小</div><div class="v">${fmtMB(s.sizeMB)}${s.op === 'folder.move' ? `，大约 ${Math.max(1, Math.round(s.sizeMB / 80 / 60))} 分钟` : ''}</div>` : ''}</div>
+      ${s.move && !locked ? `<div class="opts"><span class="label">搬到哪个盘（只列本机内置硬盘）</span><div class="choices">${s.move.drives.map(d =>
+          `<button data-act="mv-drive" data-k="${esc(s.key)}" data-v="${esc(d.root)}" aria-pressed="${(state.moveDrive[s.key] || s.move.drive) === d.root}">${esc(d.name)}${d.label ? ' · ' + esc(d.label) : ''} · 剩 ${fmtSize(d.freeGB * GiB)}</button>`).join('')}</div></div>` : ''}
       ${s.cacheOptions && !locked ? `<div class="opts">
         <span class="label">${esc(OPT_LABEL[s.op] || OPT_LABEL['cache.clean'])}</span>
         ${s.cacheOptions.items.length > 3 ? `<div class="cc-all"><button class="linkish" data-act="cc-all" data-k="${esc(s.key)}">${cc.categories.length === s.cacheOptions.items.length ? '全部取消' : '全选'}</button>
@@ -955,81 +1068,12 @@
         <div class="cc-items ${s.cacheOptions.items.length > 8 ? 'scroll' : ''}">${s.cacheOptions.items.map(c => `<button class="cc-item" data-act="cc-cat" data-k="${esc(s.key)}" data-v="${esc(c.id)}" aria-pressed="${cc.categories.includes(c.id)}" title="${esc(c.why + ' ' + c.cost)}">
           <span class="box">${icon('check')}</span><span class="nm">${esc(pii(c.name))}${c.running ? `<i class="muted small">体检时 ${esc(c.running)} 开着，清理时还开着就跳过</i>` : ''}${optNote(s, c)}</span>
           <span class="num">${c.sizeMB == null ? '' : fmtMB(c.sizeMB)}</span></button>`).join('')}</div>
+        ${s.op === 'cache.clean' ? `<button class="linkish" data-act="cc-preview" data-k="${esc(s.key)}">${icon('list')}看看会清掉哪些文件</button>` : ''}
         ${(s.cacheOptions.ages || []).length ? `<details class="cc-more"><summary>只清更早的（可选）</summary>
           <div class="choices">${s.cacheOptions.ages.map(d => `<button data-act="cc-age" data-k="${esc(s.key)}" data-v="${d}" aria-pressed="${(cc.age || 0) === d}">${d ? d + ' 天前' : '按默认'}</button>`).join('')}</div>
           <span class="muted small">默认：临时文件只清 7 天前的、旧日志只清 30 天前的，其余缓存不限时间。</span></details>` : ''}
       </div>` : ''}
     </div>`;
-  }
-  // ------------------------------------------------------------------ 搬到其他盘
-  // 和上面的清单分开：清单里是报告给的建议；这里是你自己挑要搬哪些文件夹、搬到哪个盘。列表每次打开现量，不依赖报告
-  const GiB = 1024 * 1024 * 1024;
-  async function loadMove(force) {
-    if (state.move && state.move.loading) return;
-    if (state.move && state.move.data && !force) { renderMove(); return; }
-    state.move = Object.assign(state.move || { sel: [], drive: null, status: {} }, { loading: true });
-    renderMove();
-    try { state.move.data = await call('moveOptions'); } catch (e) { state.move.error = e.message || String(e); }
-    state.move.loading = false;
-    const D = state.move.data;
-    if (D) {
-      if (!D.drives.some(d => d.root === state.move.drive)) state.move.drive = D.drives.length ? D.drives[0].root : null;
-      state.move.sel = state.move.sel.filter(id => D.folders.some(f => f.id === id && movable(f)));
-      if (D.running) state.move.running = true;
-    }
-    renderMove();
-  }
-  const movable = f => !f.movedTo && !f.problem && f.bytes >= 100 * 1024 * 1024;
-  function renderMove() {
-    if (state.view !== 'plan') return;
-    const box = document.getElementById('plan-move'); if (!box) return;
-    box.innerHTML = moveSection(); hydrate(box);
-  }
-  function moveSection() {
-    const M = state.move || {}, D = M.data;
-    const head = `<div class="section-head"><h2>搬到其他盘</h2><span class="muted small">和上面的清单分开：这里由你自己挑</span></div>`;
-    if (!D) return `${head}${M.error ? `<div class="card empty">${icon('alert')}<span>${esc(M.error)}</span></div>` : '<div class="skel" style="height:150px"></div>'}`;
-    const sysTxt = D.system ? `C 盘还剩 ${fmtSize(D.system.freeGB * GiB)}。` : '';
-    const intro = `<p class="lead">${esc(sysTxt)}把「文档」「下载」这样的个人文件夹整个搬到别的盘：资源管理器里点「文档」照样打开，只是文件实际放在新的盘上。
-      和文件夹属性里「位置 → 移动」做的是同一件事，随时可以撤销、全部搬回来。</p>`;
-    const guides = moveGuides(D);
-    if (!D.drives.length) return `${head}<div class="card pad move-card">${intro}
-      <div class="empty-note">${icon('info')}<span>这台电脑没有别的内置硬盘可以搬过去（U 盘和移动硬盘不行：拔掉以后文件夹就打不开了）。可以先清理缓存，或者把不常用的大文件拷到移动硬盘备份后再删除。</span></div></div>${guides}`;
-    const drive = D.drives.find(d => d.root === M.drive) || D.drives[0];
-    const running = !!M.running;
-    const rows = D.folders.map(f => {
-      const st = M.status[f.id], on = M.sel.includes(f.id), ok = movable(f);
-      const kept = (f.kept || []).filter(k => k.bytes > 0);
-      let note = '';
-      if (f.movedTo) note = `已经在${f.movedName === 'OneDrive' ? ' OneDrive 里' : ` ${f.movedName}`}<span class="mono small"> · ${esc(pii(f.movedTo))}</span>`;
-      else if (f.problem) note = esc(f.problem);
-      else if (!ok) note = '很小，不用搬';
-      else note = `${(f.files || 0).toLocaleString()} 个文件${f.partial ? '（还没量完，实际更大）' : ''}`;
-      if (kept.length) note += ` · ${kept.map(k => `${esc(k.name)} ${fmtSize(k.bytes)}`).join('、')} 留在原处（在软件里改位置）`;
-      const stTxt = st ? { running: ['run', '搬运中', 'spinner'], done: ['ok', '已搬好', 'check'], failed: ['fail', '没有搬', 'alert'], rolledBack: ['fail', '没搬成，已恢复原样', 'undo'] }[st.status] : null;
-      return `<div class="mv-row ${ok ? '' : 'off'} ${f.movedTo ? 'moved' : ''}">
-        <button class="cc-item" ${ok && !running ? `data-act="mv-pick" data-v="${esc(f.id)}"` : 'disabled'} aria-pressed="${on && ok}">
-          <span class="box">${icon('check')}</span>
-          <span class="nm">${esc(f.name)}<i class="muted small">${note}</i></span>
-          <span class="num">${f.movedTo ? '' : fmtSize(f.bytes)}</span></button>
-        ${stTxt ? `<div class="mv-status"><span class="status ${stTxt[0]}">${icon(stTxt[2])}${esc(stTxt[1])}</span><span class="muted small">${esc(pii(st.message || ''))}</span></div>` : ''}</div>`;
-    }).join('');
-    const picked = D.folders.filter(f => M.sel.includes(f.id) && movable(f));
-    const bytes = picked.reduce((a, f) => a + f.bytes, 0);
-    const tooBig = drive && bytes > drive.freeGB * GiB - Math.max(2 * GiB, bytes / 20);
-    const mins = Math.max(1, Math.round(bytes / (80 * 1024 * 1024) / 60));
-    const drives = D.drives.length > 1 ? `<div class="choices mv-drives"><span class="label">搬到</span>${D.drives.map(d =>
-      `<button data-act="mv-drive" data-v="${esc(d.root)}" aria-pressed="${d.root === drive.root}" ${running ? 'disabled' : ''}>${esc(d.name)}${d.label ? ` · ${esc(d.label)}` : ''}<i class="muted small"> 剩 ${fmtSize(d.freeGB * GiB)}</i></button>`).join('')}</div>`
-      : `<p class="muted small">搬到 ${esc(drive.name)}${drive.label ? `（${esc(drive.label)}）` : ''}，那里还剩 ${fmtSize(drive.freeGB * GiB)}。</p>`;
-    let bar;
-    if (running) bar = `<span class="sum"><b>正在搬</b>先复制、逐个核对，再改位置、删 C 盘上的原件；请不要关闭 Iris</span><button class="btn primary" disabled>${icon('spinner')}搬运中…</button>`;
-    else bar = `<span class="sum"><b>${picked.length ? `${picked.length} 个文件夹 · ${fmtSize(bytes)}` : '先勾选要搬的文件夹'}</b>${picked.length ? (tooBig ? `<span style="color:var(--c-prob)">${esc(drive.name)}空间不够</span>` : `大约 ${mins} 分钟；搬之前最好关掉正在用这些文件的软件`) : '默认一个都不勾'}</span>
-      <button class="btn primary" data-act="mv-go" ${!picked.length || tooBig ? 'disabled' : ''}>搬到 ${esc(drive.name)} <span class="arrow">${icon('arrow')}</span></button>`;
-    return `${head}<div class="card pad move-card">${intro}<div class="mv-rows">${rows}</div>${drives}
-      <ul class="mv-notes muted small"><li>搬的是文件夹里的全部文件，搬完资源管理器、桌面快捷方式、软件的"保存到文档"都自动指向新位置。</li>
-        <li>微信、QQ、Outlook 的文件夹留在原处：它们记着完整路径，跟着搬会找不到，请在软件自己的设置里改存储位置。</li>
-        <li>正在被使用的文件会留在原处，不会丢；个别软件记着旧位置，会在 C 盘重新建一个同名的空文件夹，属于正常。</li></ul>
-      <div class="plan-bar">${bar}</div></div>${guides}`;
   }
   function moveGuides(D) {
     const docs = D.folders.find(f => f.id === 'documents');
@@ -1043,6 +1087,72 @@
     </ul></div></details>`;
   }
 
+  /** 这一步预计腾出多少（MB）：有选项的按勾选的加起来，没有选项的看步骤自带的大小 */
+  function stepMB(s) {
+    if (s.cacheOptions) { const cc = ccOf(s); return s.cacheOptions.items.filter(i => cc.categories.includes(i.id)).reduce((a, i) => a + (i.sizeMB || 0), 0); }
+    return s.sizeMB || 0;
+  }
+  function groupHead(title, steps, space) {
+    if (!space) return `<div class="grp-head"><h3>${esc(title)} · <span class="num">${steps.length}</span> 项</h3></div>`;
+    const mb = steps.reduce((a, s) => a + stepMB(s), 0), rec = steps.filter(s => s.op === 'downloads.recycle_installers').reduce((a, s) => a + stepMB(s), 0);
+    return `<div class="grp-head"><h3>${esc(title)} · <span class="num">${steps.length}</span> 项</h3>
+      <span class="muted small">${mb >= 1 ? `预计腾出约 <b>${fmtMB(mb)}</b>` : '腾出多少要做完才知道'}${rec >= 1 ? `（其中 ${fmtMB(rec)} 先进回收站，清空回收站后才腾出）` : ''}</span></div>`;
+  }
+  /** "清了什么"：每一步的明细，来自本机的操作记录（不会发给任何人） */
+  function detailsHtml(e) {
+    const d = e.details; if (!d) return '';
+    const li = (a, b) => `<li><span>${a}</span><span class="num">${b}</span></li>`;
+    switch (d.kind) {
+      case 'cache': return `<ul class="sp-list">${(d.categories || []).map(c => li(esc(c.name) + (c.running ? `<i class="muted small"> · ${esc(c.running)} 开着，跳过了</i>` : `<i class="muted small"> · ${(c.deleted || 0).toLocaleString()} 个文件</i>`),
+          c.running ? '—' : fmtSize(c.bytes || 0))).join('')}</ul>
+        <p class="muted small">一共删掉 ${(d.deleted || 0).toLocaleString()} 个文件${d.skipped ? `；${d.skipped.toLocaleString()} 个正在使用，跳过了` : ''}。</p>
+        ${d.hasList ? `<button class="btn" data-act="files" data-id="${esc(e.id)}">${icon('list')}查看全部 ${(d.deleted || 0).toLocaleString()} 个文件</button>` : ''}`;
+      case 'system': return `<p>交给 Windows 磁盘清理的项目：${esc((d.chosen || []).join('、'))}${d.freed != null ? `；C 盘多出了 ${fmtSize(d.freed)}` : ''}。</p>`;
+      case 'files': return `<ul class="sp-list">${(d.files || []).map(f => li(`<span class="mono small">${esc(piiFile(f.path))}</span>`, fmtSize(f.size || 0))).join('')}</ul>
+        <p class="muted small">都在回收站里，需要时可以还原；清空回收站后才真正腾出空间。</p>`;
+      case 'move': return `<p>从 <span class="mono small">${esc(pii(d.from || ''))}</span> 搬到 <span class="mono small">${esc(pii(d.to || ''))}</span>：${(d.files || 0).toLocaleString()} 个文件，${fmtSize(d.bytes || 0)}。</p>
+        ${d.left ? `<p class="muted small">${d.left} 个文件正在使用或在搬的时候改过，留在原处${(d.leftNames || []).length ? '，例如：' + d.leftNames.map(n => esc(S().demoMode ? n.replace(/^.*?(\.[A-Za-z0-9]{1,8})?$/, (m, x) => '••••' + (x || '')) : n)).join('、') : ''}。</p>` : ''}`;
+      case 'dir': return `<p>挪到 Iris 备份区的文件夹：<span class="mono small">${esc(d.path || '')}</span>（${fmtSize(d.bytes || 0)}），可以撤销；清理旧备份时才真正删除。</p>`;
+    }
+    return '';
+  }
+  function detailToggle(e) {
+    if (!e.details) return '';
+    const open = state.openDetail.has(e.id);
+    return `<button class="linkish" data-act="detail" data-id="${esc(e.id)}" aria-expanded="${open}">${open ? '收起' : '清了什么'}</button>`;
+  }
+  /** 文件清单窗口：清缓存动辄几万个文件，平时不用看；想核对时在这里翻、搜 */
+  function openFiles(src) {
+    const box = modal(src.method === 'journalFiles' ? '清掉的文件' : '会清掉的文件', '', '<div class="skel" style="height:240px"></div>',
+      '<button class="btn solid" data-m="close">关闭</button>');
+    box.querySelector('.modal').classList.add('wide');
+    const body = box.querySelector('.modal-body');
+    const st = { q: '', items: [], total: 0, bytes: 0, groups: [] };
+    let seq = 0;
+    async function load(reset) {
+      const my = ++seq;
+      const r = await api.call(src.method, Object.assign({}, src.params, { offset: reset ? 0 : st.items.length, limit: 200, q: st.q })).catch(e => ({ error: e.message || String(e) }));
+      if (my !== seq) return;
+      if (r.error) { body.innerHTML = `<p class="muted">${esc(r.error)}</p>`; return; }
+      st.items = (reset ? [] : st.items).concat(r.items); st.total = r.total; st.bytes = r.bytes; st.groups = r.groups || []; st.partial = r.partial;
+      draw();
+    }
+    function draw() {
+      const focused = document.activeElement && document.activeElement.classList.contains('fl-q');
+      body.innerHTML = `<div class="fl-top"><input class="fl-q" type="search" placeholder="按文件名或路径搜索" value="${esc(st.q)}" aria-label="搜索文件">
+          <span class="muted small">${st.total.toLocaleString()} 个文件 · ${fmtSize(st.bytes || 0)}</span></div>
+        <div class="fl-groups">${st.groups.map(g => `<span class="st-chip">${esc(g.name)} · ${g.count.toLocaleString()} 个 · ${fmtSize(g.bytes)}</span>`).join('')}</div>
+        ${st.partial ? '<p class="muted small">这是用你自己的权限列出来的；Windows 目录里需要管理员权限的位置可能列不全，实际清理时会一起处理。</p>' : ''}
+        <div class="fl-list">${st.items.map(f => `<div class="fl-row"><span class="mono small">${esc(piiFile(f.path))}</span><span class="muted small">${esc(f.cat)}</span><span class="num small">${fmtSize(f.size)}</span></div>`).join('')
+          || '<p class="muted small">没有符合的文件。</p>'}</div>
+        ${st.items.length < st.total ? `<button class="btn" data-m2="more">再显示 ${Math.min(200, st.total - st.items.length)} 个（已显示 ${st.items.length.toLocaleString()} / ${st.total.toLocaleString()}）</button>` : ''}`;
+      const q = body.querySelector('.fl-q');
+      if (focused) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+      let t; q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { st.q = q.value; load(true); }, 300); });
+    }
+    box.addEventListener('click', e => { if (e.target.closest('[data-m]') || e.target === box) box.remove(); else if (e.target.closest('[data-m2]')) load(false); });
+    load(true);
+  }
   /** 带选项的步骤：选项上面那句话，以及每一项下面的小字 */
   const OPT_LABEL = {
     'cache.clean': '清理这些（体检时量到的大小；不需要的点一下取消）',
@@ -1076,11 +1186,13 @@
     return `<section class="card result">
       <div class="r-top"><span class="glyph ${bad && !ok ? 'v-problem' : 'v-normal'}">${icon(bad && !ok ? 'alert' : 'check')}</span>
         <div><div class="eyebrow">刚刚完成 · ${esc(L.time)}</div><b>处理了 ${items.length} 项：${parts}</b>
+          ${L.freeBefore != null && L.freeAfter != null ? `<p class="r-free">${icon('disk')}C 盘：执行前剩 <b>${fmtSize(L.freeBefore)}</b> → 现在剩 <b>${fmtSize(L.freeAfter)}</b>${L.freeAfter - L.freeBefore >= 1048576 ? `，多出 <b>${fmtSize(L.freeAfter - L.freeBefore)}</b>` : ''}</p>` : ''}
           <p>${moves ? '每个文件夹都逐个核对过；资源管理器里的这些文件夹已经指向新位置。下面的记录里随时可以撤销（会全部搬回 C 盘）。'
             : `每一项都重新检测过${later ? `；其中 ${later} 项下次开机后才能看到效果` : ''}。报告里这些结论已经标上「已处理」，下面的记录里随时可以撤销。`}</p></div>
         <button class="icon-btn" data-act="result-close" aria-label="收起">${icon('x')}</button></div>
       <ul class="r-list">${items.map(e => { const t = JST[e.status] || ['', e.status, 'dot'];
-        return `<li><span class="status ${t[0]}">${icon(t[2])}${esc(t[1])}</span><span class="grow">${esc(e.opName)}：${esc(pii(e.title))}</span></li>`; }).join('')}</ul>
+        return `<li><span class="status ${t[0]}">${icon(t[2])}${esc(t[1])}</span><span class="grow">${esc(e.opName)}：${esc(pii(e.title))}</span>${detailToggle(e)}
+          ${state.openDetail.has(e.id) ? `<div class="r-detail">${detailsHtml(e)}</div>` : ''}</li>`; }).join('')}</ul>
       <div class="r-actions"><button class="btn primary" data-act="start">${icon('pulse')}重新体检，看看变化</button>
         ${undoable ? `<button class="btn" data-act="undo-batch" data-batch="${esc(L.batchId)}">${icon('undo')}一键还原这一批</button>` : ''}
         <button class="btn ghost" data-act="nav" data-to="report">回到报告</button></div></section>`;
@@ -1094,7 +1206,8 @@
         <div class="card">${b.items.map(e => {
           const t = JST[e.status] || ['', e.status, 'dot'];
           return `<div class="j-row"><span class="glyph ${t[0] === 'ok' ? 'v-normal' : t[0] === 'fail' ? 'v-problem' : 'v-uncertain'}" style="width:34px;height:34px">${icon(t[2])}</span>
-            <div class="grow"><div><b style="font-weight:500">${esc(e.opName)}</b>：${esc(pii(e.title))}</div><div class="m"><span class="status ${t[0]}">${esc(t[1])}</span>${e.message ? ' · ' + esc(pii(e.message)) : ''}</div></div>
+            <div class="grow"><div><b style="font-weight:500">${esc(e.opName)}</b>：${esc(pii(e.title))}</div><div class="m"><span class="status ${t[0]}">${esc(t[1])}</span>${e.message ? ' · ' + esc(pii(e.message)) : ''} ${detailToggle(e)}</div>
+              ${state.openDetail.has(e.id) ? `<div class="r-detail">${detailsHtml(e)}</div>` : ''}</div>
             ${e.status === 'done' && e.reversible ? `<button class="btn" data-act="undo" data-id="${esc(e.id)}">${icon('undo')}撤销</button>`
               : e.status === 'done' && !e.reversible ? `<span class="muted small">${esc(e.undoHint || '这一步不能自动撤销')}</span>` : '<span></span>'}
           </div>`; }).join('')}</div></section>`; }).join('');
@@ -1495,7 +1608,7 @@
     state.planStatus = {}; state.lastRun = null;
     // 恢复保存的处理清单（只留下这份报告里还存在、还能处理的）
     const sel = state.report.selected || {};
-    (sel.keys || []).forEach(k => { const f = findingByKey(k); if (f && canDo(f)) state.selected.add(k); });
+    (sel.keys || []).forEach(k => { const f = findingByKey(k); if (k.startsWith('move:') || (f && canDo(f))) state.selected.add(k); });
     state.carried = sel.carried ? { n: sel.carried, dropped: sel.dropped || 0 } : null;
     const B = buckets(state.report.result.judgement.findings);
     state.filter = B.todo.length ? 'todo' : (B.ask.length ? 'ask' : 'all');
@@ -1581,19 +1694,6 @@
   api.on('checkupError', e => { state.running = false; state.view = 'home'; state.enter = true; render(); toast(e.message); });
   api.on('opProgress', p => { state.confirming = false; state.planStatus[p.key] = p; renderPlan(); });
   api.on('planError', e => { toast(e.message); });
-  api.on('moveProgress', p => { if (!state.move) return; state.move.running = true; state.move.status[p.folder] = p; renderMove(); });
-  api.on('moveDone', async d => {
-    const batchId = d && d.batchId;
-    await refreshAfterChange();
-    const items = (state.journal || []).filter(e => batchId && e.batchId === batchId);
-    if (state.move) { state.move.running = false; state.move.sel = []; }
-    state.lastRun = items.length ? { batchId, time: new Date().toTimeString().slice(0, 5) } : state.lastRun;
-    await loadMove(true);
-    if (state.view === 'plan') { const r = document.getElementById('plan-result'); if (r) { r.innerHTML = resultCard(); hydrate(r); }
-      const h = document.querySelector('.plan-page .history'); if (h) { h.innerHTML = historyHtml(state.journal || []); hydrate(h); } }
-    const ok = items.filter(e => e.status === 'done').length;
-    toast(ok ? `搬好了 ${ok} 个文件夹，随时可以在记录里撤销` : '没有搬动任何文件夹');
-  });
   api.on('planDone', async d => {
     const batchId = d && d.batchId;
     await refreshAfterChange();
@@ -1604,7 +1704,8 @@
     doneKeys.forEach(k => state.selected.delete(k));
     state.executing = false; state.confirming = false; state.planStatus = {}; state.plan = null; state.planKeys = ''; state.carried = null;
     saveSel();
-    state.lastRun = items.length ? { batchId, time: new Date().toTimeString().slice(0, 5) } : null;
+    state.lastRun = items.length ? { batchId, time: new Date().toTimeString().slice(0, 5), freeBefore: d.freeBefore, freeAfter: d.freeAfter } : null;
+    if (items.some(e => e.op === 'folder.move')) loadMove(true);
     if (state.app.lastReport && state.report && state.app.lastReport.id === state.report.id) state.app.pending = state.selected.size;
     setChrome(); ensurePlan();
     if (state.view === 'plan') { render(); $main.scrollTop = 0; }
@@ -1763,39 +1864,30 @@
         c.categories = c.categories.length === s.cacheOptions.items.length ? [] : s.cacheOptions.items.map(i => i.id); renderPlan(); break;
       }
       case 'cc-age': { const c = ccOf(state.plan.steps.find(s => s.key === k)); c.age = +el.dataset.v || null; renderPlan(); break; }
-      case 'space-add': state.selected.add(k); state.dismissed.delete(k); saveSel(); toast('已加入处理清单。执行前会列出要清的每一类，再弹确认框'); setChrome(); refreshSpace(); refreshRows(); break;
+      case 'space-add': {
+        const keys = (el.dataset.keys || k || '').split('|').filter(Boolean);
+        keys.forEach(x => { state.selected.add(x); state.dismissed.delete(x); }); saveSel();
+        toast(keys.length > 1 ? `已加入 ${keys.length} 项。到「处理」页统一执行，执行前会逐项写清楚` : '已加入处理清单。到「处理」页统一执行，执行前会逐项写清楚');
+        setChrome(); refreshSpace(); refreshRows(); break;
+      }
       case 'jump': {
         const target = document.getElementById(el.dataset.to);
         if (target) { target.scrollIntoView({ behavior: S().reduceMotion ? 'auto' : 'smooth', block: 'start' }); target.classList.remove('pulse'); void target.offsetWidth; target.classList.add('pulse'); }
         break;
       }
-      case 'mv-pick': { const M = state.move, v = el.dataset.v; M.sel = M.sel.includes(v) ? M.sel.filter(x => x !== v) : M.sel.concat(v); renderMove(); break; }
-      case 'mv-drive': state.move.drive = el.dataset.v; renderMove(); break;
+      case 'mv-drive': state.moveDrive[k] = el.dataset.v; renderPlan(); break;
       case 'open-settings': quiet('openSettings', { page: el.dataset.v }); break;
-      case 'mv-go': {
-        const M = state.move; if (!M || M.running) break;
-        const items = M.sel.map(id => ({ id, drive: M.drive }));
-        M.running = true; M.status = {}; renderMove();
-        try {
-          // 桌面程序会先弹出 Windows 原生确认框，写清从哪搬到哪；点了取消就什么也不做
-          const r = await call('moveFolders', { items, reportId: state.report && state.report.canExecute !== false ? state.report.id : '' });
-          if (r && r.cancelled) { M.running = false; toast('已取消，没有做任何修改'); }
-        } catch (e) { M.running = false; }
-        renderMove();
-        break;
-      }
-      case 'go-move': {
-        if (state.sheet) closeSheet();
-        await go('plan');
-        setTimeout(() => { const t = document.getElementById('plan-move'); if (t) t.scrollIntoView({ behavior: S().reduceMotion ? 'auto' : 'smooth', block: 'start' }); }, 350);
-        break;
-      }
+      case 'detail': { const id = el.dataset.id; state.openDetail.has(id) ? state.openDetail.delete(id) : state.openDetail.add(id); if (state.view === 'plan') { const r = document.getElementById('plan-result'); if (r) { r.innerHTML = resultCard(); hydrate(r); } const h = document.querySelector('.plan-page .history'); if (h) { h.innerHTML = historyHtml(state.journal || []); hydrate(h); } } break; }
+      case 'files': openFiles({ method: 'journalFiles', params: { id: el.dataset.id } }); break;
+      case 'cc-preview': { const st = state.plan.steps.find(x => x.key === k), c = ccOf(st);
+        openFiles({ method: 'previewCache', params: { planId: state.plan.planId, key: k, categories: c.categories, age: c.age || 0 } }); break; }
+      case 'space-remove': (el.dataset.keys || '').split('|').filter(Boolean).forEach(x => state.selected.delete(x)); saveSel(); setChrome(); refreshSpace(); refreshRows(); break;
       case 'space-open': { const p = el.dataset.p; state.spaceOpen.has(p) ? state.spaceOpen.delete(p) : state.spaceOpen.add(p); refreshSpace(); break; }
       case 'execute': {
         if (state.executing || !state.plan) break;
         state.executing = true; state.confirming = true; state.planStatus = {}; state.lastRun = null; renderPlan();
         { const r = document.getElementById('plan-result'); if (r) r.innerHTML = ''; }
-        const steps = state.plan.steps.map(s => Object.assign({}, s, s.cacheOptions ? { cacheChoice: ccOf(s) } : {}));
+        const steps = state.plan.steps.map(s => Object.assign({}, s, s.cacheOptions ? { cacheChoice: ccOf(s) } : {}, s.move ? { drive: state.moveDrive[s.key] || s.move.drive } : {}));
         try {
           // 桌面程序会先弹出 Windows 原生确认框，逐项写清改什么、能不能撤销；点了取消就什么也不做
           const r = await call('executePlan', { planId: state.plan.planId, reportId: state.report.id, steps });

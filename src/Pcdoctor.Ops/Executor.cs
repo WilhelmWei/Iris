@@ -114,9 +114,10 @@ public static class BackupPruner
             if (e.BatchId != null && e.BatchId == keepBatch) continue;
             if (!Eligible(e, cutoffUtc)) continue;
             var export = DriverExportDir(workDir, e);
-            if (e.Backup.Count == 0 && export == null) continue;
+            if (e.Backup.Count == 0 && export == null) continue;  // 清单文件名记在 Backup 里，Backup 空了就没有清单
             bytes += System.Text.Encoding.UTF8.GetByteCount(e.Backup.ToJsonString());
             if (export != null) { bytes += DirSize(export); Directory.Delete(export, true); }
+            if (OpLists.PathOf(workDir, e.Backup["list"]?.ToString()) is { } list && File.Exists(list)) { bytes += new FileInfo(list).Length; File.Delete(list); }
             e.Backup = new JsonObject();
             if (e.Status == Status.Done)
             {

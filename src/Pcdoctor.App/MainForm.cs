@@ -213,6 +213,7 @@ public sealed class MainForm : Form
     async Task<JsonNode?> Dispatch(string method, JsonNode p)
     {
         string S(string k) => p[k]?.ToString() ?? "";
+        int I(string k, int d = 0) => p[k] is JsonValue v && v.TryGetValue<int>(out var n) ? n : d;
         switch (method)
         {
             case "getState": return services.GetState();
@@ -224,8 +225,10 @@ public sealed class MainForm : Form
             case "buildPlan": return services.BuildPlan(S("reportId"), p["keys"]!.AsArray().Select(x => x!.ToString()));
             case "executePlan": return services.ExecutePlan(S("planId"), S("reportId"), p["steps"]!.AsArray());
             case "getJournal": return services.GetJournal();
-            case "moveOptions": return services.MoveOptions();
-            case "moveFolders": return services.MoveFolders(p["items"]!.AsArray(), p["reportId"]?.ToString());
+            case "journalFiles": return services.JournalFiles(S("id"), I("offset"), I("limit", 200), p["q"]?.ToString());
+            case "previewCache":
+                return services.PreviewCache(S("planId"), S("key"), (p["categories"] as JsonArray ?? []).Select(x => x?.ToString() ?? ""), I("age"), I("offset"), I("limit", 200), p["q"]?.ToString());
+            case "moveOptions": return services.MoveOptions(p["fresh"]?.GetValue<bool>() == true);
             case "openSettings":
                 // 只打开固定的几个 Windows 设置页（新内容的保存位置、安装的应用、存储）
                 var page = S("page") switch { "savelocations" => "ms-settings:savelocations", "apps" => "ms-settings:appsfeatures", "storage" => "ms-settings:storagesense", _ => null };

@@ -263,6 +263,13 @@ public class OperationTests : IDisposable
         Assert.Equal(Status.Done, e.Status);
         Assert.Equal([Local + @"\Temp\old.tmp", Local + @"\Temp\sub\old2.tmp"], sys.Deleted.OrderBy(x => x).ToArray());
         Assert.Empty(sys.RecycleBin);
+        // 删掉的每个文件记在备份目录的清单里（界面上「查看全部文件」读它），记录里只存文件名
+        var list = OpLists.PathOf(work, e.Backup["list"]?.ToString());
+        Assert.NotNull(list);
+        var lines = File.ReadAllLines(list!).Select(l => l.Split('\t')).ToList();
+        Assert.Equal([Local + @"\Temp\old.tmp", Local + @"\Temp\sub\old2.tmp"], lines.Select(l => l[0]).OrderBy(x => x).ToArray());
+        Assert.All(lines, l => Assert.Equal("temp-user", l[2]));
+        Assert.Null(OpLists.PathOf(work, @"..\..\x.tsv"));
         Assert.True(sys.FileExists(@"C:\Users\u\Documents\thesis.docx"));
         Assert.True(sys.FileExists(Local + @"\pip\Cache\a.whl"));
         Assert.Contains("腾出了 2 MB", e.Message);

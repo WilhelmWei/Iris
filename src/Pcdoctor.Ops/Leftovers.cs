@@ -31,8 +31,11 @@ public static class SystemCleanup
 
     public static Item? Get(string id) => Items.FirstOrDefault(i => i.Id == id);
 
-    /// <summary>处理方案里这一步的选项：体检时量到 100 MB 以上的，加上量不出大小的"旧系统更新"（默认不勾）。</summary>
-    public static CacheOptions Options(JsonNode report)
+    static string? MeasuredName(Dictionary<string, JsonObject> measured, string id) => measured.TryGetValue(id, out var m) ? m["name"]?.ToString() : null;
+
+    /// <summary>处理方案里这一步的选项：体检时量到 100 MB 以上的，加上量不出大小的"旧系统更新"（默认不勾）。
+    /// Windows.old 删了就退不回旧版本：只有用户在清单里选了这一条（<paramref name="picked"/> 里有它的名字）才默认勾上。</summary>
+    public static CacheOptions Options(JsonNode report, IReadOnlyCollection<string>? picked = null)
     {
         var measured = (report["sections"]?["storage"]?["junk"]?["items"] as JsonArray)?.OfType<JsonObject>()
             .Where(x => x["id"] != null).ToDictionary(x => x["id"]!.ToString(), x => x) ?? [];
@@ -46,7 +49,8 @@ public static class SystemCleanup
         return new CacheOptions
         {
             Items = items, Ages = [],
-            Categories = items.Where(i => Get(i.Id)!.ByDefault).Select(i => i.Id).ToList(),
+            Categories = items.Where(i => Get(i.Id)!.ByDefault && (i.Id != "windows-old" || picked?.Contains(i.Name) == true || picked?.Contains(MeasuredName(measured, i.Id) ?? "") == true))
+                .Select(i => i.Id).ToList(),
         };
     }
 }
@@ -94,6 +98,7 @@ public sealed class SystemCleanupOp : Operation
                 if (chosen.Contains(h)) sys.WriteValue(Hive.LocalMachine, key, SystemCleanup.Flag, RegValue.DWord(2));
                 else sys.DeleteValue(Hive.LocalMachine, key, SystemCleanup.Flag);
             }
+            b["chosen"] = new JsonArray(s.CacheChoice.Categories.Select(id => (JsonNode?)SystemCleanup.Get(id)!.Name).ToArray());
             c.Progress?.Invoke("Windows 磁盘清理正在运行，会弹出它自己的进度窗口…");
             b["exit"] = sys.Run(Exe(sys), $"/sagerun:{SystemCleanup.SageSet}", 3600);
         }
@@ -192,6 +197,7 @@ public sealed class InstallersRecycleOp : Operation
         var moved = c.Sys.MoveToRecycleBin(s.CacheChoice!.Categories);
         b["moved"] = moved.Count;
         b["bytes"] = moved.Sum(p => sizes.GetValueOrDefault(p));
+        b["files"] = new JsonArray(moved.Select(p => (JsonNode?)new JsonObject { ["path"] = p, ["size"] = sizes.GetValueOrDefault(p) }).ToArray());
         b["left"] = s.CacheChoice.Categories.Count - moved.Count;
     }
 
