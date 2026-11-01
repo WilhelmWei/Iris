@@ -51,7 +51,7 @@ Iris 还没有代码签名，又会请求管理员权限读取驱动和系统日
 - 杀毒软件：选「信任 / 允许」，或者把 Iris 所在文件夹加进信任区
 - 不放心的话，先用 `Get-FileHash .\文件名` 核对上面的 SHA-256
 
-以后会申请免费的开源代码签名（SignPath Foundation），签名后这些提示会逐渐消失。
+正在申请免费的开源代码签名（SignPath Foundation），签名后这些提示会逐渐消失。代码签名政策见 [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)。
 
 ## 安全红线（写在操作库的代码里，AI 绕不过去）
 

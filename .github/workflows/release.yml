@@ -53,24 +53,53 @@ jobs:
           if-no-files-found: error
 
       # ---------------------------------------------------------------------------------------------
-      # 代码签名（SignPath Foundation 批准后启用）
+      # 代码签名（SignPath Foundation 批准后启用；申请材料见 docs/signing-application.md，政策见 docs/CODE_SIGNING.md）
       #
-      # SignPath 会从上一步上传的构建产物里取文件签名，签名后的文件再放进 Release。启用步骤：
-      #   1. 在 SignPath 里建好项目，配置 artifact configuration（签 zip 里的 Iris.exe 和 Iris-Setup-*.exe）
-      #   2. 在仓库 Settings → Secrets 里添加 SIGNPATH_API_TOKEN，在 Variables 里添加 SIGNPATH_ORGANIZATION_ID
-      #   3. 去掉下面的注释，并把"发布"那一步的文件路径改成 signed/ 目录
+      # 分两步签：SignPath 签不了 Inno Setup 安装程序里面打包的文件，所以先签 Iris.exe，
+      # 再用签好的 Iris.exe 生成 zip 和安装程序，最后签安装程序。每一步都在 SignPath 里手动批准。
+      # 启用时：
+      #   1. SignPath 项目 iris 里建两个 artifact configuration：app-exe（签 Iris.exe）、installer（签 Iris-Setup-*.exe）
+      #   2. 仓库 Secrets 加 SIGNPATH_API_TOKEN，Variables 加 SIGNPATH_ORGANIZATION_ID
+      #   3. 删掉上面"从源码构建"那一步，换成下面这几步（去掉注释），发布那一步的文件改成 dist-signed/
       #
-      # - name: 提交 SignPath 签名
+      # - name: 第一步：只生成 Iris.exe
+      #   run: python tools/build_app.py --version "${{ github.ref_name }}" --exe-only --out stage1
+      # - id: exe
+      #   uses: actions/upload-artifact@v4
+      #   with: { name: iris-exe-unsigned, path: stage1/Iris.exe, if-no-files-found: error }
+      # - name: 签 Iris.exe
       #   uses: signpath/github-action-submit-signing-request@v1
       #   with:
       #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
       #     organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-      #     project-slug: pcdoctor
+      #     project-slug: iris
       #     signing-policy-slug: release-signing
-      #     artifact-configuration-slug: windows
-      #     github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+      #     artifact-configuration-slug: app-exe
+      #     github-artifact-id: ${{ steps.exe.outputs.artifact-id }}
       #     wait-for-completion: true
-      #     output-artifact-directory: signed
+      #     output-artifact-directory: signed-exe
+      # - name: 第二步：用签好的 Iris.exe 生成 zip 和安装程序
+      #   run: python tools/build_app.py --version "${{ github.ref_name }}" --from-exe signed-exe/Iris.exe --installer --out dist
+      # - id: setup
+      #   uses: actions/upload-artifact@v4
+      #   with: { name: iris-setup-unsigned, path: dist/Iris-Setup-*.exe, if-no-files-found: error }
+      # - name: 签安装程序
+      #   uses: signpath/github-action-submit-signing-request@v1
+      #   with:
+      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+      #     organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      #     project-slug: iris
+      #     signing-policy-slug: release-signing
+      #     artifact-configuration-slug: installer
+      #     github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
+      #     wait-for-completion: true
+      #     output-artifact-directory: dist-signed
+      # - name: 整理发布文件（签好的安装程序 + zip + 校验码）
+      #   shell: pwsh
+      #   run: |
+      #     Copy-Item dist/*.zip dist-signed/
+      #     Get-ChildItem dist-signed -File | Where-Object Name -ne SHA256SUMS.txt | ForEach-Object {
+      #       "$((Get-FileHash $_.FullName SHA256).Hash)  $($_.Name)" } | Set-Content dist-signed/SHA256SUMS.txt -Encoding utf8
       # ---------------------------------------------------------------------------------------------
 
       - name: 发布到 GitHub Releases（草稿）

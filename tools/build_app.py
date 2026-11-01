@@ -125,6 +125,10 @@ def main():
     ap.add_argument('--out', default=os.path.join(ROOT, 'dist'), help='输出目录')
     ap.add_argument('--feedback-url', default=os.environ.get('IRIS_FEEDBACK_URL', ''), help='接收内测反馈的地址（https）')
     ap.add_argument('--latest-url', default=os.environ.get('IRIS_LATEST_URL', ''), help='最新版本信息 latest.json 的地址（https）')
+    # 代码签名分两步（SignPath 签不了安装程序里面打包的文件）：先只生成 Iris.exe 拿去签名，
+    # 再用签好的 Iris.exe 生成免安装版 zip 和安装程序，最后签安装程序
+    ap.add_argument('--exe-only', action='store_true', help='只生成 Iris.exe（签名第一步）')
+    ap.add_argument('--from-exe', help='不重新编译，用这个（已签名的）Iris.exe 生成 zip 和安装程序（签名第二步）')
     args = ap.parse_args()
     if not shutil.which('dotnet'):
         sys.exit('需要 .NET SDK 10（dotnet 命令）')
@@ -134,13 +138,25 @@ def main():
     os.makedirs(out, exist_ok=True)
     print(f'dotnet SDK {subprocess.run(["dotnet", "--version"], capture_output=True, text=True).stdout.strip()}，版本 {version}')
 
+    if args.exe_only and args.from_exe:
+        sys.exit('--exe-only 和 --from-exe 不能一起用')
     with tempfile.TemporaryDirectory() as pub:
-        exe = publish(version, pub, args.feedback_url, args.latest_url)
-        if args.feedback_url or args.latest_url:
-            print(f'Iris 服务器：反馈 {args.feedback_url or "（无）"}；更新 {args.latest_url or "（无）"}')
-        outputs = [build_zip(version, exe, out)]
-        if args.installer:
-            outputs.append(build_installer(version, exe, out))
+        if args.from_exe:
+            exe = os.path.abspath(args.from_exe)
+            if not os.path.isfile(exe):
+                sys.exit(f'找不到 {exe}')
+        else:
+            exe = publish(version, pub, args.feedback_url, args.latest_url)
+            if args.feedback_url or args.latest_url:
+                print(f'Iris 服务器：反馈 {args.feedback_url or "（无）"}；更新 {args.latest_url or "（无）"}')
+        if args.exe_only:
+            target = os.path.join(out, 'Iris.exe')
+            shutil.copy2(exe, target)
+            outputs = [target]
+        else:
+            outputs = [build_zip(version, exe, out)]
+            if args.installer:
+                outputs.append(build_installer(version, exe, out))
     with open(os.path.join(out, 'SHA256SUMS.txt'), 'w', encoding='utf-8', newline='\r\n') as fh:
         for p in outputs:
             with open(p, 'rb') as f:
