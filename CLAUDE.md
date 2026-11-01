@@ -48,7 +48,10 @@
 ## 夜班 / 无人值守工作规则（用户要求）
 
 - 用户休息时可以自主推进进度表，每完成一项：测试 → 提交 → 推送 → 更新本文件和 `docs/roadmap.md`
-- 主动查额度：`mcp__claude-code-remote__list_events`（本会话，`kinds: ["rate_limit_event"]`）里 `unifiedWindows.five_hour / seven_day` 的 `utilization`。5 小时 ≥ 80% 就停下、用 `send_later` 定在 `resetsAt` 之后 3 分钟继续；7 天 ≥ 75% 整个夜班停止
+- 主动查额度（2026-11-01 用户定的规则，取代旧的 80% / 75%）：`mcp__claude-code-remote__list_events`（本会话，`kinds: ["rate_limit_event"]`）里 `unifiedWindows.five_hour / seven_day` 的 `utilization`，每做完一步查一次
+  - 5 小时额度 ≥ 85%：暂停手上的工作，用 `send_later` 定在 `resetsAt` 之后 3 分钟继续
+  - 周额度可以在刷新前用完，但**最高 99%，绝不到 100%**：≥ 97% 不再开始新的大任务，只收尾；≥ 99% 立刻停，等下周刷新（`seven_day.resetsAt`）后接着做，以此循环
+- 需要用户做的事（提交申请、真机测试、看设计稿）做到用户动手的前一步，然后继续做别的，不干等
 - 不改动用户第二天要跑的流程的行为；没把握的只记录不硬做；最后写夜班报告
 
 ## 产品方向（2026-10-24 确定）
