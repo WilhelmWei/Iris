@@ -370,4 +370,36 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
         }
         catch { return "Unknown"; }
     }
+
+    // ------------------------------------------------------------------ 快捷方式（WScript.Shell COM，和采集脚本读的是同一套）
+    static dynamic? Shortcut(string path)
+    {
+        if (!File.Exists(path)) return null;
+        var t = Type.GetTypeFromProgID("WScript.Shell");
+        if (t == null) return null;
+        dynamic sh = Activator.CreateInstance(t)!;
+        return sh.CreateShortcut(path);
+    }
+
+    public (string Target, string Arguments)? ReadShortcut(string path)
+    {
+        try { var s = Shortcut(path); return s == null ? null : ((string)s.TargetPath ?? "", (string)s.Arguments ?? ""); }
+        catch { return null; }
+    }
+
+    public bool SetShortcutArguments(string path, string arguments)
+    {
+        try
+        {
+            var s = Shortcut(path);
+            if (s == null) return false;
+            s.Arguments = arguments;
+            s.Save();
+            return true;
+        }
+        catch { return false; }
+    }
+
+    public byte[]? ReadAllBytes(string path) { try { return File.ReadAllBytes(path); } catch { return null; } }
+    public bool WriteAllBytes(string path, byte[] data) { try { File.WriteAllBytes(path, data); return true; } catch { return false; } }
 }

@@ -54,6 +54,7 @@
   const RISK = { green: '低风险', yellow: '有代价', red: '专业操作' };
   const SECTIONS = ['资源占用', '进程', '开机自启动', '服务', '计划任务', '驱动', '已装软件', '存储', '电源与电池', '安全设置', '浏览器与网络', '驱动与系统版本', '稳定性'];
   const GUIDE = {
+    'browser.review': { btn: '打开浏览器设置', act: 'browser-settings', steps: '在浏览器设置的「网站权限 → 通知」里，把不认识的网站移除或改成“阻止”；主页和启动页在「启动时」那一栏里改。Iris 不改浏览器文件，这一步由你自己在浏览器里完成。' },
     'defender.review': { btn: '打开 Windows 安全中心', steps: '病毒和威胁防护 → “病毒和威胁防护”设置下的“管理设置” → 排除项 → 添加或删除排除项。Iris 不修改安全设置，这一步由你自己在 Windows 里完成。' },
   };
 
@@ -410,6 +411,7 @@
         <button data-act="nav" data-to="report" ${last ? '' : 'disabled'}><span class="round">${icon('doc')}</span>报告</button>
         <button data-act="nav" data-to="plan"><span class="round">${icon('list')}</span>处理</button>
         <button data-act="open-file"><span class="round">${icon('inbox')}</span>朋友的报告</button>
+        <button data-act="aim" title="点一下屏幕上的弹窗，看它是哪个程序弹的"><span class="round">${icon('scan')}</span>弹窗是谁弹的</button>
       </div>
       ${(a.history && a.history.length > 1) || (a.changes && a.changes.length) || hb ? `<div class="widgets">
         ${a.history && a.history.length > 1 ? `<div class="card widget"><h3>健康分走势</h3>
@@ -976,7 +978,7 @@
     if (doable) foot = inPlan
       ? `<button class="btn" data-act="unplan" data-k="${esc(k)}">从清单移出</button><button class="btn solid" data-act="nav" data-to="plan">去「处理」页（${state.selected.size} 项）<span class="arrow">${icon('arrow')}</span></button>`
       : `${state.dismissed.has(k) ? `<button class="btn ghost" data-act="undismiss" data-k="${esc(k)}">取消“先不管”</button>` : `<button class="btn ghost" data-act="dismiss" data-k="${esc(k)}">先不管</button>`}<button class="btn primary" data-act="plan-add" data-k="${esc(k)}">${icon('list')}加入处理清单</button>`;
-    else if (guide) foot = `<button class="btn ghost" data-act="next">下一项</button><button class="btn primary" data-act="defender">${esc(guide.btn)} <span class="arrow">${icon('arrow')}</span></button>`;
+    else if (guide && (!guide.act || (R.canExecute && (R.guideTargets || {})[k]))) foot = `<button class="btn ghost" data-act="next">下一项</button><button class="btn primary" data-act="${guide.act || 'defender'}" data-k="${esc(k)}">${esc(guide.btn)} <span class="arrow">${icon('arrow')}</span></button>`;
     else if (f.needsUser && !ans) foot = `<span class="sum">回答之后，下次研判会参考你的说明</span><button class="btn ghost" data-act="next">跳过 · 下一项</button>`;
     else foot = `<button class="btn solid" data-act="next" ${idx >= list.length - 1 ? 'data-last="1"' : ''}>${idx >= list.length - 1 ? '知道了' : '知道了 · 下一项'}</button>`;
     return `<div class="sheet-top">
@@ -1457,6 +1459,46 @@
     hydrate(box);
     return box;
   }
+  // ------------------------------------------------------------------ 窗口瞄准器：用户点一下弹窗，说清是谁弹的、怎么不再弹
+  async function aim() {
+    const r = await call('aimWindow');
+    if (!r || r.cancelled) return;
+    if (r.self) { toast('点到了 Iris 自己。再试一次，点那个弹窗'); return; }
+    const L = { startup: '开机自启动', task: '计划任务', service: '服务', parent: '由它打开' };
+    const BR = { chrome: 'chrome', msedge: 'edge', brave: 'brave' };
+    const facts = [['窗口', r.title || '（没有标题）'], ['程序', r.process + '.exe'],
+      r.software ? ['所属软件', r.software + (r.publisher ? ' · ' + r.publisher : '')] : r.company ? ['厂商', r.company] : null,
+      r.kind === 'app' ? ['数字签名', r.signer || '没有签名'] : null, r.path ? ['位置', r.path] : null].filter(Boolean);
+    const via = (r.launchedBy || []).map(l => `<li><span class="chip src">${L[l.kind] || esc(l.kind)}</span><span>${esc(pii(l.name))}${l.enabled === false || l.state === 'Disabled' ? '<span class="muted">（已禁用）</span>' : ''}</span></li>`).join('');
+    const inReport = (r.flagIds || []).length > 0 && r.reportId;
+    const browser = r.kind === 'browser' && BR[String(r.process).toLowerCase()];
+    const title = { system: '这是 Windows 的通知', browser: '这是浏览器开的窗口', app: `这是「${r.software || r.product || r.process}」弹的` }[r.kind];
+    const box = modal(title, '窗口瞄准器 · 只读，不改动任何东西', `
+      <p class="lead aim-advice">${esc(pii(r.advice))}</p>
+      <dl class="aim-facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(pii(v))}</dd>`).join('')}</dl>
+      ${via ? `<h4>它是怎么启动的</h4><ul class="aim-via">${via}</ul>` : ''}
+      ${r.kind === 'app' && !r.reportId && !(r.launchedBy || []).some(l => l.kind !== 'parent') ? '<p class="muted small">还没有体检报告，所以查不到它是怎么启动的。体检一次后再瞄准，能看得更清楚。</p>' : ''}`,
+      `<button class="btn ghost" data-m="again">${icon('scan')}再瞄一次</button>
+       ${r.kind === 'system' ? '<button class="btn" data-m="notify">打开通知设置</button>' : ''}
+       ${browser ? '<button class="btn" data-m="browser">打开浏览器的通知设置</button>' : ''}
+       ${r.kind === 'app' ? '<button class="btn" data-m="remember">记下来，下次体检重点看</button>' : ''}
+       ${inReport ? `<button class="btn primary" data-m="report">在报告里处理 <span class="arrow">${icon('arrow')}</span></button>` : '<button class="btn solid" data-m="close">关闭</button>'}`);
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      const m = b.dataset.m;
+      if (m === 'notify') { await call('openSettings', { page: 'notifications' }); toast('已打开 Windows 通知设置'); return; }
+      if (m === 'browser') { const x = await call('openBrowserSettings', { browser, page: 'notifications' }); toast(x && x.ok ? '已在浏览器里打开通知设置' : '没找到这个浏览器的设置页'); return; }
+      if (m === 'remember') { await call('rememberAim'); b.disabled = true; b.textContent = '已记下'; toast('已记下：下次体检时 AI 会重点看它（设置 → 关于这台电脑里可以删掉）'); return; }
+      box.remove();
+      if (m === 'again') return aim();
+      if (m === 'report') {
+        if (!state.report || state.report.id !== r.reportId) await loadReport(r.reportId);
+        const f = state.report.result.judgement.findings.find(x => x.flagIds.some(id => r.flagIds.includes(id)));
+        await go('report');
+        if (f) openSheet({ kind: 'finding', key: keyOf(f) });
+      }
+    });
+  }
   async function showPrivacy(firstRun) {
     const p = await call('getPrivacy');
     const box = modal(firstRun ? '开始之前，先看看我们怎么对待你的数据' : '隐私政策', `版本 ${esc(p.version)}`, md(p.text), firstRun
@@ -1725,7 +1767,7 @@
       ['主题：米白', '外观', () => setSetting('theme', 'light')], ['主题：跟随系统', '外观', () => setSetting('theme', 'auto')],
       [S().demoMode ? '关闭演示模式' : '打开演示模式', '隐私', () => setSetting('demoMode', !S().demoMode)],
       [state.pro ? '关闭专业模式' : '打开专业模式', '显示', () => setSetting('pro', !state.pro)],
-      ['打开朋友发来的报告', '文件', () => act('open-file')], ['查看隐私政策', '隐私', () => showPrivacy(false)],
+      ['打开朋友发来的报告', '文件', () => act('open-file')], ['窗口瞄准器 · 这个弹窗是谁弹的', '工具', () => act('aim')], ['查看隐私政策', '隐私', () => showPrivacy(false)],
       ['重新运行快速设定', '设置', () => openOnboarding(0)], ['看看反馈包里有什么', '内测', () => previewFeedback()],
     ];
     if (state.report) {
@@ -1955,6 +1997,13 @@
         break;
       }
       case 'defender': await call('openDefender'); toast('已打开 Windows 安全中心'); break;
+      case 'browser-settings': {
+        const t = (state.report.guideTargets || {})[el.dataset.k]; if (!t) break;
+        const r = await call('openBrowserSettings', t);
+        toast(r && r.ok ? '已在浏览器里打开设置页' : '没找到这个浏览器，请按上面的步骤自己打开');
+        break;
+      }
+      case 'aim': await aim(); break;
       case 'toggle-demo': setSetting('demoMode', !S().demoMode); break;
       case 'tips-off': setSetting('showTips', false); break;
       case 'open-update': openUpdate(); break;

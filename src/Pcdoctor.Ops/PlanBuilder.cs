@@ -40,12 +40,16 @@ public static class Catalog
             "软件已经装好了，安装包一般用不上；以后要重装可以再下载。清空回收站后才真正腾出空间", "打开回收站，选中文件后点「还原选定的项目」", false, false),
         ["leftover.remove_dir"] = new("移走卸载残留", "yellow", "把这个文件夹整个挪到 Iris 的备份区（同一个盘，只改位置）",
             "里面已经没有程序文件，也没有已装软件和服务用到它；挪走后真正删除要等清理旧备份", "在操作记录里点撤销，会挪回原处", true, true),
+        ["shortcut.fix"] = new("修好快捷方式", "green", "去掉快捷方式后面被加上的网址，快捷方式指向的程序不变（改之前备份整个快捷方式文件）",
+            "没有代价：点它照常打开浏览器，只是不再先打开那个网站", "在操作记录里点撤销，会把快捷方式原样放回", true, false),
+        ["browser.remove_start_policy"] = new("解除主页锁定", "yellow", "删除锁定浏览器主页、启动页、新标签页和搜索引擎的策略（只删这几项，改之前备份）",
+            "如果这台电脑归公司或学校管理，这些策略可能是管理员设的，请先确认；删掉后可以在浏览器设置里自己改主页", "在操作记录里点撤销", true, true),
         ["power.disable_fast_startup"] = new("关闭快速启动", "yellow", "关闭 Windows 的快速启动，休眠照常保留",
             "开机可能慢几秒；换来的是每次「关机」都是真正的关机，不再积累内存占用和小毛病", "在操作记录里点撤销", true, true),
     };
 
     /// <summary>界面上可以直接引导、但不改动系统的建议（例如打开 Windows 安全中心）。</summary>
-    public static readonly string[] GuideOps = ["defender.review"];
+    public static readonly string[] GuideOps = ["defender.review", "browser.review"];
 }
 
 /// <summary>把用户在报告里勾选的结论，变成作用在具体对象上的处理步骤。
@@ -102,6 +106,7 @@ public static class PlanBuilder
                 {
                     "driver.remove_after_reboot" or "driver.switch_to_newer" => "这是驱动类的红色操作，属于专业模式（v2），这一版只给建议",
                     "defender.review" => "这一项需要你在 Windows 安全中心里自己复核（我们不修改安全设置）",
+                    "browser.review" => "这一项需要你在浏览器设置里自己看一下（Iris 不改浏览器文件）",
                     _ => "这一项没有可以自动执行的操作",
                 }));
                 continue;
@@ -198,6 +203,26 @@ public static class PlanBuilder
                     break;
                 case "browser.disable_chrome_background":
                     if (!chromeAdded) { chromeAdded = true; targets.Add(("Google Chrome", new JsonObject(), null)); } else reason = "已合并";
+                    break;
+                case "shortcut.fix":
+                    foreach (var fl in its.Where(x => x["rule"]?.ToString() == "shortcut-url"))
+                    {
+                        var item = Find(S["browserNetwork"]?["shortcuts"], "label", fl["object"]?.ToString());
+                        var path = item?["path"]?.ToString() ?? "";
+                        if (item == null) continue;
+                        if (Hijack.PathProblem(path) is { } bad) { reason = bad; continue; }
+                        targets.Add((item["label"]!.ToString(), new JsonObject { ["path"] = path }, Hijack.NeedsAdmin(path)));
+                    }
+                    break;
+                case "browser.remove_start_policy":
+                    foreach (var fl in its.Where(x => x["rule"]?.ToString() == "browser-policy-start"))
+                        foreach (var p in (S["browserNetwork"]?["policyStart"] as JsonArray ?? []).Where(x => x?["browserName"]?.ToString() == fl["object"]?.ToString()))
+                        {
+                            var b = p!["browser"]?.ToString() ?? "";
+                            var hv = p["hive"]?.ToString() ?? "";
+                            if (!Hijack.PolicyKeys.ContainsKey(b) || hv is not ("HKLM" or "HKCU")) continue;
+                            targets.Add(($"{p["browserName"]}（{(hv == "HKLM" ? "所有用户" : "当前用户")}）", new JsonObject { ["browser"] = b, ["hive"] = hv }, true));
+                        }
                     break;
                 case "browser.disable_background":
                     if (!browserAdded) { browserAdded = true; targets.Add(("Microsoft Edge", new JsonObject(), null)); } else reason = "已合并";

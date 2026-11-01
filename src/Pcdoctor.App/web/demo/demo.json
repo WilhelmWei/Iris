@@ -477,6 +477,36 @@
      "questionForUser": null,
      "needsUser": false,
      "kbId": "nvidia-display"
+    },
+    {
+     "flagIds": [
+      "F061"
+     ],
+     "object": "Google Chrome",
+     "verdict": "problem",
+     "confidence": 0.8,
+     "evidence": "Chrome 设置里有 4 个网站可以给你发通知：win-prize.example.net、news-push.example.com、video.example.org 等；其中 3 个是一个月内加的。",
+     "proposedAction": "browser.review",
+     "actionName": "在浏览器设置里移除不认识的网站",
+     "risk": "green",
+     "userExplanation": "右下角时不时弹出的\"中奖\"和新闻推送，来自你以前在网页上点过\"允许\"的网站。不认识的网站在 Chrome 设置里移除就好。",
+     "questionForUser": null,
+     "needsUser": false
+    },
+    {
+     "flagIds": [
+      "F062"
+     ],
+     "object": "Google Chrome（桌面）",
+     "verdict": "problem",
+     "confidence": 0.85,
+     "evidence": "桌面上的「Google Chrome」快捷方式打开浏览器时附带了网址：http://nav.example.com/?k=quickvpn",
+     "proposedAction": "shortcut.fix",
+     "actionName": "修好快捷方式",
+     "risk": "green",
+     "userExplanation": "桌面上的 Chrome 快捷方式被加上了一个导航网址，所以每次打开 Chrome 都先跳到那个网站。去掉网址后照常打开。",
+     "questionForUser": null,
+     "needsUser": false
     }
    ],
    "tips": [

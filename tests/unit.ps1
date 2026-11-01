@@ -3,7 +3,7 @@
 $src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
 if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
-$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs','Get-BootSummary','Get-MemoryAdvice' }, $true)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs','Get-BootSummary','Get-MemoryAdvice','Get-NotifySites','Test-NavUrl','Get-ShortcutIssue' }, $true)
 foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
 $env:windir = 'C:\Windows'
 $cases = @(
@@ -196,3 +196,24 @@ $hchecks += ,@('mem soldered text', ($a3.text -like '*焊在主板上*'), $true)
 $hchecks += ,@('mem none', (Get-MemoryAdvice @() 2 32 8), $null)
 $p9=0; foreach ($c in $hchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p9++ } else { "FAIL hw $($c[0]): [$($c[1])] expected [$($c[2])]" } }
 "hardware: $p9/$($hchecks.Count) passed"
+
+# 弹窗和篡改
+$prefs = '{"profile":{"content_settings":{"exceptions":{"notifications":{"https://news.example.com:443,*":{"setting":1},"https://ok.example.org:443,*":{"setting":2},"http://[*.]ads.test,*":{"setting":1}}}}}}' | ConvertFrom-Json
+$pc = @()
+$ns = @(Get-NotifySites $prefs)
+$pc += ,@('notify count', $ns.Count, 2)
+$pc += ,@('notify host', $ns[0], 'news.example.com')
+$pc += ,@('notify wildcard', $ns[1], 'ads.test')
+$pc += ,@('notify none', @(Get-NotifySites ('{"profile":{}}' | ConvertFrom-Json)).Count, 0)
+$pc += ,@('nav hao123', (Test-NavUrl 'https://www.hao123.com/?tn=123'), $true)
+$pc += ,@('nav 360', (Test-NavUrl 'http://hao.360.com/'), $true)
+$pc += ,@('nav normal', (Test-NavUrl 'https://www.bing.com/'), $false)
+$pc += ,@('nav lookalike', (Test-NavUrl 'https://nothao123.com.example.net/'), $false)
+$pc += ,@('lnk url', (Get-ShortcutIssue 'Google Chrome.lnk' 'C:\Program Files\Google\Chrome\Application\chrome.exe' 'http://www.2345.com/?k123'), 'shortcut-url')
+$pc += ,@('lnk www', (Get-ShortcutIssue 'Microsoft Edge.lnk' 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' '--profile-directory=Default www.example.com'), 'shortcut-url')
+$pc += ,@('lnk normal', (Get-ShortcutIssue 'Google Chrome.lnk' 'C:\Program Files\Google\Chrome\Application\chrome.exe' ''), $null)
+$pc += ,@('lnk pwa', (Get-ShortcutIssue 'Outlook.lnk' 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge_proxy.exe' '--profile-directory=Default --app-id=abc --app-url=https://outlook.example.com/'), $null)
+$pc += ,@('lnk fake', (Get-ShortcutIssue 'Internet Explorer.lnk' 'C:\Program Files\FakeBrowser\fb.exe' ''), 'shortcut-fake-browser')
+$pc += ,@('lnk other', (Get-ShortcutIssue 'Notes.lnk' 'C:\Tools\notes.exe' 'https://x.test'), $null)
+$p10 = 0; foreach ($c in $pc) { if ($c[1] -eq $c[2]) { $p10++ } else { "FAIL popup $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+"popup: $p10/$($pc.Count) passed"

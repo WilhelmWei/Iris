@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Iris · AI 电脑体检 · 版本 2026-11-01.1**
+**Iris · AI 电脑体检 · 版本 2026-11-01.2**
 
 [中文](#中文) · [English](#english)
 
@@ -22,6 +22,8 @@
 - 安全设置的状态：Microsoft Defender（含排除项、被允许的威胁、近期检测记录）、防火墙是否开启、UAC、安全启动、内存完整性
 - 网络设置：系统代理、hosts 文件中的自定义条目、DNS 服务器地址；浏览器扩展的名称和权限
 - 浏览器：默认浏览器是哪个，每个浏览器最近一次浏览网页是多少天前（**只看历史记录文件的修改时间，不读浏览记录**），后台进程数和占用的内存，有没有开机自启动
+- 弹窗和篡改：浏览器设置里**允许给你发通知的网站**（只记域名）、主页和启动时打开的网页、锁定主页或搜索引擎的策略；桌面、开始菜单、任务栏上浏览器快捷方式后面有没有被加上网址
+- 「窗口瞄准器」：**只在你点「弹窗是谁弹的」之后**，读一次你点中的那个窗口属于哪个程序（程序名、位置、厂商、签名、是谁启动的）。不截屏、不读窗口里的内容，结果只在本机显示；选「记下来」时，程序名和软件名会写进「Iris 记得的事」
 - 几个常见文件夹和各类缓存（临时文件、浏览器缓存、错误报告等）的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）；下载文件夹里一个月以前的安装包有几个、一共多大（**不记文件名**）
 - 「C 盘空间去哪了」：报告出来后在后台继续统计系统盘上各文件夹的大小和最大的几个文件的名字（只统计大小，**不读取文件内容**，结果只保存在本机）
 - 最近的蓝屏和程序崩溃记录
@@ -45,7 +47,7 @@
 
 **内测反馈包**用来找出 Iris 判断错的地方、认识更多常见软件。内容：
 
-- 去隐私的体检结果：用户名、计算机名、邮箱换成占位符；再去掉系统代理地址、DNS 服务器地址、hosts 条目（只留数量）。其中包含软件、进程、服务、驱动的名称、版本、厂商和**安装位置**。如果你把文件夹起名为自己的名字，路径里会出现这个名字
+- 去隐私的体检结果：用户名、计算机名、邮箱换成占位符；再去掉系统代理地址、DNS 服务器地址、hosts 条目、允许发通知的网站、主页 / 启动页 / 快捷方式里的网址（只留数量）。其中包含软件、进程、服务、驱动的名称、版本、厂商和**安装位置**。如果你把文件夹起名为自己的名字，路径里会出现这个名字
 - 研判结论和健康分；你对问题的回答、"判断不对 / 漏掉了"的标记，**包括你写的说明文字**
 - 每一步的用时、程序版本、主题和研判方式，最近的错误记录（同样打码）；这次体检前有没有做 Defender 快速扫描、扫了多久、是否正常结束
 - 「处理」页的记录：每一步做了哪种操作（例如"关闭开机自启动"）、对应报告里的哪条结论、结果（成功 / 没生效已恢复 / 没能执行 / 已撤销）和结果说明（同样打码）。**不含**操作对象的完整路径、注册表位置和改之前的备份。除了随体检反馈一起发送，在「处理」页执行或撤销完成后也会单独发送一次，用来了解哪些操作容易失败
@@ -96,6 +98,8 @@ The check-up is read-only and changes nothing. It reads:
 - Status of security settings: Microsoft Defender (including exclusions, allowed threats and recent detections), whether the firewall is on, UAC, Secure Boot, Memory Integrity
 - Network settings: system proxy, custom entries in the hosts file, DNS server addresses; names and permissions of browser extensions
 - Browsers: which one is the default, how many days ago each browser was last used to browse (**only the modification time of the history file is checked; browsing history is never read**), background processes and memory, whether it starts with Windows
+- Pop-ups and tampering: **websites allowed to send you notifications** in browser settings (domain names only), the home page and pages opened at startup, policies that lock the home page or search engine; whether browser shortcuts on the desktop, Start menu or taskbar have a web address added to them
+- "Window picker": **only after you click "Who opened this pop-up?"**, the app reads once which program owns the window you click (program name, location, vendor, signature, what started it). No screenshots, window contents are not read, and the result is only shown on this computer; if you choose "Remember", the program and software name are added to "What Iris remembers"
 - Sizes of a few common folders and of caches (temporary files, browser caches, error reports, etc.) and statistics by file age (sizes only — **file contents are never read**); how many installers older than a month are in the Downloads folder and their total size (**file names are not recorded**)
 - "Where did the C: drive space go": after the report is ready, the app keeps adding up folder sizes on the system drive in the background and notes the names of the largest files (sizes only — **file contents are never read**; the result stays on this computer)
 - Recent blue-screen and application-crash records
@@ -119,7 +123,7 @@ How a model provider handles the data it receives (for example whether it is use
 
 The **beta feedback package** is used to find where Iris judges wrongly and to recognise more common software. It contains:
 
-- The de-identified check-up result: user name, computer name and e-mail replaced with placeholders; system proxy, DNS servers and hosts entries removed (only their counts are kept). It includes names, versions, vendors and **install locations** of software, processes, services and drivers. If you named a folder after yourself, that name will appear in paths
+- The de-identified check-up result: user name, computer name and e-mail replaced with placeholders; system proxy, DNS servers, hosts entries, notification-allowed websites and web addresses in home pages, startup pages and shortcuts removed (only their counts are kept). It includes names, versions, vendors and **install locations** of software, processes, services and drivers. If you named a folder after yourself, that name will appear in paths
 - Verdicts and the health score; your answers and "wrong / missed" marks, **including the notes you typed**
 - Timings, app version, theme and analysis mode, recent error records (redacted the same way); whether a Defender quick scan ran before this check-up, how long it took and whether it finished normally
 - The "处理" (fix) page log: which kind of operation each step was (e.g. "disable startup entry"), which finding in the report it belongs to, the result (done / not effective and restored / could not run / undone) and the result message (redacted the same way). It does **not** include the full path or registry location of the target, nor the backup taken before the change. Besides travelling with the check-up feedback, it is also sent on its own after you run or undo steps on that page, to learn which operations tend to fail

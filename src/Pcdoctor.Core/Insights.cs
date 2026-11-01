@@ -185,7 +185,8 @@ public static class Insights
 
     /// <summary>
     /// 发给 Iris 服务器之前，在已打码（用户名、计算机名、邮箱）的报告上再去掉网络相关的信息：
-    /// 代理服务器地址、DNS 服务器、hosts 条目（可能暴露公司内网或常去的网站），只留数量。原地修改。
+    /// 代理服务器地址、DNS 服务器、hosts 条目（可能暴露公司内网或常去的网站），只留数量；
+    /// 允许发通知的网站、主页 / 启动页、策略和快捷方式里的网址也去掉（只留数量和固定名单里的导航网站）。原地修改。
     /// </summary>
     public static JsonNode ScrubForFeedback(JsonNode redactedReport)
     {
@@ -195,7 +196,25 @@ public static class Insights
             if (bn["proxy"] is JsonObject p2 && p2["pac"] is JsonValue) p2["pac"] = "[已去掉]";
             if (bn["dns"] is JsonArray dns) bn["dns"] = new JsonObject { ["interfaces"] = dns.Count, ["removed"] = true };
             if (bn["hostsEntries"] is JsonArray hosts) bn["hostsEntries"] = new JsonObject { ["count"] = hosts.Count, ["removed"] = true };
+            foreach (var n in (bn["notifications"] as JsonArray ?? []).OfType<JsonObject>()) { n.Remove("sites"); n["sitesRemoved"] = true; }
+            foreach (var sp in (bn["startPages"] as JsonArray ?? []).OfType<JsonObject>())
+            {
+                if (sp["homepage"] is JsonValue) sp["homepage"] = "[已去掉]";
+                if (sp["startupUrls"] is JsonArray su) sp["startupUrls"] = new JsonObject { ["count"] = su.Count, ["removed"] = true };
+            }
+            foreach (var ps in (bn["policyStart"] as JsonArray ?? []).OfType<JsonObject>())
+            {
+                foreach (var k in new[] { "homepage", "newTabPage", "search" }) if (ps[k] is JsonValue) ps[k] = "[已去掉]";
+                if (ps["startupUrls"] is JsonArray su) ps["startupUrls"] = new JsonObject { ["count"] = su.Count, ["removed"] = true };
+            }
+            foreach (var sc in (bn["shortcuts"] as JsonArray ?? []).OfType<JsonObject>()) if (sc["arguments"] is JsonValue) sc["arguments"] = "[已去掉]";
         }
+        foreach (var f in (redactedReport["flags"] as JsonArray ?? []).OfType<JsonObject>())
+            if (f["rule"]?.ToString() is "web-notify-allowed" or "browser-policy-start" or "shortcut-url" && f["evidence"]?.ToString() is { } ev)
+            {
+                var i = ev.IndexOf('：');
+                f["evidence"] = (i > 0 ? ev[..(i + 1)] : "") + "[网址已去掉]";
+            }
         return redactedReport;
     }
 

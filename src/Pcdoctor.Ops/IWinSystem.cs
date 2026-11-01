@@ -116,4 +116,12 @@ public interface IWinSystem
     /// <summary>改"已知文件夹"的位置（和文件夹属性里「位置 → 移动」改的是同一个设置）。</summary>
     bool SetKnownFolder(string guid, string path);
     IReadOnlyList<DriveFact> Drives();
+
+    // 快捷方式（修被加了网址的浏览器快捷方式）
+    /// <summary>快捷方式指向的程序和参数；不存在或读不到时返回 null。</summary>
+    (string Target, string Arguments)? ReadShortcut(string path);
+    /// <summary>只改快捷方式的参数，指向的程序不变；没改成返回 false。</summary>
+    bool SetShortcutArguments(string path, string arguments);
+    byte[]? ReadAllBytes(string path);
+    bool WriteAllBytes(string path, byte[] data);
 }

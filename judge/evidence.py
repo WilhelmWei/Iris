@@ -204,6 +204,11 @@ def _context_for(flag, S):
             return {'mainBrowser': b.get('mainBrowser'), 'policies': b.get('policies'),
                     'browsers': [{k: x.get(k) for k in ('id', 'name', 'isDefault', 'lastBrowsedDays', 'processes', 'memoryMB', 'autostart')}
                                  for x in b.get('browsers', [])]}
+        if rule in ('shortcut-url', 'shortcut-fake-browser'):
+            return _find(b.get('shortcuts'), 'label', obj)
+        lists = {'web-notify-allowed': 'notifications', 'browser-homepage-nav': 'startPages', 'browser-policy-start': 'policyStart'}
+        if rule in lists:
+            return {lists[rule]: [x for x in b.get(lists[rule]) or [] if x.get('browserName') == obj]}
         return {k: b.get(k) for k in ('policies', 'edgeProcesses', 'proxy', 'hostsEntries')}
     if sec == 'versions':
         return S.get('versions')

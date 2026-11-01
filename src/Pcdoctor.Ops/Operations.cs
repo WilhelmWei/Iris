@@ -72,6 +72,7 @@ public static class Operations
         new StartupDisable(), new TaskDisable(), new TaskDeleteLeftover(), new ServiceSetManual(), new ServiceDeleteOrphan(),
         new BrowserDisableBackground(), new ChromeDisableBackground(), new PowerDisableFastStartup(), new CacheClean(), new DefenderScan(), new AppUninstall(),
         new DriverDeleteOldVersion(), new FolderMoveOp(), new SystemCleanupOp(), new InstallersRecycleOp(), new LeftoverDirOp(),
+        new ShortcutFixOp(), new BrowserStartPolicyOp(),
     }.ToDictionary(o => o.Id);
 
     public static Operation? Get(string id) => All.TryGetValue(id, out var o) ? o : null;
@@ -109,6 +110,10 @@ public static class Operations
                 return SafeName.IsMatch(V("name")) ? null : "服务名称不合法";
             case "leftover.remove_dir":
                 return LeftoverDirs.PathProblem(V("path"));
+            case "shortcut.fix":
+                return Hijack.PathProblem(V("path"));
+            case "browser.remove_start_policy":
+                return Hijack.PolicyKeys.ContainsKey(V("browser")) && V("hive") is "HKLM" or "HKCU" ? null : "浏览器或位置不合法";
             case "folder.move":
                 if (FolderMove.Get(V("folder")) == null) return "不支持搬这个文件夹";
                 return System.Text.RegularExpressions.Regex.IsMatch(V("drive"), "^[D-Zd-z]:$") ? null : "目标盘不合法";

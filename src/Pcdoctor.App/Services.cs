@@ -619,7 +619,29 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             ["storage"] = StorageSummary(report)?.Also(o => o["freeNow"] = meta["source"]?.ToString() == "local" ? SystemFree() : null),
             ["space"] = AppData.ReadJson(Path.Combine(dir, "space.json")),
             ["spaceRunning"] = spaceRuns.ContainsKey(id),
+            ["guideTargets"] = GuideTargets(report, judge),
         };
+    }
+
+    /// <summary>「打开浏览器设置」按钮要打开哪个浏览器的哪一页：按结论里的预筛结果（网页通知 / 导航主页）和浏览器名。</summary>
+    static JsonObject GuideTargets(JsonNode? report, JsonNode? judge)
+    {
+        var o = new JsonObject();
+        if (report?["flags"] is not JsonArray fa || judge?["judgement"]?["findings"] is not JsonArray fs) return o;
+        var flags = fa.OfType<JsonObject>().Where(f => f["id"] != null).GroupBy(f => f["id"]!.ToString()).ToDictionary(g => g.Key, g => g.First());
+        foreach (var f in fs.OfType<JsonObject>().Where(f => f["proposedAction"]?.ToString() == "browser.review"))
+        {
+            var ids = (f["flagIds"] as JsonArray ?? []).Select(x => x?.ToString() ?? "").ToList();
+            foreach (var fl in ids.Select(i => flags.GetValueOrDefault(i)).OfType<JsonObject>())
+            {
+                var page = fl["rule"]?.ToString() switch { "web-notify-allowed" => "notifications", "browser-homepage-nav" => "startup", _ => null };
+                var browser = fl["object"]?.ToString() switch { "Google Chrome" => "chrome", "Microsoft Edge" => "edge", "Brave" => "brave", _ => null };
+                if (page == null || browser == null) continue;
+                o[string.Join("+", ids)] = new JsonObject { ["browser"] = browser, ["page"] = page };
+                break;
+            }
+        }
+        return o;
     }
 
     /// <summary>报告里「空间」卡片的数字：C 盘剩多少、能直接清理多少（按组）、系统遗留、聊天文件和下载文件夹、不清理的东西和原因。</summary>
@@ -785,6 +807,55 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             AppData.WriteJson(AppData.ProfileFile, p);
         }
         return GetProfile();
+    }
+
+    // ================================================================== 窗口瞄准器、浏览器设置页
+    JsonObject? lastAim;
+
+    /// <summary>说明点中的窗口是谁弹的：按最近一次本机体检报告找它的启动方式和所属软件。</summary>
+    public JsonObject ExplainWindow(WindowFacts facts, string title)
+    {
+        var last = LocalReports().LastOrDefault();
+        var r = WindowSource.Explain(facts, last == null ? null : ReadReport(last.Id));
+        r["title"] = title.Length > 80 ? title[..80] : title;
+        r["reportId"] = last?.Id;
+        lastAim = r;
+        return r;
+    }
+
+    /// <summary>把刚瞄准的弹窗记进「Iris 记得的事」，下次研判时模型会看到（只写程序名和软件名，不写路径和窗口标题）。</summary>
+    public JsonObject RememberAim()
+    {
+        if (lastAim == null) throw new InvalidOperationException("先瞄准一个弹窗");
+        var (q, a) = WindowSource.Memory(lastAim);
+        var p = AppData.ReadJson(AppData.ProfileFile) as JsonObject ?? new JsonObject();
+        var list = (p["answers"] as JsonArray)?.OfType<JsonObject>().Select(x => (JsonObject)x.DeepClone()).ToList() ?? [];
+        list.RemoveAll(x => x["answer"]?.ToString() == a);
+        list.Add(new JsonObject
+        {
+            ["question"] = q, ["answer"] = a, ["date"] = DateTime.Now.ToString("yyyy-MM-dd"),
+            ["flagIds"] = new JsonArray((lastAim["flagIds"] as JsonArray ?? []).Take(10).Select(x => (JsonNode?)x?.ToString()).ToArray()),
+        });
+        p["answers"] = new JsonArray(list.TakeLast(20).Select(x => (JsonNode?)x).ToArray());
+        AppData.WriteJson(AppData.ProfileFile, p);
+        return GetProfile();
+    }
+
+    /// <summary>用浏览器自己打开它的设置页（网页通知、启动时打开的页面）。只认这几个浏览器和页面。</summary>
+    public static bool OpenBrowserSettings(string browser, string page)
+    {
+        var (exe, scheme) = browser switch { "chrome" => ("chrome.exe", "chrome"), "edge" => ("msedge.exe", "edge"), "brave" => ("brave.exe", "brave"), _ => ("", "") };
+        var path = page switch { "notifications" => "settings/content/notifications", "startup" => scheme == "edge" ? "settings/startHomeNTP" : "settings/onStartup", _ => null };
+        if (exe.Length == 0 || path == null) return false;
+        string? full = null;
+        foreach (var root in new[] { Microsoft.Win32.Registry.CurrentUser, Microsoft.Win32.Registry.LocalMachine })
+        {
+            using var k = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exe);
+            if (k?.GetValue(null) is string v && File.Exists(v.Trim('"'))) { full = v.Trim('"'); break; }
+        }
+        if (full == null) return false;
+        Process.Start(new ProcessStartInfo(full, $"{scheme}://{path}") { UseShellExecute = false });
+        return true;
     }
 
     // ================================================================== 回答问题

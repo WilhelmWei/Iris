@@ -43,7 +43,7 @@
                 showLessons: true, lessonIndex: 0, showTips: true, onboarded: /[?&]onboarded\b/.test(location.search), betaConsent: null, feedbackServer: true },
     report: null, journal: [], answers: {}, privacyAccepted: true,
   };
-  const EXEC = ['system.cleanup', 'downloads.recycle_installers', 'leftover.remove_dir', 'startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'browser.disable_chrome_background', 'cache.clean', 'defender.scan',
+  const EXEC = ['shortcut.fix', 'browser.remove_start_policy', 'system.cleanup', 'downloads.recycle_installers', 'leftover.remove_dir', 'startup.disable', 'task.disable', 'task.delete_leftover', 'browser.disable_background', 'browser.disable_chrome_background', 'cache.clean', 'defender.scan',
                 'service.set_manual', 'service.delete_orphan', 'app.uninstall', 'driver.delete_old_version', 'power.disable_fast_startup'];
 
   // ---- 「空间」卡片的模拟数据（虚构的电脑）：采集时量到的缓存，以及报告出来后继续跑的「C 盘空间去哪了」
@@ -162,15 +162,15 @@
       case 'getState': {
         const r = await load();
         const h = r ? r.history : [];
-        return { version: '1.0.0-rc.1', isAdmin: false, identity: ['Alice', 'LAPTOP-TEST01'], settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
-                 privacy: { version: '2026-11-01.1', accepted: M.privacyAccepted },
+        return { version: '1.0.0-rc.1', isAdmin: false, identity: ['Alice', 'LAPTOP-TEST01'], settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review', 'browser.review'],
+                 privacy: { version: '2026-11-01.2', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
                  pending: (M.selected || []).length, handled: (() => { const n = Object.values(handled()).filter(x => x.status === 'done').length; return n ? { count: n, time: '今天' } : null; })(),
                  handledBefore: /[?&]handledBefore\b/.test(location.search) ? { total: 3, still: 1 } : null };
       }
-      case 'getReport': { const r = await load(); await sleep(350); setTimeout(simulateSpace, 600); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search),
+      case 'getReport': { const r = await load(); await sleep(350); setTimeout(simulateSpace, 600); return Object.assign({}, r, { answers: M.answers, marks: M.marks || {}, dismissed: [...(M.dismissed || [])], sent: M.sent || null, canExecute: !/[?&]friend\b/.test(location.search), guideTargets: { F061: { browser: 'chrome', page: 'notifications' } },
         handled: handled(), selected: { keys: (M.selected || []).slice(), carried: M.carried || 0, dropped: M.carried ? 1 : 0 },
         storage: Object.assign({}, STORAGE, { freeNow: M.move ? M.move.system.freeGB * GBb : null }), space: M.space || null, spaceRunning: !!M.spaceRunning || (!M.spaceStarted && !/[?&](nospace|spacedone)\b/.test(location.search)),
         defender: r.defender || { scanned: !!M.scanned && !/[?&]scanfail/.test(location.search), scanFailed: /[?&]scanfail/.test(location.search), realTime: true, quickScanAgeDays: M.scanned ? 0 : 12, fullScanAgeDays: 417, signatureAgeDays: 0 } }); }
@@ -255,11 +255,17 @@
       case 'openReportFile': return { id: 'demo' };
       case 'exportReport': return { path: 'C:\\Users\\你\\Desktop\\Iris-体检报告-20261025-0830.md' };
       case 'openDefender': case 'openPath': case 'openUrl': case 'setWindowTheme': return {};
+      case 'openBrowserSettings': return { ok: true };
+      case 'aimWindow': await sleep(700); return { kind: 'app', process: 'qnews', title: 'QuickVPN 今日热点', path: 'C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe',
+        company: 'QuickVPN Ltd', product: 'QuickVPN 资讯', signer: 'QuickVPN Ltd', software: 'QuickVPN', publisher: 'QuickVPN Ltd',
+        launchedBy: [{ kind: 'startup', name: 'QNews', enabled: true }, { kind: 'task', name: 'QuickVPN News', state: 'Ready' }],
+        flagIds: [], reportId: null, advice: '它是「QuickVPN」的程序，由开机自启动「QNews」、计划任务「QuickVPN News」启动。关掉它的自启动或计划任务，通常就不会再弹；不再需要这个软件的话，卸载最干净。' };
+      case 'rememberAim': return { profile: {}, memories: [] };
       case 'getPrivacy': {
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-11-01.1', text };
+        return { version: '2026-11-01.2', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};

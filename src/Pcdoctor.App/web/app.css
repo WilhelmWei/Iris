@@ -1089,3 +1089,12 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 /* 长辈模式：字大一点 */
 :root.elder body { font-size: 15.5px; }
 :root.elder .row .t, :root.elder .finding b { font-size: 16px; }
+
+/* 窗口瞄准器 */
+.aim-advice { margin: 0 0 14px; }
+.aim-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 14px; font-size: 13px; }
+.aim-facts dt { color: var(--text-3); }
+.aim-facts dd { margin: 0; word-break: break-all; }
+.aim-via { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.aim-via li { display: flex; align-items: center; gap: 8px; }
+.quick button[data-act="aim"] .round { color: var(--accent); }

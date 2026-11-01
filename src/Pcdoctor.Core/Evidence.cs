@@ -305,6 +305,11 @@ public static class Evidence
                             return (JsonNode?)one;
                         })),
                     };
+                if (rule is "shortcut-url" or "shortcut-fake-browser")
+                    return Find(Py.Get(b, "shortcuts"), "label", obj);
+                var listKey = rule switch { "web-notify-allowed" => "notifications", "browser-homepage-nav" => "startPages", "browser-policy-start" => "policyStart", _ => null };
+                if (listKey != null)
+                    return new JsonObject { [listKey] = Py.List(Py.Iter(Py.Get(b, listKey)).Where(x => Py.Eq(Py.Get(x, "browserName"), obj)).Select(Py.Clone)) };
                 var o = new JsonObject();
                 foreach (var k in new[] { "policies", "edgeProcesses", "proxy", "hostsEntries" }) o[k] = Py.Clone(Py.Get(b, k));
                 return o;

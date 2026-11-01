@@ -80,6 +80,11 @@ RULES = {
     'edge-preload':            ('bloat', 0.7, 'browser.disable_background', 'Edge 开机就在后台预加载，即使不用也占内存'),
     'edge-idle-background':    ('bloat', 0.8, 'browser.disable_background', '你平时不用 Edge，它却开机就留在后台、占着内存。关掉启动增强和后台运行，不影响你偶尔打开它'),
     'chrome-idle-background':  ('bloat', 0.75, 'browser.disable_chrome_background', '你平时不用 Chrome，它关掉窗口后还在后台运行。关掉后台运行，不影响你偶尔打开它'),
+    'web-notify-allowed':      ('problem', 0.7, 'browser.review', '{object} 里有网站可以随时给你发通知。右下角突然弹出的广告和"中奖"消息，多半来自这里。不认识的网站可以在浏览器设置里移除'),
+    'browser-homepage-nav':    ('uncertain', 0.5, 'browser.review', '{object} 的主页或启动页是导航网站。可能是你自己设的，也可能是装软件时被改的'),
+    'browser-policy-start':    ('problem', 0.75, 'browser.remove_start_policy', '有程序用"组织策略"锁定了 {object} 的主页、启动页或搜索引擎，所以在浏览器设置里改不回来。如果这台电脑不归公司管理，可以删除这些策略'),
+    'shortcut-url':            ('problem', 0.85, 'shortcut.fix', '{object} 被加上了一个网址，每次点它都会先打开这个网站。去掉网址后，快捷方式照常打开浏览器'),
+    'shortcut-fake-browser':   ('bloat', 0.7, 'none', '{object} 名字是浏览器，打开的却是别的程序，多半是装软件时被换掉的。可以删掉它，再从开始菜单把真正的浏览器固定过来'),
     'browser-unused':          ('bloat', 0.7, 'app.uninstall', '{object} 很久没用过了，却还在开机自启动或后台运行。不用的话可以卸载；这类浏览器常是装别的软件时被捆绑装上的'),
     'hosts-custom':            UNSURE + ('hosts 文件里有自定义条目，可能是软件或你自己加的，也可能被篡改，需要确认',),
     'proxy-remote':            UNSURE + ('系统设置了代理服务器。如果你没有开 VPN 或代理软件，需要警惕',),
@@ -102,6 +107,7 @@ QUESTIONS = {
     'hosts-custom': 'hosts 文件里的条目是你或你信任的软件加的吗？',
     'proxy-remote': '你现在开着 VPN 或代理软件吗？',
     'proxy-pac': '你现在开着 VPN 或代理软件吗？',
+    'browser-homepage-nav': '这个导航网站是你自己设成主页的吗？',
 }
 
 MALWARE_RULES = {'active-threat', 'detection-not-remediated', 'system-name-outside-windows'}
@@ -122,6 +128,10 @@ TIPS = [
      '浏览器缓存、临时文件清掉后，程序用到时会重新生成，所以"一键清理"腾出的空间会慢慢回来。C 盘真正的大头通常是聊天文件、下载文件夹和游戏，把它们挪到其他盘效果更持久。'),
     ({'edge-idle-background', 'chrome-idle-background', 'browser-unused'}, '不用的浏览器也在后台占内存',
      '很多浏览器为了"秒开"，开机就在后台预加载，即使你从来不点它。只关掉不用的那几个的后台运行就好，常用的浏览器不用动。'),
+    ({'web-notify-allowed'}, '"点允许，证明你不是机器人"是个圈套',
+     '很多网页弹出"点允许继续观看""点允许证明你不是机器人"，点了以后这个网站就能一直给你发通知，哪怕你没打开它。右下角的广告、"中奖""中毒"提醒多半来自这里。'),
+    ({'shortcut-url', 'browser-policy-start', 'browser-homepage-nav', 'shortcut-fake-browser'}, '主页改不回来？先看快捷方式和策略',
+     '有的软件不改浏览器设置，而是在桌面快捷方式后面加一个网址，或者用"组织策略"锁定主页，所以在浏览器设置里怎么改都没用。Iris 会把这两处都查一遍。'),
     ({'boot-slow', 'boot-degraded-by'}, '开机慢，先看是谁拖的',
      'Windows 自己会记下每次开机用了多久、被哪个程序或驱动拖慢了几秒。与其装"开机加速"软件，不如照着这份记录关掉拖后腿的自启动。'),
     ({'system-on-hdd', 'memory-small', 'disk-worn'}, '换硬件往往比装优化软件管用',

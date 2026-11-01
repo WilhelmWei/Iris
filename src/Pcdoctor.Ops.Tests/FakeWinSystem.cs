@@ -198,4 +198,23 @@ public sealed class FakeWinSystem : IWinSystem
     }
     public List<DriveFact> DriveList { get; } = [];
     public IReadOnlyList<DriveFact> Drives() => DriveList;
+
+    /// <summary>快捷方式：路径 → (指向的程序, 参数)。文件内容用"程序|参数"的字节模拟。</summary>
+    public Dictionary<string, (string Target, string Arguments)> Shortcuts { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> ReadOnlyFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public (string Target, string Arguments)? ReadShortcut(string path) => Shortcuts.TryGetValue(path, out var s) ? s : null;
+    public bool SetShortcutArguments(string path, string arguments)
+    {
+        if (ReadOnlyFiles.Contains(path) || !Shortcuts.TryGetValue(path, out var s)) return false;
+        Shortcuts[path] = (s.Target, arguments);
+        return true;
+    }
+    public byte[]? ReadAllBytes(string path) => Shortcuts.TryGetValue(path, out var s) ? System.Text.Encoding.UTF8.GetBytes(s.Target + "|" + s.Arguments) : null;
+    public bool WriteAllBytes(string path, byte[] data)
+    {
+        if (ReadOnlyFiles.Contains(path)) return false;
+        var t = System.Text.Encoding.UTF8.GetString(data).Split('|', 2);
+        Shortcuts[path] = (t[0], t.Length > 1 ? t[1] : "");
+        return true;
+    }
 }

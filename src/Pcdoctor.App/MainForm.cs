@@ -237,7 +237,7 @@ public sealed class MainForm : Form
             case "moveOptions": return services.MoveOptions(p["fresh"]?.GetValue<bool>() == true);
             case "openSettings":
                 // 只打开固定的几个 Windows 设置页（新内容的保存位置、安装的应用、存储）
-                var page = S("page") switch { "savelocations" => "ms-settings:savelocations", "apps" => "ms-settings:appsfeatures", "storage" => "ms-settings:storagesense", _ => null };
+                var page = S("page") switch { "savelocations" => "ms-settings:savelocations", "apps" => "ms-settings:appsfeatures", "storage" => "ms-settings:storagesense", "notifications" => "ms-settings:notifications", _ => null };
                 if (page != null) Services.OpenUri(page);
                 return new JsonObject();
             case "undo": return await services.Undo(p["id"]?.ToString(), p["batchId"]?.ToString());
@@ -266,6 +266,16 @@ public sealed class MainForm : Form
             case "testConnection": return await services.TestConnection();
             case "exportReport": return services.ExportReport(S("id"));
             case "openDefender": Services.OpenUri("windowsdefender://threat"); return new JsonObject();
+            case "aimWindow":
+            {
+                // 窗口瞄准器：只在用户点按钮时运行一次
+                var h = await WindowAim.Pick(this);
+                if (h == IntPtr.Zero) return new JsonObject { ["cancelled"] = true };
+                var hit = WindowAim.Inspect(h);
+                return hit == null ? new JsonObject { ["self"] = true } : services.ExplainWindow(hit.Value.facts, hit.Value.title);
+            }
+            case "rememberAim": return services.RememberAim();
+            case "openBrowserSettings": return new JsonObject { ["ok"] = Services.OpenBrowserSettings(S("browser"), S("page")) };
             case "openPath": Services.OpenUri(AppData.Root); return new JsonObject();
             case "openReportFile":
             {

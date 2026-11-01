@@ -43,7 +43,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.1'
+$ScriptVersion = '0.3.2'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -536,6 +536,44 @@ function Get-BootSummary([object[]]$Records) {
 }
 
 # 内存升级建议：现在多大、几条、什么规格、还有没有空插槽、主板最多支持多少。焊在主板上的（LPDDR）加不了
+# 浏览器设置里允许发通知的网站（Chromium 的 Preferences，只取域名）
+function Get-NotifySites($Prefs) {
+    $out = @()
+    if (-not $Prefs) { return $out }
+    $ex = $null
+    try { $ex = $Prefs.profile.content_settings.exceptions.notifications } catch {}
+    if (-not $ex) { return $out }
+    foreach ($p in $ex.PSObject.Properties) {
+        $v = $p.Value
+        if (-not $v -or $v.setting -ne 1) { continue }
+        $site = ([string]$p.Name).Split(',')[0] -replace '^(?i)[a-z]+://', '' -replace '^\[\*\.\]', '' -replace ':\d+$', '' -replace '/.*$', ''
+        if ($site -and $out -notcontains $site) { $out += $site }
+    }
+    return $out
+}
+
+# 主页、启动页是不是常被软件改成的导航网站（只看域名）
+function Test-NavUrl([string]$Url) {
+    if (-not $Url) { return $false }
+    $h = ($Url -replace '^(?i)[a-z]+://', '' -replace '[/?#:].*$', '').ToLower()
+    return [bool]($h -match '(^|\.)(hao123\.com|2345\.com|hao\.360\.com|hao\.360\.cn|114la\.com|duba\.com|123\.sogou\.com|hao\.qq\.com|265\.com|7654\.com)$')
+}
+
+# 快捷方式有没有被改：浏览器快捷方式后面附带了网址，或者名字是浏览器、指向的却不是浏览器
+function Get-ShortcutIssue([string]$Name, [string]$Target, [string]$Arguments) {
+    if (-not $Target) { return $null }
+    $leaf = ($Target -split '\\')[-1]
+    $isBrowser = $leaf -match '^(?i)(msedge|msedge_proxy|chrome|chrome_proxy|firefox|iexplore|brave|360se|360chrome|360chromex|qqbrowser|sogouexplorer|2345explorer|opera|vivaldi)\.exe$'
+    if ($isBrowser) {
+        if ($Arguments -match '(?i)--app(-id)?=') { return $null }   # 网页应用（PWA）的快捷方式本来就带网址
+        if ($Arguments -match '(?i)(https?://|www\.)\S+') { return 'shortcut-url' }
+        return $null
+    }
+    $base = $Name -replace '(?i)\.lnk$', ''
+    if ($base -match '^(?i)(google chrome|microsoft edge|internet explorer|mozilla firefox|firefox|谷歌浏览器)$' -and $leaf -match '(?i)\.(exe|bat|cmd|vbs|js|url)$') { return 'shortcut-fake-browser' }
+    return $null
+}
+
 function Get-MemoryAdvice([object[]]$Modules, $Slots, $MaxGB, [double]$TotalGB) {
     $mods = @($Modules | Where-Object { $_ })
     if (-not $mods.Count) { return $null }
@@ -1409,6 +1447,86 @@ $Sections['browserNetwork'] = Invoke-Section 'browserNetwork' '浏览器与网�
         }
     }
 
+    # 弹窗和篡改：允许发通知的网站、主页和启动页、策略锁定、被改过的快捷方式
+    $chromium = @('edge', 'chrome', 'brave', '360se', '360chrome', 'qqbrowser')
+    $notify = New-Object System.Collections.ArrayList
+    $startPages = New-Object System.Collections.ArrayList
+    foreach ($d in $bdefs) {
+        if ($chromium -notcontains $d[0]) { continue }
+        foreach ($root in @($d[3] | Where-Object { Test-Path -LiteralPath $_ })) {
+            foreach ($prof in @(Get-ChildItem -LiteralPath $root -Directory | Where-Object { $_.Name -eq 'Default' -or $_.Name -like 'Profile *' })) {
+                $pf = "$($prof.FullName)\Preferences"
+                if (-not (Test-Path -LiteralPath $pf)) { continue }
+                $j = Safe "Preferences $($d[0])" { Get-Content -LiteralPath $pf -Raw -Encoding UTF8 | ConvertFrom-Json }
+                if (-not $j) { continue }
+                $sites = @(Get-NotifySites $j)
+                if ($sites.Count) { [void]$notify.Add([ordered]@{ browser = $d[0]; browserName = $d[1]; profile = $prof.Name; sites = @($sites | Select-Object -First 30); total = $sites.Count }) }
+                $hp = $null; if ($j.homepage -and $j.homepage_is_newtabpage -ne $true) { $hp = [string]$j.homepage }
+                $urls = @(); if ($j.session -and $j.session.restore_on_startup -eq 4) { $urls = @($j.session.startup_urls | Where-Object { $_ } | ForEach-Object { ([string]$_).Substring(0, [math]::Min(([string]$_).Length, 160)) } | Select-Object -First 5) }
+                $nav = @(@($hp) + $urls | Where-Object { Test-NavUrl $_ })
+                if ($hp -or $urls.Count) { [void]$startPages.Add([ordered]@{ browser = $d[0]; browserName = $d[1]; profile = $prof.Name; homepage = $hp; startupUrls = @($urls); navSites = @($nav) }) }
+            }
+        }
+    }
+    foreach ($b in @($notify | Group-Object { $_.browserName })) {
+        $all = @($b.Group | ForEach-Object { $_.sites } | Select-Object -Unique)
+        $sev = 'info'; if ($all.Count -ge 3) { $sev = 'low' }
+        $shown = ($all | Select-Object -First 5) -join '、'; if ($all.Count -gt 5) { $shown += ' 等' }
+        Add-Flag 'browserNetwork' 'web-notify-allowed' $sev $b.Name "有 $($all.Count) 个网站可以给你发通知：$shown"
+    }
+    foreach ($sp in $startPages) {
+        if ($sp.navSites.Count) { Add-Flag 'browserNetwork' 'browser-homepage-nav' 'low' $sp.browserName "主页或启动页是导航网站：$(($sp.navSites | Select-Object -First 2) -join '、')" }
+    }
+
+    $policyStart = New-Object System.Collections.ArrayList
+    foreach ($pk in @(@('chrome', 'Google Chrome', 'SOFTWARE\Policies\Google\Chrome'), @('edge', 'Microsoft Edge', 'SOFTWARE\Policies\Microsoft\Edge'))) {
+        foreach ($hv in @('HKLM', 'HKCU')) {
+            $k = "$($hv):\$($pk[2])"
+            if (-not (Test-Path -LiteralPath $k)) { continue }
+            $urls = @()
+            $uk = "$k\RestoreOnStartupURLs"
+            if (Test-Path -LiteralPath $uk) {
+                $up = Get-ItemProperty -LiteralPath $uk
+                if ($up) { $urls = @($up.PSObject.Properties | Where-Object { $_.Name -notlike 'PS*' } | ForEach-Object { [string]$_.Value } | Select-Object -First 5) }
+            }
+            $pol2 = [ordered]@{ browser = $pk[0]; browserName = $pk[1]; hive = $hv
+                                homepage = Get-RegValue $k 'HomepageLocation'; newTabPage = Get-RegValue $k 'NewTabPageLocation'
+                                search = Get-RegValue $k 'DefaultSearchProviderSearchURL'; restoreOnStartup = Get-RegValue $k 'RestoreOnStartup'; startupUrls = @($urls) }
+            $parts = @()
+            if ($pol2.homepage) { $parts += "主页 $($pol2.homepage)" }
+            if ($pol2.newTabPage) { $parts += "新标签页 $($pol2.newTabPage)" }
+            if ($urls.Count) { $parts += "启动时打开 $($urls -join '、')" }
+            if ($pol2.search) { $parts += "搜索引擎 $($pol2.search)" }
+            if (-not $parts.Count) { continue }
+            [void]$policyStart.Add($pol2)
+            Add-Flag 'browserNetwork' 'browser-policy-start' 'medium' $pk[1] ("用策略锁定了" + ($parts -join '；') + "（浏览器设置里会显示由你的组织管理，自己改不回来）")
+        }
+    }
+
+    $shortcuts = New-Object System.Collections.ArrayList
+    $lnkShell = Safe 'WScript.Shell' { New-Object -ComObject WScript.Shell }
+    if ($lnkShell) {
+        $places = @(
+            @('桌面', [Environment]::GetFolderPath('Desktop'), 0), @('公用桌面', [Environment]::GetFolderPath('CommonDesktopDirectory'), 0),
+            @('开始菜单', [Environment]::GetFolderPath('Programs'), 2), @('开始菜单（所有用户）', [Environment]::GetFolderPath('CommonPrograms'), 2),
+            @('任务栏', "$env:APPDATA\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar", 0)
+        )
+        foreach ($pl in $places) {
+            if (-not $pl[1] -or -not (Test-Path -LiteralPath $pl[1])) { continue }
+            foreach ($f in @(Get-ChildItem -LiteralPath $pl[1] -Filter '*.lnk' -File -Recurse -Depth $pl[2] -Force)) {
+                $sc = Safe "shortcut $($f.Name)" { $lnkShell.CreateShortcut($f.FullName) }
+                if (-not $sc) { continue }
+                $rule = Get-ShortcutIssue $f.Name ([string]$sc.TargetPath) ([string]$sc.Arguments)
+                if (-not $rule) { continue }
+                $label = "$($f.BaseName)（$($pl[0])）"
+                $argText = [string]$sc.Arguments; if ($argText.Length -gt 200) { $argText = $argText.Substring(0, 200) }
+                [void]$shortcuts.Add([ordered]@{ label = $label; place = $pl[0]; path = $f.FullName; target = [string]$sc.TargetPath; arguments = $argText; rule = $rule })
+                if ($rule -eq 'shortcut-url') { Add-Flag 'browserNetwork' 'shortcut-url' 'medium' $label "快捷方式打开浏览器时附带了网址：$argText" }
+                else { Add-Flag 'browserNetwork' 'shortcut-fake-browser' 'medium' $label "名字是浏览器，打开的却是：$($sc.TargetPath)" }
+            }
+        }
+    }
+
     $inet = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
     $proxy = [ordered]@{ enabled = Get-RegValue $inet 'ProxyEnable'; server = Get-RegValue $inet 'ProxyServer'; pac = Get-RegValue $inet 'AutoConfigURL' }
     if ($proxy.enabled -eq 1 -and $proxy.server -notmatch '^(?i)(127\.0\.0\.1|localhost)') { Add-Flag 'browserNetwork' 'proxy-remote' 'medium' '系统代理' "系统代理指向外部地址：$($proxy.server)" }
@@ -1421,7 +1539,8 @@ $Sections['browserNetwork'] = Invoke-Section 'browserNetwork' '浏览器与网�
 
     $dns = @((Safe 'Get-DnsClientServerAddress' { Get-DnsClientServerAddress -AddressFamily IPv4 }) | Where-Object { $_ -and $_.ServerAddresses } | ForEach-Object { [ordered]@{ interface = $_.InterfaceAlias; servers = $_.ServerAddresses } })
 
-    [ordered]@{ policies = $pol; edgeProcesses = $edgeProcs; browsers = @($browsers); mainBrowser = $mainId; extensions = @($ext); proxy = $proxy; hostsEntries = $hostsCustom; dns = $dns }
+    [ordered]@{ policies = $pol; edgeProcesses = $edgeProcs; browsers = @($browsers); mainBrowser = $mainId; extensions = @($ext); proxy = $proxy; hostsEntries = $hostsCustom; dns = $dns
+                notifications = @($notify); startPages = @($startPages); policyStart = @($policyStart); shortcuts = @($shortcuts) }
 }
 
 # 12. 驱动与系统版本 -----------------------------------------------------------

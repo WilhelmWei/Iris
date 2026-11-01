@@ -130,6 +130,26 @@ public class InsightsTests
         Assert.Equal(3, (bn["extensions"] as JsonArray)!.Count);
     }
 
+    [Fact]
+    public void ScrubRemovesNotificationSitesAndHijackUrls()
+    {
+        var r = JsonNode.Parse("""
+        {"flags":[{"id":"F001","section":"browserNetwork","rule":"web-notify-allowed","object":"Google Chrome","evidence":"有 2 个网站可以给你发通知：private.example.com、b.test"},
+                  {"id":"F002","section":"browserNetwork","rule":"shortcut-url","object":"Google Chrome（桌面）","evidence":"快捷方式打开浏览器时附带了网址：http://intranet.corp/?u=1"}],
+         "sections":{"browserNetwork":{
+           "notifications":[{"browser":"chrome","sites":["private.example.com","b.test"],"total":2}],
+           "startPages":[{"homepage":"https://intranet.corp/","startupUrls":["https://intranet.corp/a"],"navSites":["https://www.hao123.com/"]}],
+           "policyStart":[{"homepage":"http://intranet.corp/","search":null,"startupUrls":["http://intranet.corp/"]}],
+           "shortcuts":[{"label":"Google Chrome（桌面）","arguments":"http://intranet.corp/?u=1"}]}}}
+        """)!;
+        var s = Insights.ScrubForFeedback(r).ToJsonString();
+        Assert.DoesNotContain("private.example.com", s);
+        Assert.DoesNotContain("intranet.corp", s);
+        Assert.Contains("hao123", s);   // 固定名单里的导航网站保留，用来改进规则
+        Assert.Equal(2, r["sections"]!["browserNetwork"]!["notifications"]![0]!["total"]!.GetValue<int>());
+        Assert.Equal("有 2 个网站可以给你发通知：[网址已去掉]", r["flags"]![0]!["evidence"]!.ToString());
+    }
+
     [Theory]
     [InlineData("1.0.0-beta.2", "1.0.0-beta.1", 1)]
     [InlineData("1.0.0-beta.10", "1.0.0-beta.9", 1)]
