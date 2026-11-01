@@ -390,7 +390,7 @@ function Get-Cim([string]$Class, [string]$Namespace = 'root\cimv2', [string]$Fil
 # 种子名单：仅作为"值得 LLM 关注"的线索，不直接下结论，需人工持续审核
 $Seeds = [ordered]@{
     leftoverOrBundle = '(?i)360(safe|se|tray|sd|zip|极速|安全|压缩|卫士)|Qihoo|2345|鲁大师|ludashi|驱动精灵|驱动人生|金山毒霸|kingsoft\s*antivirus|猎豹|快压|hao123|百度卫士|腾讯电脑管家|QQPCMgr|Huorong|火绒'
-    antiCheatOrAccel = '(?i)EasyAntiCheat|BattlEye|BEService|UniFairy|unirsdt|ACE-|TesMon|WeGame|LgdCatcher|HeyboxPF|uupacket|xlwfp|XLGuard|vgk|vgc'
+    antiCheatOrAccel = '(?i)EasyAntiCheat|BattlEye|BEService|BEDaisy|mhyprot|UniFairy|unirsdt|ACE-|TesMon|WeGame|LgdCatcher|HeyboxPF|uupacket|xlwfp|XLGuard|vgk|vgc'
     bankSecurity     = '(?i)PECKP|PassGuard|CSII|ICBC|CMB.*Edit|WellsSecure|aliedit'
     serverServices   = '^(?i)(W3SVC|WAS|ftpsvc|MSFTPSVC|RemoteRegistry|TlntSvr|SNMP|sshd|MySQL\d*|MSSQL.*|postgresql.*|Apache\d*|nginx)$'
     scriptEngines    = '(?i)\b(powershell|pwsh|mshta|wscript|cscript)(\.exe)?\b|\.vbs\b|\.js\b|\s-e(nc|ncodedcommand)?\s'

@@ -56,7 +56,7 @@
      "evidence": "证据",
      "knowledge": {
       "kbId": "anticheat-leftovers",
-      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "product": "游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）",
       "verdict": "uncertain",
       "proposedAction": "ask_user",
       "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
@@ -74,7 +74,7 @@
      "evidence": "证据",
      "knowledge": {
       "kbId": "anticheat-leftovers",
-      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "product": "游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）",
       "verdict": "uncertain",
       "proposedAction": "ask_user",
       "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
@@ -107,7 +107,7 @@
      "evidence": "证据",
      "knowledge": {
       "kbId": "anticheat-leftovers",
-      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "product": "游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）",
       "verdict": "uncertain",
       "proposedAction": "ask_user",
       "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
@@ -125,7 +125,7 @@
      "evidence": "证据",
      "knowledge": {
       "kbId": "anticheat-leftovers",
-      "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
+      "product": "游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）",
       "verdict": "uncertain",
       "proposedAction": "ask_user",
       "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
@@ -139,7 +139,7 @@
    "installedSoftware": []
   },
   "kbFindings": [],
-  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"EasyAntiCheat\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}, {\"flagId\": \"F002\", \"section\": \"services\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"UniFairy\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}], \"sharedContext\": {}, \"installedSoftware\": []}",
+  "modelEvidenceText": "{\"schema\": \"pcdoctor.evidence/0.1\", \"collector\": {\"reportTime\": null, \"version\": \"appendix-a\", \"isAdmin\": null, \"quick\": null, \"incomplete\": []}, \"machine\": {}, \"items\": [{\"flagId\": \"F001\", \"section\": \"drivers\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"EasyAntiCheat\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}, {\"flagId\": \"F002\", \"section\": \"services\", \"rule\": \"seed-anticheat-accel\", \"severity\": \"medium\", \"object\": \"UniFairy\", \"evidence\": \"证据\", \"knowledge\": {\"kbId\": \"anticheat-leftovers\", \"product\": \"游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）\", \"verdict\": \"uncertain\", \"proposedAction\": \"ask_user\", \"explanation\": \"游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。\", \"certainty\": \"confirmed\", \"direct\": false, \"question\": \"你还在玩需要这个反作弊程序的游戏吗？\"}}], \"sharedContext\": {}, \"installedSoftware\": []}",
   "offlineRaw": {
    "headline": "纯规则模式（没有调用 AI）：0 项建议处理，2 项需要你确认",
    "malwareSuspected": false,

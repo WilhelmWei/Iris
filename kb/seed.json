@@ -81,13 +81,57 @@
   },
   {
    "id": "anticheat-leftovers",
-   "product": "游戏反作弊（EasyAntiCheat / 腾讯 ACE）",
-   "match": {"section": ["drivers", "services"], "object": "^(EasyAntiCheat|UniFairy|unirsdt|ACE-)"},
+   "product": "游戏反作弊（EasyAntiCheat / BattlEye / 腾讯 ACE）",
+   "match": {"section": ["drivers", "services"], "object": "^(EasyAntiCheat|UniFairy|unirsdt|ACE-|BEDaisy|BEService)"},
    "verdict": "uncertain", "confidence": 0.6, "proposedAction": "ask_user",
    "explanation": "游戏反作弊组件。还在玩对应的游戏就保留；游戏卸载后它们经常留下来，并可能妨碍内核堆栈保护开启。",
    "question": "你还在玩需要这个反作弊程序的游戏吗？",
    "certainty": "confirmed", "direct": false,
    "source": "附录 A：内核堆栈保护打不开（EasyAntiCheat、腾讯 UniFairy / unirsdt）"
+  },
+  {
+   "id": "riot-vanguard",
+   "product": "Riot Vanguard（拳头游戏反作弊）",
+   "match": {"section": ["drivers", "services"], "object": "^(vgk|vgc)$"},
+   "when": {"installed": "Riot Vanguard|VALORANT|无畏契约|League of Legends|英雄联盟"},
+   "verdict": "uncertain", "confidence": 0.7, "proposedAction": "ask_user",
+   "explanation": "拳头游戏（无畏契约、英雄联盟）的反作弊 Vanguard，开机就加载内核驱动，不打游戏时也在。还在玩就保留；不玩了要在「设置 → 应用」里单独卸载 Riot Vanguard，只卸载游戏不会把它一起删掉。",
+   "question": "你还在玩无畏契约或英雄联盟吗？",
+   "certainty": "confirmed", "direct": false,
+   "source": "Vanguard 以独立程序安装（卸载列表里单列 Riot Vanguard），驱动 vgk 开机加载"
+  },
+  {
+   "id": "riot-vanguard-leftover",
+   "product": "Riot Vanguard（拳头游戏反作弊）",
+   "match": {"section": ["drivers", "services"], "object": "^(vgk|vgc)$"},
+   "when": {"notInstalled": "Riot Vanguard|VALORANT|无畏契约|League of Legends|英雄联盟"},
+   "verdict": "leftover", "confidence": 0.75, "proposedAction": "ask_user",
+   "explanation": "拳头游戏的反作弊 Vanguard，但已装软件里没有对应的游戏和 Vanguard 本身，像是卸载残留。确认不再玩之后再处理。",
+   "question": "你已经不玩无畏契约和英雄联盟了吗？",
+   "certainty": "likely", "direct": false,
+   "source": "同上；按已装软件名单推断"
+  },
+  {
+   "id": "mihoyo-mhyprot",
+   "product": "米哈游游戏反作弊（mhyprot）",
+   "match": {"section": ["drivers", "services"], "object": "^mhyprot\\d*$"},
+   "when": {"installed": "原神|崩坏|绝区零|Genshin|Honkai|Zenless|米哈游|miHoYo|HoYoverse|HoYoPlay"},
+   "verdict": "uncertain", "confidence": 0.65, "proposedAction": "ask_user",
+   "explanation": "米哈游游戏（原神、崩坏、绝区零等）的反作弊驱动。还在玩就保留；这个驱动的旧版本曾被勒索软件借用来关闭杀毒软件，所以游戏请保持最新版，不玩了就卸载游戏。",
+   "question": "你还在玩米哈游的游戏吗？",
+   "certainty": "confirmed", "direct": false,
+   "source": "mhyprot2.sys 2022 年被公开报道用于勒索软件攻击，也在 LOLDrivers 名单里"
+  },
+  {
+   "id": "mihoyo-mhyprot-leftover",
+   "product": "米哈游游戏反作弊（mhyprot）",
+   "match": {"section": ["drivers", "services"], "object": "^mhyprot\\d*$"},
+   "when": {"notInstalled": "原神|崩坏|绝区零|Genshin|Honkai|Zenless|米哈游|miHoYo|HoYoverse|HoYoPlay"},
+   "verdict": "leftover", "confidence": 0.75, "proposedAction": "ask_user",
+   "explanation": "米哈游游戏的反作弊驱动，但已装软件里没有对应的游戏，像是卸载后留下的。这个驱动的旧版本曾被勒索软件利用，不玩了就值得清掉。",
+   "question": "你已经不玩米哈游的游戏了吗？",
+   "certainty": "likely", "direct": false,
+   "source": "同上；按已装软件名单推断"
   },
   {
    "id": "server-services",
