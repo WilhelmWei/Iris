@@ -24,7 +24,7 @@
 
 开发过程的完整记录（每一轮实测和研判复核的细节、内测审批、服务器和运维信息）在**私有仓库 `WilhelmWei/iris-cloud` 的 `docs/internal/`**（`pcdoctor-CLAUDE-full.md`、`pcdoctor-roadmap-full.md`、开通服务的提示词等）。会话里能访问 iris-cloud 时，处理内测、服务器、反馈相关的事先读那里。
 
-## 当前状态（2026-10-31）
+## 当前状态（2026-11-01）
 
 - 命令行原型（`collector/`、`judge/`、`kb/`、`prompts/`、`run.ps1`、`remote/`）：采集 13 个方面、规则预筛、知识库、AI / 纯规则研判、误判复核表、远程体检包，已在真实电脑上多轮验证
 - 桌面版 1.0 内测 **1.0.0-beta.5**：.NET 10 WinForms + WebView2；快速设定、体检（实时发现流、可先 Defender 扫描）、报告（证据、交叉校验、"判断不对"、和上次比）、「处理」页（待处理 → 执行 → 刚刚完成 → 已处理，可撤销）、存储空间清理、三套主题和动效、内测反馈（同意后去隐私发送，含「处理」页的操作结果和 Defender 扫描是否正常结束）
@@ -33,7 +33,8 @@
 - 清理第三期（1.0.0-beta.8，已打包未发布）：`src/Pcdoctor.Ops/Leftovers.cs`——系统遗留交给 Windows 磁盘清理（`system.cleanup`，cleanmgr /sagerun:7421，结束后恢复 StateFlags）、旧安装包移到回收站（`downloads.recycle_installers`，执行时现列文件）、卸载残留文件夹挪到备份区（`leftover.remove_dir`，执行前现场再查没有程序文件、没被引用）
 - 空间统一（1.0.0-beta.9，已打包未发布）：报告「空间」卡片是空间的唯一入口，搬文件夹作为清单项（编号 `move:文件夹`，`Services.BuildPlan` 现量生成，一键加入不加）；执行结果带 C 盘前后剩余和每步明细（`Services.Details`，只在本机）；清缓存删掉的文件写进备份目录 `lists/*.tsv`（`OpLists`），界面清单窗口分页读；演示模式按 `getState.identity` 遮挡
 - 服务端和反馈控制台在私有仓库 iris-cloud（阿里云中国香港）
-- [ ] beta.4 ~ beta.9 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重、搬文件夹的速度和移动硬盘识别、cleanmgr /sagerun 在 Windows 11 上的表现、卸载残留的误报率未验证）
+- 下一阶段（1.0.0-beta.10，已打包未发布，进度表「下一阶段」1–7）：一键更新（`Updater`，校验后改名换新版、可回到上一版）、AI 问卷和「关于这台电脑」「Iris 记得的事」（画像 `profile.json` 进证据包，提示词 v0.7）、6 种性格 + 狂暴模式 + 潜艇红主题 + 还原点开关、开机耗时 / 硬盘健康 / 升级建议（采集 0.3.1）、弹窗来源和篡改检测（采集 0.3.2；`shortcut.fix`、`browser.remove_start_policy`、引导 `browser.review`）、窗口瞄准器（`WindowAim` 遮罩点选 + `WindowSource` 按报告找来源，不装钩子）、分享卡片和健康趋势；隐私政策 2026-11-01.2。代码签名申请材料在 `docs/signing-application.md`（等作者提交）；「家人的电脑」设计稿 `docs/design/family.md`（等作者看）
+- [ ] beta.4 ~ beta.10 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重、搬文件夹的速度和移动硬盘识别、cleanmgr /sagerun 在 Windows 11 上的表现、卸载残留的误报率、一键更新、系统还原点、开机记录和硬盘磨损的读取、快捷方式修改、窗口瞄准器的遮罩和高分屏坐标未验证）
 - [ ] MVP 放行：10 台不同机器、规则和 AI 结论误判率的 95% 上限 < 10%
 
 ## 桌面版工程要点
@@ -154,6 +155,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\collector\pcdoctor-collect
 
 ## 下一步
 
-1. 用反馈控制台看内测反馈：误判的改规则 / 知识库 / 提示词，漏报的补采集规则
-2. beta.5 在真实 Windows 上完整跑一遍，重点看提权后窗口是否回到前台、「处理」页全流程
-3. 候选版：LOLDrivers 哈希比对（先确认协议）、远控"无人值守"规则、"系统被优化工具改过"规则、健康分封顶、代码签名（SignPath）
+1. 作者：提交代码签名申请（`docs/signing-application.md`）；看「家人的电脑」设计稿（`docs/design/family.md` 第 11 节 5 个问题），点头后再写代码
+2. beta.10 在真实 Windows 上完整跑一遍（见上面未验证的清单），没问题再发布到 OSS
+3. 用反馈控制台看内测反馈：误判的改规则 / 知识库 / 提示词，漏报的补采集规则
+4. 候选版：LOLDrivers 哈希比对（先确认协议）、远控"无人值守"规则、"系统被优化工具改过"规则、健康分封顶、代码签名（SignPath）
