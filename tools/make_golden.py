@@ -317,7 +317,10 @@ BROAD = {
         'versions': {'items': [{'name': 'Intel 显卡', 'installed': '31.0', 'available': '32.0'}]},
         'stability': {'bsod': [{'time': '2026-10-24 00:59', 'code': '0xCE'}], 'appCrashes': 3,
                       'boot': {'boots': 6, 'lastMainPathSec': 72.4, 'avgMainPathSec': 68.1, 'maxMainPathSec': 91.0,
-                               'degradedBy': [{'name': 'QuickVPN 助手', 'kind': 'app', 'times': 4, 'avgSec': 5.2}]}},
+                               'degradedBy': [{'name': 'QuickVPN 助手', 'kind': 'app', 'times': 4, 'avgSec': 5.2}]},
+                      'reliability': {'stabilityByDay': [['2026-10-20', 9.1], ['2026-10-21', 4.2]],
+                                      'biggestDrop': {'date': '2026-10-21', 'from': 9.1, 'to': 4.2, 'by': 4.9, 'installedThatWeek': ['QuickVPN 3.0']},
+                                      'recentInstalls': [{'date': '2026-10-21', 'name': 'QuickVPN 3.0', 'kind': 'app'}], 'failuresByDay': [['2026-10-21', 3]]}},
     },
 }
 

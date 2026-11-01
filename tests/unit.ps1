@@ -3,7 +3,7 @@
 $src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
 if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
-$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs','Get-BootSummary','Get-MemoryAdvice','Get-NotifySites','Test-NavUrl','Get-ShortcutIssue' }, $true)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs','Get-BootSummary','Get-MemoryAdvice','Get-NotifySites','Test-NavUrl','Get-ShortcutIssue','Get-ReliabilitySummary' }, $true)
 foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
 $env:windir = 'C:\Windows'
 $cases = @(
@@ -217,3 +217,23 @@ $pc += ,@('lnk fake', (Get-ShortcutIssue 'Internet Explorer.lnk' 'C:\Program Fil
 $pc += ,@('lnk other', (Get-ShortcutIssue 'Notes.lnk' 'C:\Tools\notes.exe' 'https://x.test'), $null)
 $p10 = 0; foreach ($c in $pc) { if ($c[1] -eq $c[2]) { $p10++ } else { "FAIL popup $($c[0]): [$($c[1])] expected [$($c[2])]" } }
 "popup: $p10/$($pc.Count) passed"
+
+# 可靠性时间线
+$m = @(); $d0 = Get-Date '2026-10-01 08:00'
+foreach ($i in 0..9) { $v = 9.5; if ($i -ge 6) { $v = 5.2 }; $m += [pscustomobject]@{ TimeGenerated = $d0.AddDays($i); SystemStabilityIndex = $v }; $m += [pscustomobject]@{ TimeGenerated = $d0.AddDays($i).AddHours(5); SystemStabilityIndex = $v + 0.3 } }
+$r = @(
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(5); SourceName = 'MsiInstaller'; EventIdentifier = 11707; ProductName = 'QuickVPN 3.0' },
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(6); SourceName = 'Microsoft-Windows-WindowsUpdateClient'; EventIdentifier = 19; ProductName = 'KB5099999' },
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(7); SourceName = 'Application Error'; EventIdentifier = 1000; ProductName = 'app.exe' },
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(7).AddHours(1); SourceName = 'Application Error'; EventIdentifier = 1000; ProductName = 'app.exe' })
+$rs = Get-ReliabilitySummary $m $r
+$rc = @()
+$rc += ,@('days', $rs.stabilityByDay.Count, 10)
+$rc += ,@('daily min', $rs.stabilityByDay[0][1], 9.5)
+$rc += ,@('drop date', $rs.biggestDrop.date, '2026-10-07')
+$rc += ,@('drop by', $rs.biggestDrop.by, 4.3)
+$rc += ,@('drop installs', ($rs.biggestDrop.installedThatWeek -join ','), 'QuickVPN 3.0,KB5099999')
+$rc += ,@('failures', $rs.failuresByDay[0][1], 2)
+$rc += ,@('empty', (Get-ReliabilitySummary @() @()).stabilityByDay.Count, 0)
+$p11 = 0; foreach ($c in $rc) { if ($c[1] -eq $c[2]) { $p11++ } else { "FAIL reliability $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+"reliability: $p11/$($rc.Count) passed"

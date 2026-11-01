@@ -26,7 +26,7 @@
 - 「窗口瞄准器」：**只在你点「弹窗是谁弹的」之后**，读一次你点中的那个窗口属于哪个程序（程序名、位置、厂商、签名、是谁启动的）。不截屏、不读窗口里的内容，结果只在本机显示；选「记下来」时，程序名和软件名会写进「Iris 记得的事」
 - 几个常见文件夹和各类缓存（临时文件、浏览器缓存、错误报告等）的大小和按文件年龄的统计（只统计大小，**不读取文件内容**）；下载文件夹里一个月以前的安装包有几个、一共多大（**不记文件名**）
 - 「C 盘空间去哪了」：报告出来后在后台继续统计系统盘上各文件夹的大小和最大的几个文件的名字（只统计大小，**不读取文件内容**，结果只保存在本机）
-- 最近的蓝屏和程序崩溃记录
+- 最近的蓝屏和程序崩溃记录；Windows「可靠性监视器」最近 30 天的记录（每天的稳定性指数、装了哪些软件和更新、哪天程序崩溃多）
 
 **不读取**：任何文档、照片、聊天记录、浏览记录、密码、Cookie；不采集本机 IP 地址、MAC 地址、Wi-Fi 名称。
 
@@ -102,7 +102,7 @@ The check-up is read-only and changes nothing. It reads:
 - "Window picker": **only after you click "Who opened this pop-up?"**, the app reads once which program owns the window you click (program name, location, vendor, signature, what started it). No screenshots, window contents are not read, and the result is only shown on this computer; if you choose "Remember", the program and software name are added to "What Iris remembers"
 - Sizes of a few common folders and of caches (temporary files, browser caches, error reports, etc.) and statistics by file age (sizes only — **file contents are never read**); how many installers older than a month are in the Downloads folder and their total size (**file names are not recorded**)
 - "Where did the C: drive space go": after the report is ready, the app keeps adding up folder sizes on the system drive in the background and notes the names of the largest files (sizes only — **file contents are never read**; the result stays on this computer)
-- Recent blue-screen and application-crash records
+- Recent blue-screen and application-crash records; the last 30 days of the Windows Reliability Monitor (daily stability index, which software and updates were installed, on which days programs crashed)
 
 **Never read**: documents, photos, chat history, browsing history, passwords or cookies. Local IP addresses, MAC addresses and Wi-Fi names are not collected.
 

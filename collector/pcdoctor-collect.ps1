@@ -47,7 +47,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.5'
+$ScriptVersion = '0.3.6'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -551,6 +551,38 @@ function Get-BootSummary([object[]]$Records) {
 }
 
 # 内存升级建议：现在多大、几条、什么规格、还有没有空插槽、主板最多支持多少。焊在主板上的（LPDDR）加不了
+# Windows 可靠性监视器的数据：每天的稳定性指数（取当天最低）、装了什么、哪天崩溃最多，找出"从哪天开始变差、那天装了什么"
+function Get-ReliabilitySummary([object[]]$Metrics, [object[]]$Records) {
+    $byDay = [ordered]@{}
+    foreach ($m in @($Metrics | Where-Object { $_ -and $_.TimeGenerated } | Sort-Object TimeGenerated)) {
+        $d = ([datetime]$m.TimeGenerated).ToString('yyyy-MM-dd'); $v = [math]::Round([double]$m.SystemStabilityIndex, 1)
+        if (-not $byDay.Contains($d) -or $v -lt $byDay[$d]) { $byDay[$d] = $v }
+    }
+    $installs = New-Object System.Collections.ArrayList
+    $failures = [ordered]@{}
+    foreach ($r in @($Records | Where-Object { $_ -and $_.TimeGenerated } | Sort-Object TimeGenerated)) {
+        $d = ([datetime]$r.TimeGenerated).ToString('yyyy-MM-dd'); $src = [string]$r.SourceName; $id = [int]$r.EventIdentifier
+        $name = [string]$r.ProductName; if ($name.Length -gt 80) { $name = $name.Substring(0, 80) }
+        if ($src -eq 'MsiInstaller' -and $id -in 1033, 11707 -and $name) { [void]$installs.Add([ordered]@{ date = $d; name = $name; kind = 'app' }) }
+        elseif ($src -eq 'Microsoft-Windows-WindowsUpdateClient' -and $id -eq 19 -and $name) { [void]$installs.Add([ordered]@{ date = $d; name = $name; kind = 'update' }) }
+        elseif ($src -in 'Application Error', 'Application Hang', 'Windows Error Reporting' -or $id -in 1000, 1002) {
+            if ($failures.Contains($d)) { $failures[$d]++ } else { $failures[$d] = 1 }
+        }
+    }
+    $drop = $null; $prev = $null
+    foreach ($d in $byDay.Keys) {
+        if ($null -ne $prev -and ($byDay[$prev] - $byDay[$d]) -ge 1 -and (-not $drop -or ($byDay[$prev] - $byDay[$d]) -gt $drop.by)) {
+            $drop = [ordered]@{ date = $d; from = $byDay[$prev]; to = $byDay[$d]; by = [math]::Round($byDay[$prev] - $byDay[$d], 1)
+                                installedThatWeek = @($installs | Where-Object { $_.date -le $d -and $_.date -ge ([datetime]$d).AddDays(-6).ToString('yyyy-MM-dd') } | ForEach-Object { $_.name } | Select-Object -Unique -First 8) }
+        }
+        $prev = $d
+    }
+    $days = @($byDay.Keys | Select-Object -Last 30 | ForEach-Object { ,@($_, $byDay[$_]) })
+    return [ordered]@{ stabilityByDay = $days; biggestDrop = $drop
+                       recentInstalls = @($installs | Select-Object -Last 15)
+                       failuresByDay = @($failures.Keys | Select-Object -Last 30 | ForEach-Object { ,@($_, $failures[$_]) }) }
+}
+
 # 浏览器设置里允许发通知的网站（Chromium 的 Preferences，只取域名）
 function Get-NotifySites($Prefs) {
     $out = @()
@@ -1349,6 +1381,8 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
     if ($bl -eq 'On') { Add-Flag 'security' 'bitlocker-on' 'info' 'BitLocker 恢复密钥' '系统盘开着加密（BitLocker 或设备加密）；换主板、重置 BIOS 或大版本升级后，可能要输入恢复密钥' }
     $sb = $null
     if ($IsAdmin) { try { $sb = Confirm-SecureBootUEFI -ErrorAction Stop } catch { $sb = $null } }
+    # Secure Boot 证书更新（微软 2011 年的证书 2026 年到期）：只记录状态，不下结论
+    $sbCert = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing' 'UEFICA2023Status'
 
     # Defender 排除项：恶意软件常把自己的目录或进程加进排除项
     $excl = $null
@@ -1403,7 +1437,7 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
     }
 
     [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb; updatePolicy = $updatePolicy
-                updates = $updates; vulnerableDriverBlocklist = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' 'VulnerableDriverBlocklistEnable' }
+                updates = $updates; secureBootCA2023 = $sbCert; vulnerableDriverBlocklist = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' 'VulnerableDriverBlocklistEnable' }
 }
 
 # 11. 浏览器与网络 -------------------------------------------------------------
@@ -1683,12 +1717,17 @@ $Sections['stability'] = Invoke-Section 'stability' '稳定性' {
         fileRename = [bool](Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' 'PendingFileRenameOperations')
     }
     if ($pending.servicing -or $pending.windowsUpdate) { Add-Flag 'stability' 'pending-reboot' 'low' '待重启' '有系统更新已经装好，在等重启才能完成' }
+    # 可靠性监视器（只读最近 30 天）
+    $dmtf = $since.ToUniversalTime().ToString('yyyyMMddHHmmss') + '.000000+000'
+    $relMetrics = @(Get-Cim Win32_ReliabilityStabilityMetrics -Filter "TimeGenerated > '$dmtf'" -TimeoutSec 60)
+    $relRecords = @(Get-Cim Win32_ReliabilityRecords -Filter "TimeGenerated > '$dmtf'" -TimeoutSec 60)
+    $reliability = Safe 'reliability' { Get-ReliabilitySummary $relMetrics $relRecords }
     $rp = @((Safe 'Get-ComputerRestorePoint' { Get-ComputerRestorePoint }) | Where-Object { $_ })
     $restore = [ordered]@{ count = $rp.Count; newest = $null }
     if ($rp.Count) { $restore.newest = Safe 'restore point time' { ([Management.ManagementDateTimeConverter]::ToDateTime(($rp | Sort-Object SequenceNumber | Select-Object -Last 1).CreationTime)).ToString('yyyy-MM-dd HH:mm') } }
     if ($bsod.Count -ge 3) { Add-Flag 'stability' 'bsod-repeated' 'high' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次" }
     elseif ($bsod.Count -ge 1) { Add-Flag 'stability' 'bsod' 'medium' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次，最近一次：$($bsod[0].time)" }
-    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes; boot = $boot; pendingReboot = $pending; restorePoints = $restore }
+    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes; boot = $boot; pendingReboot = $pending; restorePoints = $restore; reliability = $reliability }
 }
 
 # ---------------------------------------------------------------------------
