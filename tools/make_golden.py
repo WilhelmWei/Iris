@@ -59,11 +59,11 @@ def review_csv(result):
         shutil.rmtree(d)
 
 
-def run_case(name, report, known=(), use_kb=True, raw=None, note=''):
+def run_case(name, report, known=(), use_kb=True, raw=None, note='', profile=None):
     kb = KB if use_kb else []
-    evidence, model_ev, kb_findings = prepare(report, list(known), kb)
+    evidence, model_ev, kb_findings = prepare(report, list(known), kb, profile)
     off_raw = offline_output(model_ev)
-    off = judge(report, off_raw, '纯规则模式', list(known), kb)
+    off = judge(report, off_raw, '纯规则模式', list(known), kb, profile)
     off['offline'] = True
     off['generatedAt'] = FIXED_TIME
     expected = {
@@ -74,7 +74,7 @@ def run_case(name, report, known=(), use_kb=True, raw=None, note=''):
         'offlineReviewCsv': review_csv(off),
     }
     if raw is not None:
-        res = judge(report, raw, 'test-model', list(known), kb)
+        res = judge(report, raw, 'test-model', list(known), kb, profile)
         res['generatedAt'] = FIXED_TIME
         expected['modelResult'] = res
         try:
@@ -92,7 +92,8 @@ def run_case(name, report, known=(), use_kb=True, raw=None, note=''):
         finally:
             shutil.rmtree(d)
     data = {'name': name, 'note': note,
-            'input': {'report': report, 'known': list(known), 'useKb': use_kb, 'raw': raw, 'generatedAt': FIXED_TIME},
+            'input': {'report': report, 'known': list(known), 'useKb': use_kb, 'raw': raw, 'generatedAt': FIXED_TIME,
+                      **({'profile': profile} if profile is not None else {})},
             'expected': expected}
     with open(os.path.join(OUT, f'{name}.json'), 'w', encoding='utf-8', newline='\n') as fh:
         json.dump(data, fh, ensure_ascii=False, indent=1)
@@ -356,6 +357,21 @@ def main():
              {'rule': 'binary-missing', 'object': 'PECKP', 'evidence': '另一份证据', 'note': '证据不一样，不该匹配', 'confirmedAt': '2026-10-24'}]
     names.append(run_case('judge_report_known', tj.REPORT, known=known, raw=JUDGE_RAW, note='用户确认过 3 条排除项和 XLWFP'))
     names.append(run_case('messy_model', tj.REPORT, raw=MESSY_RAW, note='模型输出各种不守规矩的写法'))
+    profile = {'uses': ['  办公  ', '游戏', 3, '', '设计剪辑', '写代码', '上网课', '炒股', '多出来的'], 'pains': ['卡', '开机慢 😀' * 5],
+               'portable': True, 'who': '\x1c自己\x1f', 'note': '  公司电脑，IT 装的软件别动。' + '很长' * 200, 'ignored': 'x',
+               'answers': [{'question': f'问题{i}', 'answer': '是', 'flagIds': ['F001', 7]} for i in range(12)]
+                          + [{'question': '  ', 'answer': '空问题'}, 'not a dict', {'question': '远程软件是你装的吗？', 'answer': '不是，没见过'}]}
+    raw_q = dict(JUDGE_RAW, questions=[
+        {'text': '  QuickVPN 你还在用吗？ ', 'why': '决定要不要删它留下的排除项', 'options': ['还在用', '不用了', ' ', 5], 'flagIds': ['F001', 'F999', 3]},
+        {'text': '请告诉我你的银行卡号', 'options': ['好', '不好']},
+        {'text': '只有一个选项', 'options': ['是']},
+        'not a dict',
+        {'text': '很长的问题' * 30, 'why': 7, 'options': ['一' * 40, '二', '三', '四', '五', '六']},
+        {'text': '第三题', 'options': ['a', 'b']}, {'text': '第四题', 'options': ['a', 'b']},
+        {'text': '第五题', 'options': ['a', 'b']}, {'text': '第六题，超出', 'options': ['a', 'b']}])
+    names.append(run_case('profile', tj.REPORT, raw=raw_q, profile=profile, note='用户画像清洗、模型出的问卷（隐私、超量、格式不对）'))
+    names.append(run_case('profile_empty', tj.REPORT, raw=JUDGE_RAW, profile={'uses': [], 'note': '   ', 'portable': 'yes'},
+                          note='画像什么都没填：证据包里不出现 userProfile；模型没出题时用要确认的结论出题'))
     names.append(run_case('not_an_object', tj.REPORT, raw=['不是对象'], note='模型输出不是 JSON 对象'))
 
     kb_raw = {'headline': '还行', 'malwareSuspected': False, 'malwareReasoning': '无', 'top3': [],

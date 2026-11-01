@@ -196,6 +196,16 @@ public static class Py
         return n;
     }
 
+    /// <summary>s.strip()：Python 的空白比 .NET 多 \x1c–\x1f 这几个控制字符。</summary>
+    public static string Strip(string s)
+    {
+        static bool Ws(char c) => char.IsWhiteSpace(c) || c is >= '\x1c' and <= '\x1f';
+        int a = 0, b = s.Length;
+        while (a < b && Ws(s[a])) a++;
+        while (b > a && Ws(s[b - 1])) b--;
+        return s[a..b];
+    }
+
     /// <summary>s[:n]，按码点。</summary>
     public static string Head(string s, int n)
     {

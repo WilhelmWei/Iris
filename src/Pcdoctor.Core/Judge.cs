@@ -13,9 +13,9 @@ public static class Judge
     public const string OfflineModelName = "纯规则模式";
 
     /// <summary>prepare()：返回 (完整证据包, 发给模型的证据包, 知识库直接给出的结论)。</summary>
-    public static Prepared Prepare(JsonNode report, IReadOnlyList<JsonObject>? known = null, IReadOnlyList<JsonObject>? kb = null)
+    public static Prepared Prepare(JsonNode report, IReadOnlyList<JsonObject>? known = null, IReadOnlyList<JsonObject>? kb = null, JsonNode? profile = null)
     {
-        var evidence = Evidence.Build(report, known, kb);
+        var evidence = Evidence.Build(report, known, kb, profile);
         var (modelEv, kbFindings) = Kb.SplitDirect(evidence, kb ?? []);
         return new Prepared(evidence, modelEv, kbFindings);
     }
@@ -60,10 +60,10 @@ public static class Judge
     /// 输出与 Python 同结构：schema、generatedAt、model、collectorVersion、score、judgement、confirmedFlagIds、kbFlagIds、issues。
     /// </summary>
     public static JsonObject Run(JsonNode report, JsonNode? raw, string model, IReadOnlyList<JsonObject>? known = null,
-                                 IReadOnlyList<JsonObject>? kb = null, DateTime? now = null)
+                                 IReadOnlyList<JsonObject>? kb = null, DateTime? now = null, JsonNode? profile = null)
     {
         known ??= [];
-        var p = Prepare(report, known, kb);
+        var p = Prepare(report, known, kb, profile);
         var (merged, kbIssues) = MergeKb(raw, p.KbFindings);
         var (clean, issues) = Validation.Validate(merged, p.Evidence);
         var allIssues = kbIssues.Concat(issues).ToList();
@@ -85,11 +85,11 @@ public static class Judge
 
     /// <summary>纯规则模式的完整流程（run_judge.py --offline）：结果里带 offline=true 和 elapsedSec。</summary>
     public static JsonObject RunOffline(JsonNode report, IReadOnlyList<JsonObject>? known = null, IReadOnlyList<JsonObject>? kb = null,
-                                        DateTime? now = null)
+                                        DateTime? now = null, JsonNode? profile = null)
     {
         var sw = Stopwatch.StartNew();
-        var p = Prepare(report, known, kb);
-        var result = Run(report, Offline.Output(p.ModelEvidence), OfflineModelName, known, kb, now);
+        var p = Prepare(report, known, kb, profile);
+        var result = Run(report, Offline.Output(p.ModelEvidence), OfflineModelName, known, kb, now, profile);
         result["offline"] = true;
         result["elapsedSec"] = Py.Round(sw.Elapsed.TotalSeconds, 1);
         return result;

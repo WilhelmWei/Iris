@@ -4,10 +4,15 @@
 一律改成"先问用户"；风险等级由操作库决定；拿不准的结论必须带一个问题。
 所有改动记进 issues，在报告末尾列出，方便人工复核模型的误判率。
 """
+import re
+
 from oplib import OPERATIONS, DRIVER_OPS
 
 VERDICTS = {'normal', 'problem', 'leftover', 'bloat', 'suspicious', 'uncertain'}
 MIN_CONFIDENCE = 0.6
+MAX_QUESTIONS = 5
+# 问卷不许问这些（模型也不该问，问了就丢掉）
+SENSITIVE = re.compile(r'密码|口令|身份证|银行卡|卡号|手机号|电话号码|住址|验证码|生日|支付|存款')
 
 
 def _context(item, evidence):
@@ -130,7 +135,43 @@ def validate(output, evidence):
         'notCollected': [str(x) for x in (output.get('notCollected') or [])],
         'unjudgedFlagIds': missing,
     }
+    clean['questions'] = _questions(output, findings, items_by_id, issues)
     return clean, issues
+
+
+def _questions(output, findings, items_by_id, issues):
+    """体检后的问卷：模型出的题（≤5 题，每题有选项，可以补"其他"），不合格的丢掉；
+    模型没出题（或纯规则模式）时，用需要用户确认的结论自动出"是 / 不是 / 不确定"的题。"""
+    qs = []
+    raw = output.get('questions')
+    for q in (raw if isinstance(raw, list) else []):
+        if len(qs) >= MAX_QUESTIONS:
+            issues.append(f'问卷超过 {MAX_QUESTIONS} 题，多出的已丢弃')
+            break
+        if not isinstance(q, dict):
+            continue
+        text = str(q.get('text') or '').strip()
+        opts_raw = q.get('options')
+        opts = [o.strip()[:24] for o in (opts_raw if isinstance(opts_raw, list) else []) if isinstance(o, str) and o.strip()]
+        if not text or len(opts) < 2:
+            issues.append('问卷里有一题没有题目或少于两个选项，已丢弃')
+            continue
+        if SENSITIVE.search(text + ''.join(opts)):
+            issues.append(f'问卷里有一题涉及隐私（{text[:20]}），已丢弃')
+            continue
+        ids_raw = q.get('flagIds')
+        ids = [x for x in (ids_raw if isinstance(ids_raw, list) else []) if isinstance(x, str) and x in items_by_id]
+        qs.append({'id': f'Q{len(qs) + 1}', 'text': text[:80], 'why': str(q.get('why') or '').strip()[:80],
+                   'options': opts[:5], 'flagIds': ids})
+    if not qs:
+        for f in findings:
+            if len(qs) >= MAX_QUESTIONS:
+                break
+            if f['needsUser'] and f['questionForUser']:
+                qs.append({'id': f'Q{len(qs) + 1}', 'text': f['questionForUser'][:80],
+                           'why': '回答以后，Iris 才能决定这一项该怎么处理',
+                           'options': ['是', '不是', '不确定'], 'flagIds': f['flagIds']})
+    return qs
 
 
 def cleared_flag_ids(clean):

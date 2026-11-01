@@ -120,9 +120,9 @@ def call_model(system_prompt, evidence, model, base_url, api_key, timeout=300):
                                            {'role': 'user', 'content': '上面的输出不是合法 JSON。请只输出一个符合格式的 JSON 对象。'}]
 
 
-def prepare(report, known=(), kb=()):
+def prepare(report, known=(), kb=(), profile=None):
     """返回 (完整证据包, 发给模型的证据包, 知识库直接给出的结论)。"""
-    evidence = build_evidence(report, known, kb)
+    evidence = build_evidence(report, known, kb, profile)
     model_ev, kb_findings = split_direct(evidence, kb)
     return evidence, model_ev, kb_findings
 
@@ -146,9 +146,9 @@ def merge_kb(raw_output, kb_findings):
     return dict(raw_output, findings=findings + kb_findings), issues
 
 
-def judge(report, raw_output, model, known=(), kb=()):
+def judge(report, raw_output, model, known=(), kb=(), profile=None):
     """把模型原始输出变成最终结果（与调用模型分开，便于测试）。"""
-    evidence, _, kb_findings = prepare(report, known, kb)
+    evidence, _, kb_findings = prepare(report, known, kb, profile)
     merged, kb_issues = merge_kb(raw_output, kb_findings)
     clean, issues = validate(merged, evidence)
     issues = kb_issues + issues
@@ -173,6 +173,7 @@ def main():
     ap.add_argument('--base-url', default='https://api.deepseek.com')
     ap.add_argument('--api-key-env', default='DEEPSEEK_API_KEY', help='从哪个环境变量读取 API Key')
     ap.add_argument('--dry-run', action='store_true', help='只生成证据包，不调用模型')
+    ap.add_argument('--profile', help='用户画像 JSON（用来做什么、最烦什么、问卷回答），见 judge/userprofile.py')
     ap.add_argument('--list', action='store_true', help='列出报告里的预筛结果和编号')
     ap.add_argument('--confirm', nargs='+', metavar='编号', help='把这些预筛结果记为"已确认"，下次不再问（配合 --note）')
     ap.add_argument('--note', help='确认时的说明，例如"这是我自己装的远程软件"')
@@ -185,6 +186,10 @@ def main():
         report = json.load(fh)
     kpath = known_path(path)
     known = load_known(kpath)
+    profile = None
+    if args.profile:
+        with open(args.profile, encoding='utf-8') as fh:
+            profile = json.load(fh)
 
     if args.list:
         for f in report.get('flags', []):
@@ -207,7 +212,7 @@ def main():
 
     stem = os.path.splitext(path)[0].replace('pcdoctor-report-', 'pcdoctor-')
     kb = [] if args.no_kb else load_kb()
-    _, evidence, kb_findings = prepare(report, known, kb)
+    _, evidence, kb_findings = prepare(report, known, kb, profile)
     ev_text = json.dumps(evidence, ensure_ascii=False, indent=1)
     with open(stem + '-evidence.json', 'w', encoding='utf-8') as fh:
         fh.write(ev_text)
@@ -223,7 +228,7 @@ def main():
         return
     if args.offline:
         t = time.time()
-        result = judge(report, offline_output(evidence), '纯规则模式', known, kb)
+        result = judge(report, offline_output(evidence), '纯规则模式', known, kb, profile)
         result['offline'] = True
         result['elapsedSec'] = round(time.time() - t, 1)
         write_outputs(stem, None, result)
@@ -245,7 +250,7 @@ def main():
         raw, usage = call_model(load_system_prompt(), evidence, args.model, args.base_url, api_key)
     finally:
         done.set()
-    result = judge(report, raw, args.model, known, kb)
+    result = judge(report, raw, args.model, known, kb, profile)
     result['usage'] = usage
     result['elapsedSec'] = round(time.time() - t, 1)
     write_outputs(stem, raw, result)

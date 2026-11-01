@@ -405,7 +405,22 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "你还在用对应的游戏、加速器或下载软件吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F002"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [],
    "kbFlagIds": [

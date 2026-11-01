@@ -1422,7 +1422,49 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "这是你主动安装、现在还在用的软件吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F022",
+       "F024"
+      ]
+     },
+     {
+      "id": "Q2",
+      "text": "这是你主动安装、现在还在用的软件吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F023"
+      ]
+     },
+     {
+      "id": "Q3",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F028"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [],
    "kbFlagIds": [],

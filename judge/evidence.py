@@ -205,9 +205,10 @@ def _context_for(flag, S):
     return None
 
 
-def build_evidence(report, known=(), kb=()):
+def build_evidence(report, known=(), kb=(), profile=None):
     """known：用户确认过的结论（known.py），命中的项会带上 userConfirmed；
-    kb：知识库条目（kb.py），命中的项会带上 knowledge。"""
+    kb：知识库条目（kb.py），命中的项会带上 knowledge；
+    profile：用户画像和问卷回答（profile.py），填过才放进 userProfile。"""
     from known import match
     from kb import lookup, note
     S = report.get('sections', {})
@@ -263,6 +264,8 @@ def build_evidence(report, known=(), kb=()):
         'virtualizationSecurity': S.get('drivers', {}).get('virtualizationSecurity'),
     }
     tool = report.get('tool', {})
+    from userprofile import clean_profile
+    up = clean_profile(profile)
     return {
         'schema': 'pcdoctor.evidence/0.1',
         'collector': {'reportTime': report.get('generatedAt'),  # 模型据此判断事件是多久以前
@@ -272,4 +275,5 @@ def build_evidence(report, known=(), kb=()):
         'items': items,
         'sharedContext': shared,
         'installedSoftware': [f"{a.get('name')} | {a.get('publisher') or ''}".rstrip(' |') for a in sw_items],
+        **({'userProfile': up} if up else {}),
     }

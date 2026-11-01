@@ -36,7 +36,7 @@ public class GoldenTests
     {
         var (input, exp) = Load(name);
         var (report, known, kb) = Inputs(input);
-        var p = Judge.Prepare(report, known, kb);
+        var p = Judge.Prepare(report, known, kb, input["profile"]);
         T.SameJson(exp["evidence"], p.Evidence);
         T.SameJson(exp["modelEvidence"], p.ModelEvidence);
         T.SameJson(exp["kbFindings"], p.KbFindings);
@@ -50,9 +50,9 @@ public class GoldenTests
     {
         var (input, exp) = Load(name);
         var (report, known, kb) = Inputs(input);
-        var p = Judge.Prepare(report, known, kb);
+        var p = Judge.Prepare(report, known, kb, input["profile"]);
         T.SameJson(exp["offlineRaw"], Offline.Output(p.ModelEvidence));
-        var result = Judge.RunOffline(report, known, kb, Fixed);
+        var result = Judge.RunOffline(report, known, kb, Fixed, input["profile"]);
         T.SameJson(exp["offlineResult"], result, "elapsedSec");
         T.SameText(Py.S(exp["offlineMarkdown"])!, MarkdownRender.Render(result));
         T.SameText(Py.S(exp["offlineReviewCsv"])!, Review.ToCsv(Review.RowsFromJudge(result)));
@@ -65,7 +65,7 @@ public class GoldenTests
         var (input, exp) = Load(name);
         if (!exp.ContainsKey("modelResult")) return;
         var (report, known, kb) = Inputs(input);
-        var result = Judge.Run(report, input["raw"], "test-model", known, kb, Fixed);
+        var result = Judge.Run(report, input["raw"], "test-model", known, kb, Fixed, input["profile"]);
         T.SameJson(exp["modelResult"], result);
         if (exp.ContainsKey("modelMarkdown"))
         {

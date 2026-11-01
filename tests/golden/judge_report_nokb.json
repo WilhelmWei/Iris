@@ -943,7 +943,76 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "这些排除项都是你自己加的吗？对应的软件还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F001",
+       "F002",
+       "F003"
+      ]
+     },
+     {
+      "id": "Q2",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F004"
+      ]
+     },
+     {
+      "id": "Q3",
+      "text": "你还在用对应的游戏、加速器或下载软件吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F005"
+      ]
+     },
+     {
+      "id": "Q4",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F006"
+      ]
+     },
+     {
+      "id": "Q5",
+      "text": "你还在用需要这个安全控件的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F007"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [],
    "kbFlagIds": [],
@@ -1156,7 +1225,23 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "你还用这家银行的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F006",
+       "F009"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [],
    "kbFlagIds": [],

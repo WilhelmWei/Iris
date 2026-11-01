@@ -397,7 +397,48 @@
     ],
     "tips": [],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F002"
+      ]
+     },
+     {
+      "id": "Q2",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F003"
+      ]
+     },
+     {
+      "id": "Q3",
+      "text": "这是你自己安装或设置的吗？现在还在用吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F004"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [],
    "kbFlagIds": [],

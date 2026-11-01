@@ -310,7 +310,7 @@ public static class Evidence
     /// build_evidence()。known：用户确认过的结论（KnownStore），命中的项会带上 userConfirmed；
     /// kb：知识库条目（Kb），命中的项会带上 knowledge。
     /// </summary>
-    public static JsonObject Build(JsonNode report, IReadOnlyList<JsonObject>? known = null, IReadOnlyList<JsonObject>? kb = null)
+    public static JsonObject Build(JsonNode report, IReadOnlyList<JsonObject>? known = null, IReadOnlyList<JsonObject>? kb = null, JsonNode? profile = null)
     {
         known ??= [];
         kb ??= [];
@@ -392,7 +392,8 @@ public static class Evidence
             ["virtualizationSecurity"] = Py.Clone(Py.Get(Py.Get(S, "drivers"), "virtualizationSecurity")),
         };
         var tool = Py.Get(report, "tool");
-        return new JsonObject
+        var up = UserProfile.Clean(profile);
+        var ev = new JsonObject
         {
             ["schema"] = "pcdoctor.evidence/0.1",
             ["collector"] = new JsonObject
@@ -409,5 +410,7 @@ public static class Evidence
             ["installedSoftware"] = Py.StrList(swItems.Select(a =>
                 $"{Py.ToStr(Py.Get(a, "name"))} | {Py.StrOr(Py.Get(a, "publisher"))}".TrimEnd(' ', '|'))),
         };
+        if (up != null) ev["userProfile"] = up;
+        return ev;
     }
 }

@@ -11,6 +11,9 @@ public static class Validation
 {
     public static readonly IReadOnlySet<string> Verdicts = new HashSet<string> { "normal", "problem", "leftover", "bloat", "suspicious", "uncertain" };
     public const double MinConfidence = 0.6;
+    public const int MaxQuestions = 5;
+    /// <summary>问卷不许问这些（模型也不该问，问了就丢掉）。</summary>
+    static readonly System.Text.RegularExpressions.Regex Sensitive = new("密码|口令|身份证|银行卡|卡号|手机号|电话号码|住址|验证码|生日|支付|存款");
 
     /// <summary>_context()</summary>
     static JsonNode? Context(JsonObject item, JsonNode evidence)
@@ -205,7 +208,44 @@ public static class Validation
             ["notCollected"] = Py.StrList(Py.Iter(Py.Or(outObj["notCollected"], new JsonArray())).Select(Py.ToStr)),
             ["unjudgedFlagIds"] = Py.List(missing.Select(Py.Clone)),
         };
+        result["questions"] = Questions(outObj, findings, itemsById, issues);
         return (result, issues);
+    }
+
+    /// <summary>_questions()：模型出的问卷（≤5 题、每题 2–5 个选项），不合格的丢掉；
+    /// 模型没出题（或纯规则模式）时，用需要用户确认的结论自动出"是 / 不是 / 不确定"的题。</summary>
+    static JsonArray Questions(JsonObject output, JsonArray findings, Dictionary<string, JsonObject> itemsById, List<string> issues)
+    {
+        var qs = new JsonArray();
+        if (output["questions"] is JsonArray raw)
+            foreach (var qn in raw)
+            {
+                if (qs.Count >= MaxQuestions) { issues.Add($"问卷超过 {MaxQuestions} 题，多出的已丢弃"); break; }
+                if (qn is not JsonObject q) continue;
+                var text = Py.Strip(Py.StrOr(q["text"]));
+                var opts = (q["options"] as JsonArray ?? []).Select(Py.S).Where(o => o != null && Py.Strip(o).Length > 0)
+                    .Select(o => Py.Head(Py.Strip(o!), 24)).ToList();
+                if (text.Length == 0 || opts.Count < 2) { issues.Add("问卷里有一题没有题目或少于两个选项，已丢弃"); continue; }
+                if (Sensitive.IsMatch(text + string.Concat(opts))) { issues.Add($"问卷里有一题涉及隐私（{Py.Head(text, 20)}），已丢弃"); continue; }
+                var ids = (q["flagIds"] as JsonArray ?? []).Where(x => Py.S(x) is { } sx && itemsById.ContainsKey(Py.Key(x))).Select(Py.Clone);
+                qs.Add(new JsonObject
+                {
+                    ["id"] = $"Q{qs.Count + 1}", ["text"] = Py.Head(text, 80), ["why"] = Py.Head(Py.Strip(Py.StrOr(q["why"])), 80),
+                    ["options"] = Py.StrList(opts.Take(5)), ["flagIds"] = Py.List(ids),
+                });
+            }
+        if (qs.Count == 0)
+            foreach (var f in findings.OfType<JsonObject>())
+            {
+                if (qs.Count >= MaxQuestions) break;
+                if (f["needsUser"]?.GetValue<bool>() == true && Py.S(f["questionForUser"]) is { Length: > 0 } question)
+                    qs.Add(new JsonObject
+                    {
+                        ["id"] = $"Q{qs.Count + 1}", ["text"] = Py.Head(question, 80), ["why"] = "回答以后，Iris 才能决定这一项该怎么处理",
+                        ["options"] = Py.StrList(["是", "不是", "不确定"]), ["flagIds"] = f["flagIds"]!.DeepClone(),
+                    });
+            }
+        return qs;
     }
 
     /// <summary>cleared_flag_ids()：研判为正常且置信度足够的 flag 编号，不再扣健康分。</summary>

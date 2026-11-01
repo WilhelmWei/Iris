@@ -1063,7 +1063,48 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "你还在用需要这个键盘保护控件的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F006"
+      ]
+     },
+     {
+      "id": "Q2",
+      "text": "你还在用需要这个安全控件的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F007"
+      ]
+     },
+     {
+      "id": "Q3",
+      "text": "你还在用需要这个键盘保护控件的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F009"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [
     "F001",
@@ -1302,7 +1343,23 @@
      }
     ],
     "notCollected": [],
-    "unjudgedFlagIds": []
+    "unjudgedFlagIds": [],
+    "questions": [
+     {
+      "id": "Q1",
+      "text": "你还用这家银行的网银吗？",
+      "why": "回答以后，Iris 才能决定这一项该怎么处理",
+      "options": [
+       "是",
+       "不是",
+       "不确定"
+      ],
+      "flagIds": [
+       "F006",
+       "F009"
+      ]
+     }
+    ]
    },
    "confirmedFlagIds": [
     "F001",
