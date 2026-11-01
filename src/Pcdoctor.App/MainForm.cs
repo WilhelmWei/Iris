@@ -275,6 +275,14 @@ public sealed class MainForm : Form
                 return hit == null ? new JsonObject { ["self"] = true } : services.ExplainWindow(hit.Value.facts, hit.Value.title);
             }
             case "rememberAim": return services.RememberAim();
+            case "getTrend": return services.GetTrend();
+            case "saveImage": return SaveImage(S("dataUrl"), S("name"));
+            case "copyImage":
+            {
+                using var img = ImageFrom(S("dataUrl"));
+                Clipboard.SetImage(img);
+                return new JsonObject { ["ok"] = true };
+            }
             case "openBrowserSettings": return new JsonObject { ["ok"] = Services.OpenBrowserSettings(S("browser"), S("page")) };
             case "openPath": Services.OpenUri(AppData.Root); return new JsonObject();
             case "openReportFile":
@@ -293,5 +301,32 @@ public sealed class MainForm : Form
             }
             default: throw new InvalidOperationException("未知方法 " + method);
         }
+
+    // ------------------------------------------------------------------ 分享卡片：界面画好的 PNG，只保存到用户选的位置或复制到剪贴板
+    static byte[] PngBytes(string dataUrl)
+    {
+        const string head = "data:image/png;base64,";
+        if (!dataUrl.StartsWith(head, StringComparison.Ordinal)) throw new ArgumentException("不是 PNG 图片");
+        var bytes = Convert.FromBase64String(dataUrl[head.Length..]);
+        if (bytes.Length > 20 * 1024 * 1024 || bytes.Length < 8 || bytes[0] != 0x89 || bytes[1] != (byte)'P') throw new ArgumentException("图片不对");
+        return bytes;
     }
+
+    static Image ImageFrom(string dataUrl) => Image.FromStream(new MemoryStream(PngBytes(dataUrl)));
+
+    JsonObject SaveImage(string dataUrl, string name)
+    {
+        var bytes = PngBytes(dataUrl);
+        var safe = string.Concat((string.IsNullOrWhiteSpace(name) ? "Iris 体检卡片" : name).Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        using var dlg = new SaveFileDialog
+        {
+            Title = "保存分享卡片", Filter = "PNG 图片|*.png", FileName = safe + ".png",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+        };
+        if (dlg.ShowDialog(this) != DialogResult.OK) return new JsonObject { ["ok"] = false };
+        File.WriteAllBytes(dlg.FileName, bytes);
+        return new JsonObject { ["ok"] = true };
+    }
+}
+
 }

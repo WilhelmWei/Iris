@@ -414,7 +414,7 @@
         <button data-act="aim" title="点一下屏幕上的弹窗，看它是哪个程序弹的"><span class="round">${icon('scan')}</span>弹窗是谁弹的</button>
       </div>
       ${(a.history && a.history.length > 1) || (a.changes && a.changes.length) || hb ? `<div class="widgets">
-        ${a.history && a.history.length > 1 ? `<div class="card widget"><h3>健康分走势</h3>
+        ${a.history && a.history.length > 1 ? `<div class="card widget link" data-act="trend" role="button" tabindex="0" title="看每次体检的变化"><h3>健康分走势 <span class="go">${icon('arrow')}</span></h3>
           <div style="display:flex;align-items:baseline;gap:10px"><span class="big">${a.history[a.history.length - 1][1]}</span><span class="muted small">最近 ${a.history.length} 次体检</span></div>
           ${spark(a.history)}</div>` : ''}
         ${(a.changes && a.changes.length) || hb ? `<div class="card widget"><h3>上次体检以来的变化</h3>
@@ -578,6 +578,7 @@
           ${statusChips(j)}
           <div class="r-actions">
             <button class="btn" data-act="export">导出报告</button>
+            ${R.meta.source === 'local' ? `<button class="btn" data-act="share">${icon('gift')}分享卡片</button>` : ''}
             <button class="btn" data-act="rejudge" title="用你回答过的问题重新研判这份报告">重新研判</button>
             <button class="btn ghost" data-act="toggle-demo" aria-pressed="${!!s.demoMode}">${icon(s.demoMode ? 'eyeoff' : 'eye')}${s.demoMode ? '演示模式：开' : '演示模式'}</button>
           </div></div></section>
@@ -1459,6 +1460,97 @@
     hydrate(box);
     return box;
   }
+  // ------------------------------------------------------------------ 健康趋势：每次体检的健康分、各方面分数、发现和处理了几项
+  async function trendModal() {
+    const t = await call('getTrend'), P = (t && t.points) || [];
+    if (P.length < 2) { toast('体检两次以上才有走势'); return; }
+    const W = 640, H = 220, L = 34, Rr = 12, T = 14, B = 26;
+    const cats = Object.keys(P[P.length - 1].categories || {});
+    const X = i => L + i * (W - L - Rr) / (P.length - 1), Y = v => T + (100 - v) / 100 * (H - T - B);
+    const line = vals => vals.map((v, i) => v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).filter(Boolean).join(' L');
+    const grid = [0, 25, 50, 75, 100].map(v => `<line x1="${L}" x2="${W - Rr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('');
+    const every = Math.ceil(P.length / 6);
+    const ticks = P.map((p, i) => i % every === 0 || i === P.length - 1 ? `<text x="${X(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === P.length - 1 ? 'end' : 'middle'}">${esc(p.date)}</text>` : '').join('');
+    const svg = `<svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="健康分走势：${P.map(p => p.date + ' ' + p.total).join('，')}">
+      <g class="grid">${grid}</g>
+      ${cats.map((c, ci) => `<path class="cat c${ci % 4}" d="M${line(P.map(p => (p.categories || {})[c]))}"/>`).join('')}
+      <path class="total" d="M${line(P.map(p => p.total))}"/>
+      ${P.map((p, i) => `<circle class="pt" cx="${X(i)}" cy="${Y(p.total)}" r="${p.handled ? 4.5 : 3}"><title>${esc(p.date)} · ${p.total} 分${p.handled ? ` · 处理了 ${p.handled} 项` : ''}</title></circle>`).join('')}
+      <g class="ticks">${ticks}</g></svg>`;
+    const first = P[0], last = P[P.length - 1], d = last.total - first.total;
+    const rows = P.slice().reverse().map((p, i, arr) => { const prev = arr[i + 1]; const dd = prev ? p.total - prev.total : null;
+      return `<tr><td>${esc(p.date)}</td><td class="num"><b>${p.total}</b>${dd ? `<span class="delta ${dd < 0 ? 'down' : ''}">${dd > 0 ? '+' : '−'}${Math.abs(dd)}</span>` : ''}</td>
+        <td class="num">${p.problems}</td><td class="num">${p.handled || '—'}</td><td class="muted">${p.offline ? '纯规则' : 'AI'}</td>
+        <td><button class="btn ghost small" data-m="open" data-id="${esc(p.id)}">看报告</button></td></tr>`; }).join('');
+    const box = modal('健康趋势', `${P.length} 次体检 · ${esc(first.date)} 到 ${esc(last.date)} · ${d >= 0 ? '提高' : '降低'}了 ${Math.abs(d)} 分`, `
+      ${svg}
+      <div class="trend-legend"><span class="total">健康分</span>${cats.map((c, ci) => `<span class="c${ci % 4}">${esc(c)}</span>`).join('')}<span class="muted">大一点的点：那次体检后处理过</span></div>
+      <table class="trend-table"><thead><tr><th>体检</th><th class="num">健康分</th><th class="num">值得处理</th><th class="num">处理了</th><th>研判</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="muted small">分数由代码按固定规则计算，AI 不参与打分。装了新软件、很久没重启，分数都会变；处理过的项能在「处理」页撤销。</p>`,
+      '<button class="btn solid" data-m="close">关闭</button>');
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      box.remove();
+      if (b.dataset.m === 'open') { await loadReport(b.dataset.id); state.enter = true; go('report'); }
+    });
+  }
+  // ------------------------------------------------------------------ 分享卡片：在本机画一张去掉个人信息的图片（不含用户名、电脑名、软件名、路径）
+  function cardFacts() {
+    const R = state.report, sc = R.result.score, j = R.result.judgement, a = state.app || {};
+    const h = a.history || [], prev = h.length > 1 && a.lastReport && a.lastReport.id === R.id ? h[h.length - 2][1] : null;
+    const fs = j.findings, worth = fs.filter(f => ['problem', 'leftover', 'bloat', 'suspicious'].includes(f.verdict)).length;
+    const handled = Object.values(R.handled || {}).filter(x => x && x.status === 'done').length;
+    return { score: Math.round(sc.total), prev, date: String(R.meta.reportTime || '').slice(0, 10), malware: !!j.malwareSuspected,
+      cats: Object.entries(sc.categories).slice(0, 4).map(([k, v]) => [k, Math.round(v.score)]), worth, handled, offline: !!R.result.offline };
+  }
+  function drawCard(c) {
+    const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), css = getComputedStyle(document.documentElement), V = (n, d) => (css.getPropertyValue(n) || '').trim() || d;
+    const bg = V('--bg', '#0b0b0c'), text = V('--text', '#f3f1ee'), sub = V('--text-2', '#a8a29e'), accent = V('--accent', '#ff6a3d'), line = V('--line', '#2a2a2a');
+    const font = (w, s) => `${w} ${s}px "Microsoft YaHei UI","PingFang SC","Noto Sans SC",system-ui,sans-serif`;
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    const glow = g.createRadialGradient(W / 2, 420, 40, W / 2, 420, 620); glow.addColorStop(0, accent); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalAlpha = 0.2; g.fillStyle = glow; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+    g.fillStyle = sub; g.font = font(600, 30); g.textAlign = 'left'; g.fillText('IRIS · 看清这台电脑', 90, 120);
+    g.textAlign = 'right'; g.fillText(c.date, W - 90, 120);
+    // 健康分圆环
+    const cx = W / 2, cy = 430, r = 210;
+    g.lineWidth = 26; g.lineCap = 'round'; g.strokeStyle = line; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = accent; g.beginPath(); g.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.score / 100)); g.stroke();
+    g.textAlign = 'center'; g.fillStyle = text; g.font = font(700, 168); g.fillText(String(c.score), cx, cy + 58);
+    g.fillStyle = sub; g.font = font(500, 34); g.fillText('健康分', cx, cy + 112);
+    if (c.prev != null && c.prev !== c.score) { g.fillStyle = c.score > c.prev ? accent : sub; g.font = font(600, 36); g.fillText(`比上次 ${c.score > c.prev ? '+' : '−'}${Math.abs(c.score - c.prev)}`, cx, cy + r + 90); }
+    // 结论
+    let y = 820;
+    g.textAlign = 'left'; g.fillStyle = text; g.font = font(700, 48);
+    g.fillText(c.malware ? '有需要留意的安全问题' : '没有发现中毒迹象', 90, y);
+    g.fillStyle = sub; g.font = font(500, 34);
+    y += 64; g.fillText(c.handled ? `发现 ${c.worth} 件值得处理的事，已经处理了 ${c.handled} 件` : `发现 ${c.worth} 件值得处理的事`, 90, y);
+    y += 52; g.fillText('每个结论都有证据，每一步都能撤销', 90, y);
+    // 分项
+    y += 70; const colW = (W - 180) / Math.max(1, c.cats.length);
+    c.cats.forEach(([k, v], i) => { const x = 90 + i * colW;
+      g.fillStyle = sub; g.font = font(500, 28); g.fillText(k, x, y);
+      g.fillStyle = text; g.font = font(700, 52); g.fillText(String(v), x, y + 64);
+      g.fillStyle = line; g.fillRect(x, y + 86, colW - 40, 8); g.fillStyle = accent; g.fillRect(x, y + 86, (colW - 40) * v / 100, 8); });
+    // 底部
+    g.fillStyle = line; g.fillRect(90, H - 190, W - 180, 2);
+    g.fillStyle = text; g.font = font(600, 34); g.fillText('电脑用久了，又热、又卡、又慢？试试 Iris。', 90, H - 128);
+    g.fillStyle = sub; g.font = font(500, 28); g.fillText(`开源免费 · ${c.offline ? '纯规则体检，不联网' : 'AI 把判断过程讲给你听'} · github.com/WilhelmWei/Iris`, 90, H - 80);
+    return cv;
+  }
+  async function shareCard() {
+    if (!state.report) return;
+    const cv = drawCard(cardFacts()), url = cv.toDataURL('image/png');
+    const box = modal('分享卡片', '在本机画的图片 · 不含用户名、电脑名、软件名和路径', `<img class="share-img" src="${url}" alt="体检卡片预览">`,
+      '<button class="btn ghost" data-m="close">关闭</button><button class="btn" data-m="copy">复制图片</button><button class="btn primary" data-m="save">保存图片</button>');
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      if (b.dataset.m === 'copy') { await call('copyImage', { dataUrl: url }); toast('已复制，可以直接粘贴到微信'); return; }
+      if (b.dataset.m === 'save') { const r = await call('saveImage', { dataUrl: url, name: `Iris 体检卡片 ${cardFacts().date}` }); if (r && r.ok) toast('已保存'); return; }
+      box.remove();
+    });
+  }
   // ------------------------------------------------------------------ 窗口瞄准器：用户点一下弹窗，说清是谁弹的、怎么不再弹
   async function aim() {
     const r = await call('aimWindow');
@@ -1767,11 +1859,12 @@
       ['主题：米白', '外观', () => setSetting('theme', 'light')], ['主题：跟随系统', '外观', () => setSetting('theme', 'auto')],
       [S().demoMode ? '关闭演示模式' : '打开演示模式', '隐私', () => setSetting('demoMode', !S().demoMode)],
       [state.pro ? '关闭专业模式' : '打开专业模式', '显示', () => setSetting('pro', !state.pro)],
-      ['打开朋友发来的报告', '文件', () => act('open-file')], ['窗口瞄准器 · 这个弹窗是谁弹的', '工具', () => act('aim')], ['查看隐私政策', '隐私', () => showPrivacy(false)],
+      ['打开朋友发来的报告', '文件', () => act('open-file')], ['健康趋势 · 每次体检的变化', '页面', () => act('trend')], ['窗口瞄准器 · 这个弹窗是谁弹的', '工具', () => act('aim')], ['查看隐私政策', '隐私', () => showPrivacy(false)],
       ['重新运行快速设定', '设置', () => openOnboarding(0)], ['看看反馈包里有什么', '内测', () => previewFeedback()],
     ];
     if (state.report) {
       c.push(['导出报告', '报告', () => act('export')]);
+      if (state.report.meta.source === 'local') c.push(['分享卡片 · 去掉个人信息的体检图片', '报告', () => act('share')]);
       state.report.result.judgement.findings.forEach(f => c.push([pii(f.object), VERDICT[f.verdict] || '结论', async () => { if (state.view !== 'report') await go('report'); openSheet({ kind: 'finding', key: keyOf(f) }); }]));
     }
     return c;
@@ -2004,6 +2097,8 @@
         break;
       }
       case 'aim': await aim(); break;
+      case 'share': await shareCard(); break;
+      case 'trend': await trendModal(); break;
       case 'toggle-demo': setSetting('demoMode', !S().demoMode); break;
       case 'tips-off': setSetting('showTips', false); break;
       case 'open-update': openUpdate(); break;

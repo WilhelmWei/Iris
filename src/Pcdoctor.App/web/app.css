@@ -1098,3 +1098,30 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 .aim-via { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
 .aim-via li { display: flex; align-items: center; gap: 8px; }
 .quick button[data-act="aim"] .round { color: var(--accent); }
+
+/* 健康趋势、分享卡片 */
+.widget.link { cursor: pointer; }
+.widget.link h3 { display: flex; align-items: center; justify-content: space-between; }
+.widget.link .go { opacity: .5; transition: opacity .2s, transform .2s; }
+.widget.link:hover .go { opacity: 1; transform: translateX(2px); }
+svg.trend { width: 100%; height: auto; display: block; margin: 4px 0 8px; }
+svg.trend .grid line { stroke: var(--line); stroke-width: 1; }
+svg.trend text { fill: var(--text-3); font-size: 11px; }
+svg.trend path { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; opacity: .55; }
+svg.trend path.total { stroke: var(--accent); stroke-width: 2.5; opacity: 1; }
+svg.trend .c0, .trend-legend .c0 { stroke: #7aa2f7; color: #7aa2f7; }
+svg.trend .c1, .trend-legend .c1 { stroke: #9ece6a; color: #9ece6a; }
+svg.trend .c2, .trend-legend .c2 { stroke: #e0af68; color: #e0af68; }
+svg.trend .c3, .trend-legend .c3 { stroke: #bb9af7; color: #bb9af7; }
+svg.trend .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 14px; }
+.trend-legend span::before { content: ''; display: inline-block; width: 12px; height: 3px; border-radius: 2px; background: currentColor; vertical-align: middle; margin-right: 6px; }
+.trend-legend .total { color: var(--accent); }
+.trend-legend .muted::before { display: none; }
+.trend-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+.trend-table th { text-align: left; font-weight: 500; color: var(--text-3); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.trend-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.trend-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.trend-table .delta { margin-left: 6px; font-size: 11px; }
+.btn.small { padding: 3px 10px; font-size: 12px; min-height: 0; }
+.share-img { display: block; width: min(100%, 420px); margin: 0 auto; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }

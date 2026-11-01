@@ -256,6 +256,12 @@
       case 'exportReport': return { path: 'C:\\Users\\你\\Desktop\\Iris-体检报告-20261025-0830.md' };
       case 'openDefender': case 'openPath': case 'openUrl': case 'setWindowTheme': return {};
       case 'openBrowserSettings': return { ok: true };
+      case 'saveImage': case 'copyImage': return { ok: true };
+      case 'getTrend': {
+        const x = (await load()).extra || {}, h = x.history || [];
+        return { points: h.map((p, i) => ({ id: 'demo', date: p[0], total: p[1], problems: Math.max(3, 14 - i * 2), handled: i === h.length - 2 ? 6 : i === 1 ? 2 : 0, offline: i === 0,
+          categories: { '安全': Math.min(100, p[1] - 14 + i * 3), '性能与后台': Math.min(100, p[1] + 4), '存储': Math.min(100, p[1] - 2 - i), '稳定性': Math.min(100, p[1] + 16) } })) };
+      }
       case 'aimWindow': await sleep(700); return { kind: 'app', process: 'qnews', title: 'QuickVPN 今日热点', path: 'C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe',
         company: 'QuickVPN Ltd', product: 'QuickVPN 资讯', signer: 'QuickVPN Ltd', software: 'QuickVPN', publisher: 'QuickVPN Ltd',
         launchedBy: [{ kind: 'startup', name: 'QNews', enabled: true }, { kind: 'task', name: 'QuickVPN News', state: 'Ready' }],

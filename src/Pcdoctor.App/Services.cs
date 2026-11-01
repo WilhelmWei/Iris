@@ -809,6 +809,30 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         return GetProfile();
     }
 
+    // ================================================================== 健康趋势
+    /// <summary>历次本机体检的健康分、各方面分数、发现和处理了几项（最多 30 次）。</summary>
+    public JsonObject GetTrend()
+    {
+        var points = new JsonArray();
+        foreach (var r in LocalReports().TakeLast(30))
+        {
+            var cats = new JsonObject();
+            foreach (var (k, v) in r.Judge["score"]?["categories"] as JsonObject ?? [])
+                if (v?["score"] is JsonValue sv && sv.TryGetValue<double>(out var x)) cats[k] = (int)Math.Round(x);
+            var fs = (r.Judge["judgement"]?["findings"] as JsonArray ?? []).OfType<JsonObject>().ToList();
+            int handled = 0;
+            try { handled = Handled(r.Id).Count(kv => kv.Value?["status"]?.ToString() == "done"); } catch { }
+            points.Add(new JsonObject
+            {
+                ["id"] = r.Id, ["time"] = r.Meta["reportTime"]?.DeepClone(), ["date"] = ShortDate(r.Meta["reportTime"]?.ToString()),
+                ["total"] = Score(r), ["categories"] = cats,
+                ["problems"] = fs.Count(f => f["verdict"]?.ToString() is "problem" or "leftover" or "bloat" or "suspicious"),
+                ["handled"] = handled, ["offline"] = r.Judge["offline"]?.DeepClone(),
+            });
+        }
+        return new JsonObject { ["points"] = points };
+    }
+
     // ================================================================== 窗口瞄准器、浏览器设置页
     JsonObject? lastAim;
 
