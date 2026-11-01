@@ -34,6 +34,7 @@
 - 空间统一（1.0.0-beta.9，已打包未发布）：报告「空间」卡片是空间的唯一入口，搬文件夹作为清单项（编号 `move:文件夹`，`Services.BuildPlan` 现量生成，一键加入不加）；执行结果带 C 盘前后剩余和每步明细（`Services.Details`，只在本机）；清缓存删掉的文件写进备份目录 `lists/*.tsv`（`OpLists`），界面清单窗口分页读；演示模式按 `getState.identity` 遮挡
 - 服务端和反馈控制台在私有仓库 iris-cloud（阿里云中国香港）
 - 下一阶段（1.0.0-beta.10，已打包未发布，进度表「下一阶段」1–7）：一键更新（`Updater`，校验后改名换新版、可回到上一版）、AI 问卷和「关于这台电脑」「Iris 记得的事」（画像 `profile.json` 进证据包，提示词 v0.7）、6 种性格 + 狂暴模式 + 潜艇红主题 + 还原点开关、开机耗时 / 硬盘健康 / 升级建议（采集 0.3.1）、弹窗来源和篡改检测（采集 0.3.2；`shortcut.fix`、`browser.remove_start_policy`、引导 `browser.review`）、窗口瞄准器（`WindowAim` 遮罩点选 + `WindowSource` 按报告找来源，不装钩子）、分享卡片和健康趋势；隐私政策 2026-11-01.2。代码签名申请材料在 `docs/signing-application.md`（等作者提交）；「家人的电脑」设计稿 `docs/design/family.md`（等作者看）
+- 候选版（beta.10 之后，在 main 上，还没打包；进度表「候选版」1–8）：采集脚本 0.3.7——待重启、远控无人值守、系统服务被禁用、更新被策略关闭、系统更新多久没装 / Win10 停止支持、BitLocker 恢复密钥提醒、脚本自启动、单进程累计 CPU、可靠性时间线（提示词 v0.8）、Secure Boot 证书状态（只记录）；LOLDrivers 指纹比对（`kb/loldrivers.json` 由 `tools/update_loldrivers.py` 生成，Apache-2.0 许可随包附上 `THIRD-PARTY-NOTICES.txt`）；健康分封顶（恶意痕迹 49、UAC 关 69，上限数值等作者定）；报告专题「这台电脑被改过的地方」；知识库补反作弊残留；隐私政策 2026-11-01.3
 - [ ] beta.4 ~ beta.10 还没在真实 Windows 上完整跑过（"提权后窗口回到前台"、处理记录发送、C 盘空间扫描的速度和硬链接去重、搬文件夹的速度和移动硬盘识别、cleanmgr /sagerun 在 Windows 11 上的表现、卸载残留的误报率、一键更新、系统还原点、开机记录和硬盘磨损的读取、快捷方式修改、窗口瞄准器的遮罩和高分屏坐标未验证）
 - [ ] MVP 放行：10 台不同机器、规则和 AI 结论误判率的 95% 上限 < 10%
 
