@@ -67,6 +67,23 @@
   --ring-glow: drop-shadow(0 0 18px rgba(255, 90, 40, .45));
   color-scheme: dark;
 }
+/* 潜艇红（狂暴模式的隐藏主题）：像潜艇作战灯光，整个界面只剩黑和红。
+   状态不靠红绿区分：正常用近白的淡色、有问题用橙红，再加图标形状，保证看得清 */
+:root[data-theme="sub"] {
+  --bg: #080000; --bg-glow-1: rgba(255, 24, 12, .26); --bg-glow-2: rgba(160, 0, 0, .22);
+  --surface: #130202; --surface-2: #1e0404; --surface-3: #2b0707; --glass: rgba(20, 2, 2, .8);
+  --line: rgba(255, 60, 40, .16); --line-strong: rgba(255, 70, 50, .34);
+  --text: #ffd9d1; --text-2: #e09a8e; --text-3: #a5605a;
+  --g1: #ff1a12; --g2: #ff3b2f; --g3: #ff6a4a; --accent: #ff3b2f; --accent-soft: rgba(255, 59, 47, .16); --on-accent: #120000;
+  --btn-2: #ff3b2f; --on-btn-2: #120000;
+  --c-sus: #ff2d20; --c-prob: #ff8a3d; --c-left: #ffb0a0; --c-bloat: #ff7766; --c-unc: #c98a80; --c-ok: #ffe8e2;
+  --shadow-1: none; --shadow-sheet: -30px 0 80px rgba(0, 0, 0, .6); --scrim: rgba(10, 0, 0, .6);
+  --ring-glow: drop-shadow(0 0 22px rgba(255, 30, 20, .6));
+  color-scheme: dark;
+}
+:root[data-theme="sub"] body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .14) 0 1px, transparent 1px 3px); }
+
 /* 深空：纯黑白，几乎不用彩色；主按钮是白底黑字，次要按钮是线框 */
 :root[data-theme="space"] {
   --bg: #000000; --bg-glow-1: transparent; --bg-glow-2: transparent;
@@ -529,6 +546,8 @@ details.fold .fold-body { padding: 0 2px 18px; display: grid; gap: 12px; animati
 .pv.space { background: #000; }
 .pv.paper { background: radial-gradient(60% 70% at 55% 0%, rgba(240, 98, 40, .2), transparent 70%), #f4f1eb; }
 .pv.auto { background: linear-gradient(115deg, #0c0b0c 50%, #f4f1eb 50%); }
+.pv.sub { background: radial-gradient(60% 70% at 55% 0%, rgba(255, 24, 12, .6), transparent 70%), #080000; }
+.pv.sub .a { border-color: #ff3b2f; } .pv.sub .b, .pv.sub .c { background: #6e1a14; } .pv.sub .d { background: #1e0404; }
 .pv .a { left: 12%; top: 22%; width: 26%; height: 26%; border-radius: 50%; border: 3px solid; }
 .pv .b { left: 46%; top: 26%; width: 40%; height: 7%; }
 .pv .c { left: 46%; top: 42%; width: 28%; height: 7%; }
@@ -1051,3 +1070,22 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 .quiz-qs li > i { font-style: normal; }
 .quiz-other { max-width: 420px; }
 .quiz-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* 性格 */
+.persona-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.persona { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: none; color: var(--text); cursor: pointer; font: inherit; }
+.persona b { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.persona span { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.persona[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.persona.rampage { border-color: rgba(255, 40, 30, .55); background: linear-gradient(135deg, rgba(255, 30, 20, .14), transparent); }
+.persona.rampage b { color: #ff3b30; }
+.persona.rampage[aria-pressed="true"] { border-color: #ff2d20; background: rgba(255, 30, 20, .22); box-shadow: 0 0 0 1px #ff2d20 inset; }
+.caution { font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: #fff; background: #e0221a; letter-spacing: .02em; }
+.rampage-bulk { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 40, 30, .5); background: rgba(255, 30, 20, .07); }
+.rampage-btn { background: #e0221a; border-color: transparent; color: #fff; justify-self: start; }
+.rampage-btn:hover { background: #ff2d20; }
+.rampage-irrev { display: grid; gap: 6px; font-size: 13px; }
+.rampage-irrev b { font-weight: 500; color: var(--text); }
+/* 长辈模式：字大一点 */
+:root.elder body { font-size: 15.5px; }
+:root.elder .row .t, :root.elder .finding b { font-size: 16px; }

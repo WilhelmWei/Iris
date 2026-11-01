@@ -39,7 +39,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const M = {
     settings: { mode: 'ai', provider: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', hasKey: true, keyTail: '7f3a',
-                allowHosted: false, hostedAvailable: false, theme: 'dark', reduceMotion: false, defaultScan: false, demoMode: false, pro: false,
+                allowHosted: false, hostedAvailable: false, theme: 'dark', reduceMotion: false, defaultScan: false, demoMode: false, pro: false, personality: 'doctor', subUnlocked: false, restorePoint: false,
                 showLessons: true, lessonIndex: 0, showTips: true, onboarded: /[?&]onboarded\b/.test(location.search), betaConsent: null, feedbackServer: true },
     report: null, journal: [], answers: {}, privacyAccepted: true,
   };
@@ -199,6 +199,15 @@
         excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '你自己建的文件夹名和文件名（C 盘空间只发系统已知位置的大小）', '文档、照片、聊天记录、浏览记录、密码'] };
       case 'openUpdate': return {};
       case 'getProfile': return profileView();
+      case 'setPersonality': {
+        const S = M.settings;
+        if (p.name === 'rampage' && S.personality !== 'rampage') {
+          if (!await nativeConfirm('打开狂暴模式？', ['下一次体检查到底；「一键加入」会把红线以内能做的都加进清单。不能撤销的单独让你勾。界面换成潜艇红', '做完一批处理后自动换回原来的性格'])) return { cancelled: true, settings: Object.assign({}, S) };
+          S.personalityBefore = S.personality; S.themeBefore = S.theme; S.theme = 'sub'; S.subUnlocked = true;
+        } else if (p.name !== 'rampage' && S.personality === 'rampage') { if (S.theme === 'sub' && S.themeBefore) S.theme = S.themeBefore; }
+        S.personality = p.name;
+        return { settings: Object.assign({}, S) };
+      }
       case 'saveProfile': M.profile = Object.assign({}, M.profile, { uses: p.uses || [], pains: p.pains || [], portable: p.portable, who: p.who, note: p.note }); return profileView();
       case 'forget': (p.kind === 'known' ? M.knownMem : (M.profile.answers || [])).splice(p.index, 1); return profileView();
       case 'answerQuestions': {
@@ -442,6 +451,11 @@
       emit('opProgress', { key: s.key, status: entry.status, message: entry.message });
     }
     if (M.move) M.move.system.freeGB = +((freeBefore + freed) / GBb).toFixed(1);
+    if (M.settings.restorePoint && p.steps.some(s => s.needsAdmin)) emit('restorePoint', { restorePoint: '已请 Windows 建好系统还原点（如果今天已经建过一个，Windows 会跳过这一次）' });
+    if (M.settings.personality === 'rampage') {
+      const S = M.settings; S.personality = S.personalityBefore || 'doctor'; if (S.theme === 'sub' && S.themeBefore) S.theme = S.themeBefore;
+      setTimeout(() => emit('personality', { settings: Object.assign({}, S), message: '狂暴模式已经用完一次，换回原来的性格' }), 300);
+    }
     emit('planDone', { batchId: batch, freeBefore, freeAfter: freeBefore + freed });
   }
 })();

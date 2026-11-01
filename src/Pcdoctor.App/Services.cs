@@ -501,8 +501,9 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var known = KnownStore.Load(KnownPath(id, meta));
         var kb = Kb.LoadEmbedded();
         // 「关于这台电脑」只用于这台电脑自己的报告；朋友发来的报告不带
-        var profile = meta["source"]?.ToString() == "local" ? AppData.ReadJson(AppData.ProfileFile) : null;
         var s = AppData.LoadSettings();
+        var profile = meta["source"]?.ToString() == "local" ? AppData.ReadJson(AppData.ProfileFile) as JsonObject ?? new JsonObject() : null;
+        if (profile != null && AppData.StyleOf(s.Personality) is { } style) profile["style"] = style;
         var key = AppData.GetApiKey(s);
         if (s.Provider == "hosted" && (!s.AllowHosted || AppData.HostedBaseUrl == null)) key = null;  // 没有打开"允许发送到托管服务"：不发送
         var sw = Stopwatch.StartNew();
@@ -935,11 +936,12 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
             if (admin.Count > 0)
             {
                 var dir = NewRunDir();
-                var bytes = JsonSerializer.SerializeToUtf8Bytes(new Plan { PlanId = batch, ReportId = reportId, Steps = admin }, OpsJson.Default.Plan);
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(new Plan { PlanId = batch, ReportId = reportId, Steps = admin,
+                                                                           RestorePoint = AppData.LoadSettings().RestorePoint }, OpsJson.Default.Plan);
                 File.WriteAllBytes(Path.Combine(dir, "plan.json"), bytes);
                 // 方案的哈希放在命令行里（UAC 确认后改不了），辅助进程校验后才执行；记录由辅助进程存进受保护目录
                 var p = StartHelper("execute", dir, elevate: true, "--sha256", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
-                var done = p == null ? null : await WaitHelper(p, dir, o => emit("opProgress", o), CancellationToken.None);
+                var done = p == null ? null : await WaitHelper(p, dir, o => emit(o["restorePoint"] != null ? "restorePoint" : "opProgress", o), CancellationToken.None);
                 if (p == null || done?["ok"]?.GetValue<bool>() != true)
                     foreach (var s in admin)
                         emit("opProgress", new JsonObject { ["key"] = s.Key, ["status"] = Status.Failed,
@@ -952,6 +954,15 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         {
             executingPlan = false;
             moveRunning = false;
+            // 狂暴模式只生效一次：做完这一批就换回原来的性格和主题
+            var st = AppData.LoadSettings();
+            if (st.Personality == "rampage")
+            {
+                st.Personality = st.PersonalityBefore ?? "doctor";
+                RestoreFromRampage(st);
+                AppData.SaveSettings(st);
+                emit("personality", new JsonObject { ["settings"] = AppData.SettingsForUi(st), ["message"] = "狂暴模式已经用完一次，换回原来的性格" });
+            }
             if (moving) lock (moveLock) moveCache = null;
             emit("planDone", new JsonObject { ["batchId"] = batch, ["freeBefore"] = freeBefore, ["freeAfter"] = SystemFree() });
             AutoSendHandling("execute", e => e.BatchId == batch);
@@ -1437,6 +1448,37 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         };
     }
 
+    // ================================================================== 性格
+    /// <summary>换性格。开狂暴模式要先在原生确认框里同意；它只生效一次（做完一批处理后自动换回原来的性格和主题）。</summary>
+    public JsonObject SetPersonality(string name)
+    {
+        if (!AppData.Personalities.Contains(name)) throw new ArgumentException("不认识的性格");
+        var s = AppData.LoadSettings();
+        if (name == "rampage" && s.Personality != "rampage")
+        {
+            if (!Confirm("打开狂暴模式？", [new ChangeItem("狂暴模式（谨慎开启）",
+                    "下一次体检查到底；报告里「一键加入」会把红线以内能做的都加进清单（包括有代价的项，拿不准的项用可以撤销的方式处理）。" +
+                    "删 Windows.old、卸载软件这类不能撤销的，会单独列出来让你再勾一次。界面换成潜艇红",
+                    true, "做完一批处理后自动换回原来的性格；每一步照样弹确认框、照样能撤销；不关 Defender、防火墙、UAC，不永久删除你的文件", false)]))
+                return new JsonObject { ["cancelled"] = true, ["settings"] = AppData.SettingsForUi(s) };
+            s.PersonalityBefore = s.Personality;
+            s.ThemeBefore = s.Theme;
+            s.Theme = "sub";
+            s.SubUnlocked = true;
+        }
+        else if (name != "rampage" && s.Personality == "rampage") RestoreFromRampage(s);
+        s.Personality = name;
+        AppData.SaveSettings(s);
+        return new JsonObject { ["settings"] = AppData.SettingsForUi(s) };
+    }
+
+    static void RestoreFromRampage(AppData.Settings s)
+    {
+        if (s.Theme == "sub" && s.ThemeBefore != null) s.Theme = s.ThemeBefore;
+        s.ThemeBefore = null;
+        s.PersonalityBefore = null;
+    }
+
     // ================================================================== 设置与其他
     public JsonObject SaveSettings(JsonNode p)
     {
@@ -1452,11 +1494,12 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         if (p["baseUrl"] is { } b && b.ToString().Length > 0) s.BaseUrl = b.ToString();
         if (p["model"] is { } m && m.ToString().Length > 0) s.Model = m.ToString();
         if (p["mode"] is { } md && md.ToString() is "ai" or "offline") s.Mode = md.ToString();
-        if (p["theme"]?.ToString() is { } th && AppData.Themes.Contains(th)) s.Theme = th;
+        if (p["theme"]?.ToString() is { } th && AppData.Themes.Contains(th) && (th != "sub" || s.SubUnlocked)) s.Theme = th;
         bool? B(string k) => p[k] is JsonValue v && v.TryGetValue<bool>(out var x) ? x : null;
         if (B("reduceMotion") is { } rm) s.ReduceMotion = rm;
         if (B("pro") is { } pro) s.Pro = pro;
         if (B("demoMode") is { } dm) s.DemoMode = dm;
+        if (B("restorePoint") is { } rp) s.RestorePoint = rp;
         if (B("defaultScan") is { } ds) s.DefaultScan = ds;
         if (B("showLessons") is { } sl) s.ShowLessons = sl;
         if (B("showTips") is { } st) s.ShowTips = st;

@@ -239,6 +239,8 @@ public static class Helper
         var steps = plan?.Steps ?? [];
         var ctx = AdminContext();
         var journal = new JournalStore(AdminJournal);
+        if (plan?.RestorePoint == true && steps.Count > 0)
+            Progress(dir, new JsonObject { ["restorePoint"] = RestorePoint.Create("Iris 处理前") });
         foreach (var s in steps)
         {
             if (Cancelled(dir)) break;

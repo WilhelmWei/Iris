@@ -32,6 +32,7 @@ public static class UserProfile
         if (Py.KindOf(o["portable"]) == Py.Kind.Bool) result["portable"] = o["portable"]!.GetValue<bool>();
         if (Py.S(o["who"]) is { } who && Py.Strip(who).Length > 0) result["who"] = Py.Head(Py.Strip(who), 20);
         if (Py.S(o["note"]) is { } note && Py.Strip(note).Length > 0) result["note"] = Py.Head(Py.Strip(note), 300);
+        if (Py.S(o["style"]) is { } style && Py.Strip(style).Length > 0) result["style"] = Py.Head(Py.Strip(style), 60);
         var answers = new JsonArray();
         if (o["answers"] is JsonArray raw)
             foreach (var a in raw.Skip(Math.Max(0, raw.Count - 10)))

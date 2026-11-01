@@ -104,7 +104,7 @@
     view: 'home', app: null, report: null, loading: false, filter: 'todo', cat: null,
     selected: new Set(), dismissed: new Set(), pro: false, mode: 'offline', scan: false,
     progress: null, stream: [], streamFresh: 0, sectionEvents: false, runStart: 0, running: false,
-    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, moveDrive: {}, openDetail: new Set(), quiz: {}, quizHidden: new Set(), quizSending: false, profileData: null, profileDraft: null, executing: false, lastRun: null, carried: null,
+    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, moveDrive: {}, openDetail: new Set(), quiz: {}, quizHidden: new Set(), rampagePick: new Set(), quizSending: false, profileData: null, profileDraft: null, executing: false, lastRun: null, carried: null,
     journal: [], sheet: null, tip: 0, lessonConfirm: false, enter: true,
     markOpen: null, markKind: 'wrong', fb: {}, ob: null, seed: Math.floor(Math.random() * 1000),
   };
@@ -553,6 +553,7 @@
     const fs = state.report.result.judgement.findings;
     let list = buckets(fs)[state.filter];
     if (state.cat) list = list.filter(f => f.flagIds.some(id => state.cat.ids.includes(id)));
+    if (persona() === 'butler' && !state.listAll) list = list.filter(f => f.verdict !== 'normal');
     return list.slice().sort((a, b) => (state.dismissed.has(keyOf(a)) - state.dismissed.has(keyOf(b))) || (ORDER[a.verdict] - ORDER[b.verdict]) || (b.confidence - a.confidence));
   }
   function viewReport() {
@@ -845,8 +846,32 @@
     }
     return out;
   }
+  /** 狂暴模式的一键：绿色、黄色、拿不准的（用可撤销的替代操作）、能搬的文件夹都加；Windows.old 和卸载软件这类不能撤销的单独勾 */
+  function rampageSet() {
+    const R = state.report, keys = [], irreversible = [];
+    for (const f of R.result.judgement.findings) {
+      const k = keyOf(f);
+      if (!canDo(f) || state.selected.has(k) || markOf(k)) continue;
+      if (isOldWin(f) || f.proposedAction === 'app.uninstall') { irreversible.push(f); continue; }
+      if (f.needsUser && !answerOf(k) && !altOf(k)) continue;
+      keys.push(k);
+    }
+    const D = state.move && state.move.data;
+    if (D && D.drives.length) D.folders.filter(f => !f.movedTo && !f.problem && f.bytes >= 1024 * 1024 * 1024)
+      .forEach(f => { if (!state.selected.has('move:' + f.id)) keys.push('move:' + f.id); });
+    return { keys, irreversible };
+  }
   function bulkBar() {
-    const s = suggestions(), n = s.green.length + (state.bulkYellow ? s.yellow.length : 0);
+    if (persona() === 'rampage' && state.report.canExecute !== false) {
+      const r = rampageSet();
+      if (!r.keys.length && !r.irreversible.length) return '';
+      return `<div class="bulk rampage-bulk"><button class="btn rampage-btn" data-act="rampage-add" ${r.keys.length || state.rampagePick.size ? '' : 'disabled'}>${icon('list')}狂暴：一键加入 ${r.keys.length + state.rampagePick.size} 项</button>
+        <span class="muted small">包括有代价的项、拿不准的项（用可以撤销的方式处理）和能搬到其他盘的文件夹。</span>
+        ${r.irreversible.length ? `<div class="rampage-irrev"><b>这 ${r.irreversible.length} 项不能撤销，要的话单独勾：</b>${r.irreversible.map(f => `<label class="check"><input type="checkbox" data-act="rampage-pick" data-k="${esc(keyOf(f))}" ${state.rampagePick.has(keyOf(f)) ? 'checked' : ''}><span class="box">${icon('check')}</span>${esc(pii(f.object))}（${esc(f.actionName)}）</label>`).join('')}</div>` : ''}</div>`;
+    }
+    const s = suggestions();
+    if (persona() === 'elder') s.yellow = [];
+    const n = s.green.length + (state.bulkYellow ? s.yellow.length : 0);
     if (!s.green.length && !s.yellow.length) return '';
     return `<div class="bulk"><button class="btn primary" data-act="bulk-add" ${n ? '' : 'disabled'}>${icon('list')}一键加入建议的 ${n} 项</button>
       ${s.yellow.length ? `<label class="check"><input type="checkbox" data-act="bulk-yellow" ${state.bulkYellow ? 'checked' : ''}><span class="box">${icon('check')}</span>也包括 ${s.yellow.length} 项有代价的</label>` : ''}
@@ -1277,6 +1302,32 @@
     custom: { name: '自定义（OpenAI 兼容接口）', baseUrl: '', model: '' },
   };
   const THEMES = [['dark', '余烬', 'ember'], ['space', '深空', 'space'], ['light', '米白', 'paper'], ['auto', '跟随系统', 'auto']];
+  /** 开过一次狂暴模式后，主题里多一个「潜艇红」 */
+  const themes = () => THEMES.concat(S().subUnlocked || S().theme === 'sub' ? [['sub', '潜艇红', 'sub']] : []);
+  // ------------------------------------------------------------------ 性格：只改"查多细、讲多少、怎么说"，不碰红线和确认框
+  const PERSONAS = [
+    ['doctor', '医生', '默认。温和稳妥：先说不严重的部分，只推荐低风险的，讲清楚为什么'],
+    ['detective', '侦探', '一查到底：体检时先做 Defender 扫描，拿不准的线索也列出来'],
+    ['butler', '管家', '不想看、只想搞定：每条只说一句，正常的项先收起来'],
+    ['teacher', '老师', '讲原理、多给小知识，教你以后自己避坑'],
+    ['engineer', '工程师', '话少，技术细节全部展开：路径、规则编号、校验记录'],
+    ['elder', '长辈模式', '字大、选项少、大白话，只给最稳妥的几项'],
+  ];
+  const persona = () => S().personality || 'doctor';
+  /** 性格带来的默认值：侦探和狂暴默认先扫描；工程师相当于专业模式 */
+  function applyPersona() {
+    const p = persona();
+    state.scan = !!S().defaultScan || p === 'detective' || p === 'rampage';
+    state.pro = !!S().pro || p === 'engineer';
+    document.documentElement.classList.toggle('elder', p === 'elder');
+  }
+  function personaSection() {
+    const p = persona();
+    return `<div class="persona-grid">${PERSONAS.map(([k, n, d]) => `<button class="persona" data-act="persona" data-v="${k}" aria-pressed="${p === k}"><b>${n}</b><span>${esc(d)}</span></button>`).join('')}
+      <button class="persona rampage" data-act="persona" data-v="rampage" aria-pressed="${p === 'rampage'}"><b>狂暴模式 <i class="caution">谨慎开启</i></b>
+        <span>查到底，红线以内能做的都加进清单；不能撤销的单独让你勾。只生效一次，界面换成潜艇红</span></button></div>
+      <p class="muted small" style="margin:10px 0 0">任何性格都不会越过红线：不关 Defender、防火墙、UAC，不永久删除你的文件，每一步照样弹确认框、照样能撤销。</p>`;
+  }
   function swRow(ic, title, desc, key, extra) {
     return `<div class="set-row"><span class="ic">${icon(ic)}</span><div><b>${title}</b><p>${desc}</p>${extra || ''}</div>
       <label class="switch"><input type="checkbox" id="set-${key}" data-set="${key}" ${S()[key] ? 'checked' : ''}><span class="track"></span><span class="sr">${title}</span></label></div>`;
@@ -1289,7 +1340,7 @@
     return `<div class="page" style="max-width:820px">
       <h1>设置</h1>
       <section class="set-group"><h2>外观</h2><div class="card set-card">
-        <div class="themes">${THEMES.map(([k, n, pv]) => `<button class="theme-pick" data-act="theme" data-v="${k}" aria-pressed="${(s.theme || 'dark') === k}">
+        <div class="themes">${themes().map(([k, n, pv]) => `<button class="theme-pick" data-act="theme" data-v="${k}" aria-pressed="${(s.theme || 'dark') === k}">
           <span class="pv ${pv}"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></span>${n}</button>`).join('')}</div>
         ${swRow('motion', '减少动效', '关掉滑入、数字滚动等动画。Windows 里关闭了动画效果时会自动减少。', 'reduceMotion')}
         ${swRow('pro', '专业模式', '显示规则编号、知识库条目和模型输出的校验记录。', 'pro')}
@@ -1308,6 +1359,8 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn solid" data-act="save-settings">保存</button><button class="btn" data-act="test-conn">测试连接</button></div>
         </div></div></section>
 
+      <section class="set-group"><h2>性格</h2><div class="card set-card pad">${personaSection()}</div></section>
+
       <section class="set-group"><h2>关于这台电脑</h2><div class="card set-card pad">
         <p class="muted small" style="margin:0 0 12px">Iris 按这些排轻重、决定建议有多稳妥。只用于这台电脑自己的体检；用 AI 研判时会随精简证据包一起发给你选的模型。</p>
         ${state.profileDraft ? profileForm() : '<div class="skel" style="height:120px"></div>'}
@@ -1318,6 +1371,7 @@
         ${state.profileData ? memoriesHtml() : '<div class="skel" style="height:60px"></div>'}</div></section>
 
       <section class="set-group"><h2>体检</h2><div class="card set-card">
+        ${swRow('undo', '执行前先建系统还原点', '需要管理员权限的处理开始前，先请 Windows 建一个系统还原点，Iris 自己的撤销之外再多一层保险。Windows 一般同一天只建一个，今天已经建过时会跳过；系统还原关着时也建不了，会如实告诉你。', 'restorePoint')}
         ${swRow('scan', '默认先用 Defender 快速扫描', '体检前让 Windows 自带的 Microsoft Defender 快速扫描一遍，多 1–5 分钟。', 'defaultScan')}
       </div></section>
 
@@ -1648,7 +1702,7 @@
         ${profileForm()}
         <div class="ob-acts"><button class="btn primary big" data-act="pf-save" data-then="next">下一步 <span class="arrow">${icon('arrow')}</span></button></div></div>`;
       case 'look': return `<div class="ob-page"><div class="eyebrow">外观 · 可跳过</div><h2>选一个你喜欢的样子</h2>
-        <div class="themes ob-themes">${THEMES.map(([k, n, pv]) => `<button class="theme-pick" data-act="theme" data-v="${k}" aria-pressed="${(s.theme || 'dark') === k}">
+        <div class="themes ob-themes">${themes().map(([k, n, pv]) => `<button class="theme-pick" data-act="theme" data-v="${k}" aria-pressed="${(s.theme || 'dark') === k}">
           <span class="pv ${pv}"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></span>${n}</button>`).join('')}</div>
         <label class="switch"><input type="checkbox" id="ob-motion" data-set="reduceMotion" ${s.reduceMotion ? 'checked' : ''}><span class="track"></span>减少动效</label>
         <div class="ob-acts"><button class="btn primary big" data-act="ob-next">下一步 <span class="arrow">${icon('arrow')}</span></button></div></div>`;
@@ -1712,7 +1766,7 @@
     const prev = S()[key];
     state.app.settings[key] = value;
     if (key === 'theme' || key === 'reduceMotion') { applyLook(); if (state.ob) obRender(false); }
-    if (key === 'defaultScan') state.scan = value;
+    if (key === 'defaultScan' || key === 'pro') applyPersona();
     render(); if (state.sheet) renderSheet();
     try { state.app.settings = Object.assign(state.app.settings, await call('saveSettings', { [key]: value })); }
     catch (e) { state.app.settings[key] = prev; applyLook(); render(); return; }
@@ -1817,6 +1871,8 @@
   api.on('checkupError', e => { state.running = false; state.view = 'home'; state.enter = true; render(); toast(e.message); });
   api.on('opProgress', p => { state.confirming = false; state.planStatus[p.key] = p; renderPlan(); });
   api.on('planError', e => { toast(e.message); });
+  api.on('restorePoint', e => toast(e.restorePoint));
+  api.on('personality', e => { state.app.settings = e.settings; applyLook(); applyPersona(); setTimeout(() => toast(e.message), 1500); if (state.view === 'settings') render(); });
   api.on('planDone', async d => {
     const batchId = d && d.batchId;
     await refreshAfterChange();
@@ -1945,6 +2001,23 @@
       }
       case 'ob-start': openOnboarding(0); break;
       case 'ob-next': obGo(state.ob.step + 1); break;
+      case 'persona': {
+        const v = el.dataset.v;
+        try {
+          const r = await call('setPersonality', { name: v });
+          if (r.cancelled) break;
+          state.app.settings = r.settings; applyLook(); applyPersona(); render();
+          toast(v === 'rampage' ? '狂暴模式已打开：下一次处理做完后自动换回来' : `已换成「${(PERSONAS.find(x => x[0] === v) || [, ''])[1]}」，下次研判生效`);
+        } catch (e) {}
+        break;
+      }
+      case 'rampage-pick': { const k = el.dataset.k; state.rampagePick.has(k) ? state.rampagePick.delete(k) : state.rampagePick.add(k); render(); break; }
+      case 'rampage-add': {
+        const r = rampageSet(), keys = r.keys.concat([...state.rampagePick].filter(k => r.irreversible.some(f => keyOf(f) === k)));
+        keys.forEach(x => { state.selected.add(x); state.dismissed.delete(x); }); saveSel();
+        state.flash = new Set(keys); setTimeout(() => { state.flash = null; }, 1600);
+        toast(`狂暴：已加入 ${keys.length} 项。到「处理」页执行，照样逐项确认`); setChrome(); render(); break;
+      }
       case 'pf-pick': {
         const p = state.profileDraft = state.profileDraft || { uses: [], pains: [] }, f = el.dataset.f, v = el.dataset.v;
         if (f === 'uses' || f === 'pains') { const a = p[f] = p[f] || []; p[f] = a.includes(v) ? a.filter(x => x !== v) : a.concat(v); }
@@ -2153,7 +2226,7 @@
     s.theme = s.theme || 'dark'; if (s.showLessons == null) s.showLessons = true; if (s.showTips == null) s.showTips = true;
     applyLook();
     state.mode = s.hasKey || s.allowHosted ? (s.mode || 'ai') : 'offline';
-    state.scan = !!s.defaultScan; state.pro = !!s.pro;
+    state.scan = !!s.defaultScan; state.pro = !!s.pro; applyPersona();
     document.getElementById('version').textContent = `Iris ${state.app.version} · 只读体检 · 不常驻`;
     const initial = location.hash.replace('#', '');
     if (initial === 'report' && state.app.lastReport) { await loadReport(state.app.lastReport.id); state.view = 'report'; }

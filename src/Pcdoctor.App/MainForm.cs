@@ -224,6 +224,7 @@ public sealed class MainForm : Form
             case "rejudge": return await services.Rejudge(S("id"), S("mode"));
             case "answer": return services.Answer(S("reportId"), S("key"), S("answer"), S("note"));
             case "getProfile": return services.GetProfile();
+            case "setPersonality": return services.SetPersonality(S("name"));
             case "saveProfile": return services.SaveProfile(p);
             case "answerQuestions": return await services.AnswerQuestions(S("reportId"), p["answers"]!.AsArray());
             case "forget": return services.Forget(S("kind"), I("index", -1));

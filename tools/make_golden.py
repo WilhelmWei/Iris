@@ -358,7 +358,7 @@ def main():
     names.append(run_case('judge_report_known', tj.REPORT, known=known, raw=JUDGE_RAW, note='用户确认过 3 条排除项和 XLWFP'))
     names.append(run_case('messy_model', tj.REPORT, raw=MESSY_RAW, note='模型输出各种不守规矩的写法'))
     profile = {'uses': ['  办公  ', '游戏', 3, '', '设计剪辑', '写代码', '上网课', '炒股', '多出来的'], 'pains': ['卡', '开机慢 😀' * 5],
-               'portable': True, 'who': '\x1c自己\x1f', 'note': '  公司电脑，IT 装的软件别动。' + '很长' * 200, 'ignored': 'x',
+               'portable': True, 'who': '\x1c自己\x1f', 'style': '侦探：一查到底' + '很长' * 40, 'note': '  公司电脑，IT 装的软件别动。' + '很长' * 200, 'ignored': 'x',
                'answers': [{'question': f'问题{i}', 'answer': '是', 'flagIds': ['F001', 7]} for i in range(12)]
                           + [{'question': '  ', 'answer': '空问题'}, 'not a dict', {'question': '远程软件是你装的吗？', 'answer': '不是，没见过'}]}
     raw_q = dict(JUDGE_RAW, questions=[

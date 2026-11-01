@@ -58,6 +58,15 @@ public static class AppData
         public bool ReduceMotion { get; set; }
         public bool Pro { get; set; }
         public bool DemoMode { get; set; }
+        /// <summary>性格：doctor（默认）/ detective / butler / teacher / engineer / elder / rampage（狂暴，只生效一次）。</summary>
+        public string Personality { get; set; } = "doctor";
+        /// <summary>开狂暴模式之前的性格和主题：做完一批处理后自动换回来。</summary>
+        public string? PersonalityBefore { get; set; }
+        public string? ThemeBefore { get; set; }
+        /// <summary>开过一次狂暴模式后，主题列表里出现「潜艇红」。</summary>
+        public bool SubUnlocked { get; set; }
+        /// <summary>执行需要管理员权限的处理前，先建系统还原点。</summary>
+        public bool RestorePoint { get; set; }
         public bool DefaultScan { get; set; }
         public bool ShowLessons { get; set; } = true;
         public int LessonIndex { get; set; }
@@ -72,7 +81,20 @@ public static class AppData
         public string? InstallId { get; set; }
     }
 
-    public static readonly string[] Themes = ["dark", "space", "light", "auto"];
+    public static readonly string[] Themes = ["dark", "space", "light", "auto", "sub"];
+    public static readonly string[] Personalities = ["doctor", "detective", "butler", "teacher", "engineer", "elder", "rampage"];
+
+    /// <summary>交给研判的性格说明（放进画像的 style）。</summary>
+    public static string? StyleOf(string personality) => personality switch
+    {
+        "detective" => "侦探：一查到底，拿不准的线索也列出来（标明是线索）",
+        "butler" => "管家：每条结论只说一句，直接告诉用户要做什么",
+        "teacher" => "老师：每条讲清原理，多给和这台电脑有关的小知识",
+        "engineer" => "工程师：话少，技术细节都给（路径、服务名、事件编号）",
+        "elder" => "长辈模式：大白话，只建议最稳妥的处理，提醒多一句",
+        "rampage" => "狂暴：查到底，红线以内能做的都建议做；不能撤销的要单独说明",
+        _ => null,  // 医生（默认）：不额外说明
+    };
 
     public static string InstallId(Settings s)
     {
@@ -127,6 +149,7 @@ public static class AppData
             ["hasKey"] = key != null, ["keyTail"] = key is { Length: >= 4 } ? key[^4..] : "",
             ["allowHosted"] = s.AllowHosted, ["hostedAvailable"] = HostedBaseUrl != null,
             ["theme"] = s.Theme, ["reduceMotion"] = s.ReduceMotion, ["pro"] = s.Pro, ["demoMode"] = s.DemoMode, ["defaultScan"] = s.DefaultScan,
+            ["personality"] = s.Personality, ["subUnlocked"] = s.SubUnlocked, ["restorePoint"] = s.RestorePoint,
             ["showLessons"] = s.ShowLessons, ["lessonIndex"] = s.LessonIndex, ["showTips"] = s.ShowTips, ["onboarded"] = s.Onboarded,
             ["betaConsent"] = s.BetaConsent, ["feedbackServer"] = Cloud.FeedbackUrl != null,
         };

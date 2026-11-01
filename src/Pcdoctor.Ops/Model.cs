@@ -70,6 +70,8 @@ public sealed class Plan
     public List<PlanStep> Steps { get; set; } = [];
     /// <summary>选了但不能自动处理的项，以及原因（例如触犯红线、属于专业模式）。</summary>
     public List<SkippedItem> Skipped { get; set; } = [];
+    /// <summary>执行管理员步骤前先建系统还原点（用户在设置里打开的开关）。</summary>
+    public bool RestorePoint { get; set; }
     public bool NeedsAdmin => Steps.Any(s => s.NeedsAdmin);
 }
 
