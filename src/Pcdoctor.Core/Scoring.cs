@@ -67,6 +67,13 @@ public static class Scoring
         return sec is not null && SectionCategory.TryGetValue(sec, out var c) ? c : "性能与后台";
     }
 
+    /// <summary>CAPS：这些严重问题没处理之前，总分不超过上限（按上限从低到高）。</summary>
+    static readonly (HashSet<string> rules, int limit, string reason)[] Caps =
+    [
+        (["active-threat", "detection-not-remediated", "known-malicious-driver"], 49, "有没处理完的病毒或恶意程序痕迹"),
+        (["uac-off"], 69, "用户账户控制（UAC）关着"),
+    ];
+
     static int PenaltyOf(JsonNode f) => Py.S(Py.Get(f, "severity")) is { } s && Penalty.TryGetValue(s, out var p) ? p : 0;
 
     static string Id(JsonNode f) => Py.ToStr(Py.Get(f, "id"));
@@ -170,6 +177,18 @@ public static class Scoring
             var c = cats[name];
             categories[name] = new JsonObject { ["weight"] = c.weight, ["score"] = c.score.Node, ["deductions"] = c.deductions };
         }
-        return new JsonObject { ["total"] = Py.RoundInt(total.V), ["categories"] = categories };
+        var t = Py.RoundInt(total.V);
+        foreach (var (rules, limit, reason) in Caps)
+        {
+            var ids = flagList.Where(f => Py.S(Py.Get(f, "rule")) is { } r && rules.Contains(r) && !cleared.Contains(Id(f)) && PenaltyOf(f) != 0)
+                .Select(f => Py.Clone(Py.Get(f, "id"))).ToList();
+            if (ids.Count > 0 && t > limit)
+                return new JsonObject
+                {
+                    ["total"] = limit, ["categories"] = categories,
+                    ["cap"] = new JsonObject { ["limit"] = limit, ["uncapped"] = t, ["reason"] = reason, ["flagIds"] = Py.List(ids) },
+                };
+        }
+        return new JsonObject { ["total"] = t, ["categories"] = categories };
     }
 }

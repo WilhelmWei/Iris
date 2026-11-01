@@ -100,6 +100,15 @@ class ScoringTest(unittest.TestCase):
         self.assertEqual(sec['score'], 63.3)
         self.assertEqual(len(sec['deductions']), 1)
 
+    def test_serious_problems_cap_the_total(self):
+        s = health_score([flag(1, 'security', 'uac-off', 'high', 'UAC')])
+        self.assertEqual(s['total'], 69)                      # 不封顶是 91
+        self.assertEqual(s['cap']['uncapped'], 91)
+        s = health_score([flag(1, 'security', 'uac-off', 'high', 'UAC'), flag(2, 'security', 'active-threat', 'high', 'Defender')])
+        self.assertEqual(s['total'], 49)                      # 取最严的上限
+        self.assertEqual(s['cap']['flagIds'], ['F002'])
+        self.assertNotIn('cap', health_score([flag(1, 'storage', 'system-drive-low', 'medium', 'C:')]))
+
     def test_condition_rules_not_clearable(self):
         flags = [flag(1, 'storage', 'system-drive-low', 'medium', 'C:')]
         s = health_score(flags, cleared_ids={'F001'})

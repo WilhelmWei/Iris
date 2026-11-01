@@ -37,6 +37,12 @@ CLEARABLE_RULES = {
 USER_CLEARABLE_RULES = CLEARABLE_RULES | {'defender-allowed-threat', 'defender-exclusion', 'remote-unattended', 'update-policy-off'}
 
 PENALTY = {'high': 30, 'medium': 10, 'low': 3, 'info': 0}
+
+# 封顶（学 SSL Labs）：这些严重问题没处理之前，总分不超过上限，并写明原因。按上限从低到高排
+CAPS = [
+    ({'active-threat', 'detection-not-remediated', 'known-malicious-driver'}, 49, '有没处理完的病毒或恶意程序痕迹'),
+    ({'uac-off'}, 69, '用户账户控制（UAC）关着'),
+]
 EXTRA_SHARE = 1 / 3   # 同一规则的第二条起，每条只扣自身分值的三分之一
 GROUP_CAP = 1.5       # 同一规则合计最多扣最高单条分值的 1.5 倍
 
@@ -73,4 +79,9 @@ def health_score(flags, cleared_ids=(), confirmed_ids=()):
                                                        'objects': [str(f.get('object'))], 'points': 0,
                                                        'note': notes[f.get('id')]})
     total = round(sum(c['weight'] * c['score'] / 100 for c in cats.values()))
+    for rules, limit, reason in CAPS:
+        ids = [f.get('id') for f in flags if f.get('rule') in rules and f.get('id') not in cleared and PENALTY.get(f.get('severity'), 0)]
+        if ids and total > limit:
+            return {'total': limit, 'categories': cats,
+                    'cap': {'limit': limit, 'uncapped': total, 'reason': reason, 'flagIds': ids}}
     return {'total': total, 'categories': cats}

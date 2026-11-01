@@ -13,6 +13,9 @@ def render_markdown(result):
     j, score = result['judgement'], result['score']
     out = ['# 电脑体检报告', '']
     out.append(f'**健康分 {score["total"]} / 100**　{j["headline"]}')
+    if score.get('cap'):
+        c = score['cap']
+        out.append(f'（{c["reason"]}，处理之前总分最高 {c["limit"]}；不封顶是 {c["uncapped"]} 分）')
     out.append('')
     if result.get('offline'):
         out.append(f'> 生成时间 {result["generatedAt"]} · 纯规则模式（没有联网、没有调用 AI） · 采集器 {result["collectorVersion"]}'

@@ -574,6 +574,7 @@
       <section class="r-head">${ring(sc.total, 168, '健康分', state.enter)}
         <div><div class="eyebrow">${esc(R.meta.reportTime || res.generatedAt)} · ${mode}${R.meta.machine ? ' · ' + esc(pii(R.meta.machine)) : ''}</div>
           <p class="headline">${esc(pii(j.headline))}</p>
+          ${sc.cap ? `<p class="cap-note">${icon('lock')}<span>总分封顶 ${sc.cap.limit}：${esc(sc.cap.reason)}。处理之后会恢复（不封顶是 ${sc.cap.uncapped} 分）</span></p>` : ''}
           ${R.meta.source === 'file' ? '<p class="muted small" style="margin:-6px 0 12px">这份报告来自别的电脑，只能查看，不能在这台电脑上执行处理。</p>' : ''}
           ${statusChips(j)}
           <div class="r-actions">

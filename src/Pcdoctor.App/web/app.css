@@ -1125,3 +1125,7 @@ svg.trend .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
 .trend-table .delta { margin-left: 6px; font-size: 11px; }
 .btn.small { padding: 3px 10px; font-size: 12px; min-height: 0; }
 .share-img { display: block; width: min(100%, 420px); margin: 0 auto; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+
+/* 健康分封顶说明 */
+.cap-note { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; font-size: 13px; color: var(--text-2); }
+.cap-note .ico { color: var(--accent); }

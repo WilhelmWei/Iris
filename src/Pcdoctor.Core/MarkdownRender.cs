@@ -31,6 +31,8 @@ public static class MarkdownRender
         var o = new List<string> { "# 电脑体检报告", "" };
         // headline / malwareReasoning 用 StrOr：模型输出不是对象时 judgement 里没有这两个字段（Python 版这里会 KeyError）
         o.Add($"**健康分 {Py.ToStr(score["total"])} / 100**　{Py.StrOr(j["headline"])}");
+        if (score["cap"] is JsonObject cap && cap.Count > 0)
+            o.Add($"（{Py.ToStr(cap["reason"])}，处理之前总分最高 {Py.ToStr(cap["limit"])}；不封顶是 {Py.ToStr(cap["uncapped"])} 分）");
         o.Add("");
         if (Py.Truthy(result["offline"]))
             o.Add($"> 生成时间 {Py.ToStr(result["generatedAt"])} · 纯规则模式（没有联网、没有调用 AI） · 采集器 {Py.ToStr(result["collectorVersion"])}"

@@ -86,6 +86,18 @@ public class ScoringTests
         Assert.Equal("45.0", Py.ToStr(many["categories"]!["安全"]!["deductions"]![0]!["points"]));
         Assert.Equal("55.0", Py.ToStr(many["categories"]!["安全"]!["score"]));
     }
+
+    [Fact]
+    public void SeriousProblemsCapTheTotal()
+    {
+        var uac = Scoring.HealthScore(new JsonArray(T.Flag(1, "security", "uac-off", "high", "UAC")));
+        Assert.Equal(69, uac["total"]!.GetValue<int>());
+        Assert.Equal(91L, uac["cap"]!["uncapped"]!.GetValue<long>());
+        var both = Scoring.HealthScore(new JsonArray(T.Flag(1, "security", "uac-off", "high", "UAC"), T.Flag(2, "security", "active-threat", "high", "Defender")));
+        Assert.Equal(49, both["total"]!.GetValue<int>());
+        Assert.Equal("F002", both["cap"]!["flagIds"]![0]!.ToString());
+        Assert.Null(Scoring.HealthScore(new JsonArray(T.Flag(1, "storage", "system-drive-low", "medium", "C:")))["cap"]);
+    }
 }
 
 public class ValidateTests
