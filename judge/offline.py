@@ -15,6 +15,7 @@ RULES = {
     'long-uptime':             ('problem', 0.8, 'power.disable_fast_startup', '很久没有真正重启过。开着快速启动时，点"关机"再开机并不等于重启，建议定期"重启"一次'),
     'memory-compression-busy': ('problem', 0.7, 'none', '内存压缩一直在忙，说明内存不够用了。卡顿、发热时先考虑内存不足，而不是中毒'),
     'memory-high':             ('problem', 0.7, 'none', '内存占用很高。关掉不用的程序和浏览器标签页，比任何"内存加速球"都有效'),
+    'memory-small':            ('problem', 0.6, 'none', '内存偏小，同时开浏览器和办公软件就容易卡。证据里写了插槽情况：能加就加一条同规格的内存，这比任何优化软件都管用'),
     # 进程
     'heavy-memory':            ('normal', 0.6, 'none', '{object} 占用内存较多，如果正在使用属于正常'),
     'runs-from-user-folder':   UNSURE + ('{object} 从用户目录运行。很多正规软件也这样安装，需要你确认是不是自己装的',),
@@ -43,6 +44,8 @@ RULES = {
     'slow-charging':           ('problem', 0.6, 'none', '充电功率偏低，可以检查充电器和数据线'),
     'bsod':                    ('problem', 0.8, 'none', '最近出现过蓝屏'),
     'bsod-repeated':           ('problem', 0.9, 'none', '最近反复蓝屏，需要尽快排查'),
+    'boot-degraded-by':        ('problem', 0.6, 'none', '{object} 拖慢了开机。如果它在开机自启动里、平时又不常用，可以关掉它的自启动'),
+    'boot-slow':               ('problem', 0.7, 'none', '最近开机比较慢。下面列出了 Windows 记下的拖慢开机的程序和驱动，关掉它们的开机自启动通常最有效'),
     # 软件
     'duplicate-category':      ('normal', 0.6, 'none', '同类软件装了好几个（{object}），不常用的可以卸载'),
     'large-on-c':              ('problem', 0.6, 'none', '{object} 装在 C 盘且占用很大，C 盘紧张时可以考虑卸载或改装到其他盘'),
@@ -56,6 +59,11 @@ RULES = {
     'conda-cache':             ('problem', 0.7, 'none', 'conda 的软件包缓存可以用 conda clean -a 清理（不影响已建好的环境）'),
     'dev-cache':               ('problem', 0.6, 'cache.clean', '{object} 是开发工具的缓存，可以清理，之后需要时会重新下载'),
     'games-on-c':              ('problem', 0.6, 'none', '{object} 游戏库在 C 盘，C 盘紧张时可以在启动器里把游戏移到其他盘'),
+    'system-on-hdd':           ('problem', 0.8, 'none', '系统装在机械硬盘上：换一块固态硬盘，是让这台电脑变快最有效的办法，比任何优化软件都管用'),
+    'disk-hot':                ('problem', 0.6, 'none', '硬盘温度偏高。笔记本别放在被子、腿上用，台式机可以清清灰、看看风扇'),
+    'disk-errors':             ('problem', 0.8, 'none', '这块硬盘出现过读写错误。请备份重要文件，留意错误是不是越来越多'),
+    'disk-worn':               ('problem', 0.85, 'none', '这块固态硬盘磨损已经比较多了。重要文件请及时备份，考虑更换'),
+    'disk-unhealthy':          ('problem', 0.9, 'none', 'Windows 报告这块硬盘不健康。请尽快备份重要文件，考虑更换'),
     'system-leftover':         ('leftover', 0.8, 'system.cleanup', '{object} 是系统升级或更新留下的文件，确认系统正常后，可以交给 Windows 自带的磁盘清理删除'),
     'downloads-installers':    ('leftover', 0.7, 'downloads.recycle_installers', '下载文件夹里有不少很久以前下载的安装包，软件装好以后就用不上了，可以移到回收站'),
     # 安全
@@ -114,6 +122,10 @@ TIPS = [
      '浏览器缓存、临时文件清掉后，程序用到时会重新生成，所以"一键清理"腾出的空间会慢慢回来。C 盘真正的大头通常是聊天文件、下载文件夹和游戏，把它们挪到其他盘效果更持久。'),
     ({'edge-idle-background', 'chrome-idle-background', 'browser-unused'}, '不用的浏览器也在后台占内存',
      '很多浏览器为了"秒开"，开机就在后台预加载，即使你从来不点它。只关掉不用的那几个的后台运行就好，常用的浏览器不用动。'),
+    ({'boot-slow', 'boot-degraded-by'}, '开机慢，先看是谁拖的',
+     'Windows 自己会记下每次开机用了多久、被哪个程序或驱动拖慢了几秒。与其装"开机加速"软件，不如照着这份记录关掉拖后腿的自启动。'),
+    ({'system-on-hdd', 'memory-small', 'disk-worn'}, '换硬件往往比装优化软件管用',
+     '系统装在机械硬盘上、内存只有 8 GB，是很多电脑"又慢又卡"的真正原因。换一块固态硬盘、加一条内存，花几百块，效果比任何"一键加速"都明显。'),
     ({'defender-allowed-threat'}, '"允许"一个威胁之后，Defender 就不会再提醒',
      '在 Windows 安全中心点了"允许"的项目会一直被放行，即使文件后来换成了别的东西。不再需要时，可以在「保护历史记录 → 允许的威胁」里撤销。'),
 ]

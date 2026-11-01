@@ -172,6 +172,8 @@ def _context_for(flag, S):
                               for x in junk.get('items', []) if x.get('tier') == 'A' and (x.get('cleanableMB') or 0) > 0]}
         if rule == 'system-leftover':
             return _find(junk.get('items'), 'name', obj)
+        if rule in ('disk-unhealthy', 'disk-worn', 'disk-errors', 'disk-hot', 'system-on-hdd'):
+            return _find(st.get('physicalDisks'), 'name', obj)
         if rule == 'downloads-installers':
             d = folders.get('downloads') or {}
             return {'path': d.get('path'), 'sizeGB': d.get('sizeGB'), 'installers': d.get('installers')}
@@ -189,8 +191,11 @@ def _context_for(flag, S):
         return S.get('stability')
     if sec == 'resources':
         r = S.get('resources', {})
-        return {'memory': r.get('memory'), 'memoryCompression': r.get('memoryCompression'),
-                'topByMemory': (r.get('topByMemory') or [])[:8], 'topByCpuSec': (r.get('topByCpuSec') or [])[:8]}
+        ctx = {'memory': r.get('memory'), 'memoryCompression': r.get('memoryCompression'),
+               'topByMemory': (r.get('topByMemory') or [])[:8], 'topByCpuSec': (r.get('topByCpuSec') or [])[:8]}
+        if rule == 'memory-small':
+            ctx.update({'memoryModules': r.get('memoryModules'), 'memorySlots': r.get('memorySlots'), 'memoryMaxGB': r.get('memoryMaxGB')})
+        return ctx
     if sec == 'power':
         return S.get('power')
     if sec == 'browserNetwork':

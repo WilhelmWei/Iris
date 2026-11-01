@@ -3,7 +3,7 @@
 $src = Join-Path $PSScriptRoot '..\collector\pcdoctor-collect.ps1'
 if (-not (Test-Path $src)) { $src = Join-Path $PSScriptRoot '../collector/pcdoctor-collect.ps1' }
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($src,[ref]$null,[ref]$null)
-$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs' }, $true)
+$fns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -in 'Resolve-ExePath','Test-UserWritablePath','Hide-Private','Get-ExclusionRisk','Get-CacheCategory','Measure-Folder','Get-Cim','Safe','Add-Perf','Format-Size','Expand-JunkPath','Measure-JunkCategory','Measure-Installers','Find-LeftoverDirs','Get-BootSummary','Get-MemoryAdvice' }, $true)
 foreach ($f in $fns) { . ([scriptblock]::Create($f.Extent.Text)) }
 $env:windir = 'C:\Windows'
 $cases = @(
@@ -163,3 +163,36 @@ $lchecks += ,@('leftover ref by install location', (@(Find-LeftoverDirs @($pf) @
 $p8=0; foreach ($c in $lchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p8++ } else { "FAIL leftover $($c[0]): [$($c[1])] expected [$($c[2])]" } }
 Remove-Item -LiteralPath $lr -Recurse -Force
 "leftover: $p8/$($lchecks.Count) passed"
+
+# 开机耗时、内存升级建议
+$t0 = Get-Date '2026-10-30 08:00'
+$recs = @(
+    @{ id = 100; time = $t0; data = @{ BootTime = '95000'; MainPathBootTime = '72000'; BootPostBootTime = '23000' } },
+    @{ id = 100; time = $t0.AddDays(-1); data = @{ BootTime = '40000'; MainPathBootTime = '30000'; BootPostBootTime = '10000' } },
+    @{ id = 101; time = $t0; data = @{ FriendlyName = 'QuickVPN 助手'; Name = 'qv.exe'; DegradationTime = '6000' } },
+    @{ id = 101; time = $t0.AddDays(-1); data = @{ FriendlyName = 'QuickVPN 助手'; Name = 'qv.exe'; DegradationTime = '4000' } },
+    @{ id = 102; time = $t0; data = @{ FriendlyName = ''; Name = 'slowdrv.sys'; DegradationTime = '2000' } },
+    $null)
+$bs = Get-BootSummary $recs
+$hchecks = @()
+$hchecks += ,@('boot recent count', $bs.recent.Count, 2)
+$hchecks += ,@('boot newest first', $bs.recent[0].mainPathSec, 72)
+$hchecks += ,@('boot post', $bs.recent[0].postBootSec, 23)
+$hchecks += ,@('slow top', $bs.slowItems[0].name, 'QuickVPN 助手')
+$hchecks += ,@('slow avg', $bs.slowItems[0].avgSec, 5)
+$hchecks += ,@('slow times', $bs.slowItems[0].times, 2)
+$hchecks += ,@('slow driver name fallback', $bs.slowItems[1].name, 'slowdrv.sys')
+$hchecks += ,@('slow driver kind', $bs.slowItems[1].kind, '驱动')
+$hchecks += ,@('boot empty', (Get-BootSummary @()).recent.Count, 0)
+$ddr4 = @{ capacityGB = 8; speedMHz = 3200; smbiosType = 26; formFactor = 12 }
+$a1 = Get-MemoryAdvice @($ddr4) 2 32 8
+$hchecks += ,@('mem free slot', $a1.canAdd, $true)
+$hchecks += ,@('mem text', $a1.text, '8 GB（8 GB DDR4-3200）；还空 1 个插槽，可以加一条同规格（DDR4-3200）的内存，主板最多支持 32 GB')
+$a2 = Get-MemoryAdvice @($ddr4, $ddr4) 2 32 16
+$hchecks += ,@('mem full slots', $a2.canAdd, $true)
+$a3 = Get-MemoryAdvice @(@{ capacityGB = 8; speedMHz = 6400; smbiosType = 35 }) 0 $null 8
+$hchecks += ,@('mem soldered', $a3.canAdd, $false)
+$hchecks += ,@('mem soldered text', ($a3.text -like '*焊在主板上*'), $true)
+$hchecks += ,@('mem none', (Get-MemoryAdvice @() 2 32 8), $null)
+$p9=0; foreach ($c in $hchecks) { if ([string]$c[1] -eq [string]$c[2]) { $p9++ } else { "FAIL hw $($c[0]): [$($c[1])] expected [$($c[2])]" } }
+"hardware: $p9/$($hchecks.Count) passed"

@@ -235,6 +235,8 @@ public static class Evidence
                     };
                 if (rule == "system-leftover")
                     return Find(Py.Get(junk, "items"), "name", obj);
+                if (rule is "disk-unhealthy" or "disk-worn" or "disk-errors" or "disk-hot" or "system-on-hdd")
+                    return Find(Py.Get(st, "physicalDisks"), "name", obj);
                 if (rule == "downloads-installers")
                 {
                     var d = Py.Or(Py.Get(folders, "downloads"), new JsonObject());
@@ -272,13 +274,20 @@ public static class Evidence
             case "resources":
             {
                 var r = Py.Get(S, "resources");
-                return new JsonObject
+                var rc = new JsonObject
                 {
                     ["memory"] = Py.Clone(Py.Get(r, "memory")),
                     ["memoryCompression"] = Py.Clone(Py.Get(r, "memoryCompression")),
                     ["topByMemory"] = Py.List(Py.Iter(Py.Or(Py.Get(r, "topByMemory"), new JsonArray())).Take(8).Select(Py.Clone)),
                     ["topByCpuSec"] = Py.List(Py.Iter(Py.Or(Py.Get(r, "topByCpuSec"), new JsonArray())).Take(8).Select(Py.Clone)),
                 };
+                if (rule == "memory-small")
+                {
+                    rc["memoryModules"] = Py.Clone(Py.Get(r, "memoryModules"));
+                    rc["memorySlots"] = Py.Clone(Py.Get(r, "memorySlots"));
+                    rc["memoryMaxGB"] = Py.Clone(Py.Get(r, "memoryMaxGB"));
+                }
+                return rc;
             }
             case "power":
                 return Py.Get(S, "power");

@@ -43,7 +43,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.0'
+$ScriptVersion = '0.3.1'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -510,6 +510,54 @@ function Find-LeftoverDirs([string[]]$Roots, [string[]]$Refs, [string[]]$Names, 
     return @($out)
 }
 
+# 开机记录（Diagnostics-Performance 日志）：事件 100 是每次开机的用时，101/102/103/109 是拖慢开机的程序、驱动、服务、设备。
+# 每条记录形如 @{ id = 100; time = [datetime]; data = @{ BootTime = '…'; MainPathBootTime = '…'; … } }（data 的键名不随系统语言变化）
+function Get-BootSummary([object[]]$Records) {
+    $boots = @($Records | Where-Object { $_ -and $_.id -eq 100 } | Sort-Object { $_.time } -Descending)
+    $recent = @($boots | Select-Object -First 5 | ForEach-Object {
+        [ordered]@{ time = $_.time.ToString('yyyy-MM-dd HH:mm')
+                    bootSec = [math]::Round([double]$_.data.BootTime / 1000, 1)
+                    mainPathSec = [math]::Round([double]$_.data.MainPathBootTime / 1000, 1)
+                    postBootSec = [math]::Round([double]$_.data.BootPostBootTime / 1000, 1) } })
+    $kinds = @{ 101 = '程序'; 102 = '驱动'; 103 = '服务'; 109 = '设备' }
+    $slow = @{}
+    foreach ($r in @($Records | Where-Object { $_ -and $kinds.ContainsKey([int]$_.id) })) {
+        $name = [string]$r.data.FriendlyName
+        if (-not $name) { $name = [string]$r.data.Name }
+        if (-not $name) { continue }
+        $key = "$($r.id)|$name"
+        if (-not $slow.ContainsKey($key)) { $slow[$key] = [ordered]@{ kind = $kinds[[int]$r.id]; name = $name; times = 0; totalMs = [double]0 } }
+        $slow[$key].times++
+        $slow[$key].totalMs += [double]$r.data.DegradationTime
+    }
+    $items = @($slow.Values | ForEach-Object { [ordered]@{ kind = $_.kind; name = $_.name; times = $_.times; avgSec = [math]::Round($_.totalMs / $_.times / 1000, 1) } } |
+        Sort-Object { $_.avgSec * $_.times } -Descending | Select-Object -First 10)
+    return [ordered]@{ recent = $recent; slowItems = $items }
+}
+
+# 内存升级建议：现在多大、几条、什么规格、还有没有空插槽、主板最多支持多少。焊在主板上的（LPDDR）加不了
+function Get-MemoryAdvice([object[]]$Modules, $Slots, $MaxGB, [double]$TotalGB) {
+    $mods = @($Modules | Where-Object { $_ })
+    if (-not $mods.Count) { return $null }
+    $types = @{ 20 = 'DDR'; 21 = 'DDR2'; 24 = 'DDR3'; 26 = 'DDR4'; 27 = 'LPDDR'; 28 = 'LPDDR2'; 29 = 'LPDDR3'; 30 = 'LPDDR4'; 34 = 'DDR5'; 35 = 'LPDDR5' }
+    $first = $mods[0]
+    $type = $types[[int]$first.smbiosType]; if (-not $type) { $type = '' }
+    $speed = [int]$first.speedMHz
+    $spec = (@($type, $(if ($speed) { "$speed" } else { '' })) | Where-Object { $_ }) -join '-'
+    $sizes = @($mods | ForEach-Object { "$([math]::Round([double]$_.capacityGB)) GB" }) -join ' + '
+    $text = "$([math]::Round($TotalGB)) GB（$sizes$(if ($spec) { " $spec" })）"
+    $free = 0; if ($Slots) { $free = [int]$Slots - $mods.Count }
+    $canAdd = $false
+    if ($type -like 'LPDDR*') { $text += '；内存是焊在主板上的，加不了' }
+    elseif ($free -gt 0) {
+        $canAdd = $true
+        $text += "；还空 $free 个插槽，可以加一条同规格（$(if ($spec) { $spec } else { '同型号' })）的内存"
+        if ($MaxGB) { $text += "，主板最多支持 $MaxGB GB" }
+    }
+    elseif ($MaxGB -and [double]$MaxGB -gt $TotalGB) { $canAdd = $true; $text += "；插槽都占满了，可以换成容量更大的内存条（主板最多支持 $MaxGB GB）" }
+    return [ordered]@{ text = $text; canAdd = $canAdd }
+}
+
 # 1. 资源占用 ------------------------------------------------------------------
 $Sections['resources'] = Invoke-Section 'resources' '资源占用' {
     $os  = Get-Cim Win32_OperatingSystem
@@ -568,6 +616,20 @@ $Sections['resources'] = Invoke-Section 'resources' '资源占用' {
     if ($cpuAvg -ne $null -and $cpuAvg -ge 15) { Add-Flag 'resources' 'cpu-busy-idle' 'medium' 'CPU' "采样期间平均 CPU $cpuAvg%（采集本身也占一点）" }
     if ($gpu3d -ne $null -and $gpu3d -ge 30) { Add-Flag 'resources' 'gpu-busy-idle' 'high' 'GPU' "采样时 3D 引擎占用 $gpu3d%，如果此时没在用图形程序，需要排查挖矿" }
 
+    # 内存条：规格、插槽，用来给升级建议（不只是"内存不够"，而是"能不能加、加什么"）
+    $memModules = @((Get-Cim Win32_PhysicalMemory) | Where-Object { $_ } | ForEach-Object {
+        [ordered]@{ capacityGB = [math]::Round([double]$_.Capacity / 1GB, 1); speedMHz = $(if ($_.ConfiguredClockSpeed) { [int]$_.ConfiguredClockSpeed } else { [int]$_.Speed })
+                    smbiosType = [int]$_.SMBIOSMemoryType; formFactor = [int]$_.FormFactor } })
+    $memArray = Get-Cim Win32_PhysicalMemoryArray | Select-Object -First 1
+    $memSlots = $null; $memMaxGB = $null
+    if ($memArray) { $memSlots = [int]$memArray.MemoryDevices; if ($memArray.MaxCapacityEx) { $memMaxGB = [math]::Round([double]$memArray.MaxCapacityEx / 1MB) } }
+    $memTotalGB = [math]::Round($memTotal / 1MB, 1)
+    $advice = Get-MemoryAdvice $memModules $memSlots $memMaxGB $memTotalGB
+    if ($memTotalGB -gt 0 -and $memTotalGB -le 8.5 -and $advice) {
+        $sev = 'low'; if ($memTotalGB -le 4.5) { $sev = 'medium' }
+        Add-Flag 'resources' 'memory-small' $sev "$([math]::Round($memTotalGB)) GB 内存" "内存 $($advice.text)"
+    }
+
     [ordered]@{
         os           = [ordered]@{ caption = $os.Caption; version = $os.Version; build = $os.BuildNumber
                                    displayVersion = Get-RegValue 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' 'DisplayVersion'
@@ -575,6 +637,9 @@ $Sections['resources'] = Invoke-Section 'resources' '资源占用' {
         cpu          = [ordered]@{ name = $cpu.Name; cores = $cpu.NumberOfCores; threads = $cpu.NumberOfLogicalProcessors }
         uptimeDays   = $uptimeDays
         memory       = [ordered]@{ totalGB = [math]::Round($memTotal / 1MB, 1); freeGB = [math]::Round([double]$os.FreePhysicalMemory / 1MB, 1); usedPct = $memUsedPct; commitUsedPct = $commitPct }
+        memoryModules = $memModules
+        memorySlots  = $memSlots
+        memoryMaxGB  = $memMaxGB
         cpuSamplePct = $cpuSamples
         gpu3dPct     = $gpu3d
         memoryCompression = if ($mc) { [ordered]@{ cpuSec = [int]$mc.CPU; memoryMB = [int]($mc.WorkingSet64 / 1MB); cpuRank = $mcRank } } else { $null }
@@ -948,8 +1013,28 @@ $Sections['storage'] = Invoke-Section 'storage' '存储（较慢）' {
             $m = $mediaNames[[int]$_.MediaType]; if (-not $m) { $m = [string]$_.MediaType }
             $b = $busNames[[int]$_.BusType]; if (-not $b) { $b = [string]$_.BusType }
             $hs = $healthNames[[int]$_.HealthStatus]; if (-not $hs) { $hs = [string]$_.HealthStatus }
-            [ordered]@{ name = $_.FriendlyName; mediaType = $m; busType = $b; sizeGB = [math]::Round([double]$_.Size / 1GB, 1); health = $hs }
+            $pd = $_
+            $rel = Safe 'StorageReliabilityCounter' { Get-CimAssociatedInstance -InputObject $pd -ResultClassName MSFT_StorageReliabilityCounter -ErrorAction Stop | Select-Object -First 1 }
+            [ordered]@{ name = $_.FriendlyName; mediaType = $m; busType = $b; sizeGB = [math]::Round([double]$_.Size / 1GB, 1); health = $hs
+                        deviceId = [string]$_.DeviceId
+                        wearPct = $(if ($rel -and $rel.Wear -ne $null) { [int]$rel.Wear } else { $null })
+                        temperatureC = $(if ($rel -and $rel.Temperature) { [int]$rel.Temperature } else { $null })
+                        readErrors = $(if ($rel -and $rel.ReadErrorsUncorrected -ne $null) { [int64]$rel.ReadErrorsUncorrected } else { $null })
+                        writeErrors = $(if ($rel -and $rel.WriteErrorsUncorrected -ne $null) { [int64]$rel.WriteErrorsUncorrected } else { $null })
+                        powerOnHours = $(if ($rel -and $rel.PowerOnHours) { [int64]$rel.PowerOnHours } else { $null }) }
         })
+    # 系统盘在哪块硬盘上（机械硬盘的话，换固态硬盘是最有效的提速办法）
+    $sysDiskNo = Safe 'Get-Partition system' { (Get-Partition -DriveLetter $env:SystemDrive.Substring(0, 1) -ErrorAction Stop).DiskNumber }
+    foreach ($d in $disks) {
+        if ($d -and $sysDiskNo -ne $null -and $d.deviceId -eq [string]$sysDiskNo) { $d.systemDisk = $true }
+        if (-not $d) { continue }
+        $label = $d.name
+        if ($d.health -eq 'Unhealthy' -or $d.health -eq 'Warning') { Add-Flag 'storage' 'disk-unhealthy' 'high' $label "Windows 报告这块硬盘的健康状态是 $($d.health)" }
+        if ($d.wearPct -ne $null -and $d.wearPct -ge 80) { $sev = 'medium'; if ($d.wearPct -ge 95) { $sev = 'high' }; Add-Flag 'storage' 'disk-worn' $sev $label "固态硬盘已磨损 $($d.wearPct)%" }
+        if (($d.readErrors -gt 0) -or ($d.writeErrors -gt 0)) { Add-Flag 'storage' 'disk-errors' 'medium' $label "出现过无法纠正的读写错误（读 $($d.readErrors) 次，写 $($d.writeErrors) 次）" }
+        if ($d.temperatureC -ne $null -and $d.temperatureC -ge 70) { Add-Flag 'storage' 'disk-hot' 'low' $label "采集时硬盘温度 $($d.temperatureC)°C" }
+        if ($d.systemDisk -and $d.mediaType -eq 'HDD') { Add-Flag 'storage' 'system-on-hdd' 'low' $label '系统装在机械硬盘上' }
+    }
 
     $folders = [ordered]@{}
     if (-not $Quick) {
@@ -1385,9 +1470,26 @@ $Sections['stability'] = Invoke-Section 'stability' '稳定性' {
     $crashes = @((Safe 'Get-WinEvent app-crash' { Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error'; Id = 1000; StartTime = (Get-Date).AddDays(-7) } }) |
         Where-Object { $_ } | ForEach-Object { if ($_.Properties.Count) { [string]$_.Properties[0].Value } } |
         Group-Object | Sort-Object Count -Descending | Select-Object -First 10 | ForEach-Object { [ordered]@{ app = $_.Name; crashes = $_.Count } })
+    # 开机耗时：Windows 自己记录的每次开机用时、拖慢开机的程序和驱动（快速启动下的"开机"其实是从休眠恢复，不记录）
+    $bootRecords = @((Safe 'Get-WinEvent boot-performance' { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = 100, 101, 102, 103, 109; StartTime = $since } -MaxEvents 300 -ErrorAction Stop }) |
+        Where-Object { $_ } | ForEach-Object {
+            $data = @{}
+            try { foreach ($n in ([xml]$_.ToXml()).Event.EventData.Data) { $data[[string]$n.Name] = [string]$n.'#text' } } catch {}
+            @{ id = $_.Id; time = $_.TimeCreated; data = $data } })
+    $boot = Get-BootSummary $bootRecords
+    if ($boot.recent.Count) {
+        $last = $boot.recent[0]
+        if ($last.mainPathSec -ge 60) {
+            $sev = 'low'; if ($last.mainPathSec -ge 120) { $sev = 'medium' }
+            Add-Flag 'stability' 'boot-slow' $sev '开机耗时' "最近一次开机 $($last.time)：到进入桌面用了 $($last.mainPathSec) 秒，进桌面后又忙了 $($last.postBootSec) 秒"
+        }
+    }
+    foreach ($x in @($boot.slowItems | Where-Object { $_.times -ge 2 -and $_.avgSec -ge 3 } | Select-Object -First 5)) {
+        Add-Flag 'stability' 'boot-degraded-by' 'low' $x.name "最近 $($x.times) 次开机里，这个$($x.kind)平均拖慢 $($x.avgSec) 秒"
+    }
     if ($bsod.Count -ge 3) { Add-Flag 'stability' 'bsod-repeated' 'high' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次" }
     elseif ($bsod.Count -ge 1) { Add-Flag 'stability' 'bsod' 'medium' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次，最近一次：$($bsod[0].time)" }
-    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes }
+    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes; boot = $boot }
 }
 
 # ---------------------------------------------------------------------------

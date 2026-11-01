@@ -193,10 +193,16 @@ BROAD = {
         flag(46, 'browserNetwork', 'browser-unused', 'low', '360安全浏览器', '没有找到用它浏览过网页的记录'),
         flag(47, 'storage', 'downloads-installers', 'info', '下载文件夹里的旧安装包', '12 个，共 3.4 GB'),
         flag(48, 'software', 'leftover-dir', 'info', 'C:\\Program Files (x86)\\OldTool', '12.5 MB，没有程序文件'),
+        flag(49, 'resources', 'memory-small', 'low', '8 GB 内存', '内存 8 GB（8 GB DDR4-3200）；还空 1 个插槽'),
+        flag(50, 'stability', 'boot-slow', 'low', '开机耗时', '到进入桌面用了 72 秒'),
+        flag(51, 'stability', 'boot-degraded-by', 'low', 'QuickVPN 助手', '平均拖慢 5 秒'),
+        flag(52, 'storage', 'system-on-hdd', 'low', 'WDC WD10EZEX', '系统装在机械硬盘上'),
+        flag(53, 'storage', 'disk-worn', 'medium', 'Fast SSD', '固态硬盘已磨损 85%'),
     ],
     'sections': {
         'resources': {'os': {'caption': 'Windows 11', 'build': 26200}, 'cpu': {'name': 'Intel', 'cores': 8},
                       'memory': {'totalGB': 16, 'usedPct': 86.0}, 'uptimeDays': 30.25,
+                      'memoryModules': [{'capacityGB': 8, 'speedMHz': 3200, 'smbiosType': 26, 'formFactor': 12}], 'memorySlots': 2, 'memoryMaxGB': 32,
                       'memoryCompression': {'cpuSec': 1400.5},
                       'topByMemory': [{'name': f'p{i}', 'mb': i * 100} for i in range(12)],
                       'topByCpuSec': [{'name': f'c{i}', 'sec': i * 1.5} for i in range(10)]},
@@ -263,7 +269,9 @@ BROAD = {
                 {'id': 'windows-old', 'group': '旧系统', 'name': '旧版 Windows（Windows.old）', 'tier': 'B', 'sizeMB': 18636.8,
                  'cleanableMB': 18636.8, 'partial': True},
                 {'id': 'odd', 'tier': 'A', 'cleanableMB': None}]},
-            'steamLibraries': [{'path': 'C:\\SteamLibrary', 'sizeGB': 22.4}]},
+            'steamLibraries': [{'path': 'C:\\SteamLibrary', 'sizeGB': 22.4}],
+            'physicalDisks': [{'name': 'WDC WD10EZEX', 'mediaType': 'HDD', 'busType': 'SATA', 'health': 'Healthy', 'systemDisk': True, 'wearPct': None},
+                              {'name': 'Fast SSD', 'mediaType': 'SSD', 'busType': 'NVMe', 'health': 'Healthy', 'wearPct': 85, 'temperatureC': 41}]},
         'power': {'fastStartup': True, 'hibernateEnabled': True, 'battery': {'healthPct': 61, 'chargePct': 86, 'designMWh': None}},
         'security': {
             'defender': {'realTimeProtection': True, 'signatureAgeDays': 1},
@@ -279,7 +287,9 @@ BROAD = {
                                          'memoryMB': 2100, 'autostart': []},
                                         {'id': '360se', 'name': '360安全浏览器', 'lastBrowsedDays': None, 'processes': 0}]},
         'versions': {'items': [{'name': 'Intel 显卡', 'installed': '31.0', 'available': '32.0'}]},
-        'stability': {'bsod': [{'time': '2026-10-24 00:59', 'code': '0xCE'}], 'appCrashes': 3},
+        'stability': {'bsod': [{'time': '2026-10-24 00:59', 'code': '0xCE'}], 'appCrashes': 3,
+                      'boot': {'boots': 6, 'lastMainPathSec': 72.4, 'avgMainPathSec': 68.1, 'maxMainPathSec': 91.0,
+                               'degradedBy': [{'name': 'QuickVPN 助手', 'kind': 'app', 'times': 4, 'avgSec': 5.2}]}},
     },
 }
 
