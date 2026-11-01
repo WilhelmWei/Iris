@@ -43,7 +43,7 @@ public static class Catalog
         ["shortcut.fix"] = new("修好快捷方式", "green", "去掉快捷方式后面被加上的网址，快捷方式指向的程序不变（改之前备份整个快捷方式文件）",
             "没有代价：点它照常打开浏览器，只是不再先打开那个网站", "在操作记录里点撤销，会把快捷方式原样放回", true, false),
         ["browser.remove_start_policy"] = new("解除主页锁定", "yellow", "删除锁定浏览器主页、启动页、新标签页和搜索引擎的策略（只删这几项，改之前备份）",
-            "如果这台电脑归公司或学校管理，这些策略可能是管理员设的，请先确认；删掉后可以在浏览器设置里自己改主页", "在操作记录里点撤销", true, true),
+            "如果这台电脑归公司或学校管理，这些策略可能是管理员设的，请先确认；删掉后可以在浏览器设置里自己改主页。如果是用组策略设的，过一阵会被写回，重新体检时 Iris 会再提醒", "在操作记录里点撤销", true, true),
         ["power.disable_fast_startup"] = new("关闭快速启动", "yellow", "关闭 Windows 的快速启动，休眠照常保留",
             "开机可能慢几秒；换来的是每次「关机」都是真正的关机，不再积累内存占用和小毛病", "在操作记录里点撤销", true, true),
     };
@@ -221,7 +221,10 @@ public static class PlanBuilder
                             var b = p!["browser"]?.ToString() ?? "";
                             var hv = p["hive"]?.ToString() ?? "";
                             if (!Hijack.PolicyKeys.ContainsKey(b) || hv is not ("HKLM" or "HKCU")) continue;
-                            targets.Add(($"{p["browserName"]}（{(hv == "HKLM" ? "所有用户" : "当前用户")}）", new JsonObject { ["browser"] = b, ["hive"] = hv }, true));
+                            var t = new JsonObject { ["browser"] = b, ["hive"] = hv };
+                            // 当前用户的策略在 HKCU：记下是谁的，提权后换了账户时辅助进程拒绝执行，免得改到别的账户
+                            if (hv == "HKCU") t["sid"] = sys?.UserSid();
+                            targets.Add(($"{p["browserName"]}（{(hv == "HKLM" ? "所有用户" : "当前用户")}）", t, true));
                         }
                     break;
                 case "browser.disable_background":

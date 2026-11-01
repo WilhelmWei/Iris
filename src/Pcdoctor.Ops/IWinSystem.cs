@@ -117,6 +117,9 @@ public interface IWinSystem
     bool SetKnownFolder(string guid, string path);
     IReadOnlyList<DriveFact> Drives();
 
+    /// <summary>当前进程的账户 SID。提权运行时如果换了一个管理员账户，HKCU 就是那个账户的，和当前登录的用户不同。</summary>
+    string? UserSid();
+
     // 快捷方式（修被加了网址的浏览器快捷方式）
     /// <summary>快捷方式指向的程序和参数；不存在或读不到时返回 null。</summary>
     (string Target, string Arguments)? ReadShortcut(string path);

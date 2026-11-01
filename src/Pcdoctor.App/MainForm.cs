@@ -269,7 +269,7 @@ public sealed class MainForm : Form
             case "aimWindow":
             {
                 // 窗口瞄准器：只在用户点按钮时运行一次
-                var h = await WindowAim.Pick(this);
+                var h = await Invoke(() => WindowAim.Pick(this));  // 遮罩是窗口，必须在界面线程上建
                 if (h == IntPtr.Zero) return new JsonObject { ["cancelled"] = true };
                 var hit = WindowAim.Inspect(h);
                 return hit == null ? new JsonObject { ["self"] = true } : services.ExplainWindow(hit.Value.facts, hit.Value.title);
@@ -279,8 +279,13 @@ public sealed class MainForm : Form
             case "saveImage": return SaveImage(S("dataUrl"), S("name"));
             case "copyImage":
             {
-                using var img = ImageFrom(S("dataUrl"));
-                Clipboard.SetImage(img);
+                var bytes = PngBytes(S("dataUrl"));
+                Invoke(() =>
+                {
+                    using var ms = new MemoryStream(bytes);
+                    using var img = Image.FromStream(ms);  // 剪贴板要求界面线程（STA）；流要活到复制完
+                    Clipboard.SetImage(img);
+                });
                 return new JsonObject { ["ok"] = true };
             }
             case "openBrowserSettings": return new JsonObject { ["ok"] = Services.OpenBrowserSettings(S("browser"), S("page")) };
@@ -312,19 +317,22 @@ public sealed class MainForm : Form
         return bytes;
     }
 
-    static Image ImageFrom(string dataUrl) => Image.FromStream(new MemoryStream(PngBytes(dataUrl)));
-
     JsonObject SaveImage(string dataUrl, string name)
     {
         var bytes = PngBytes(dataUrl);
         var safe = string.Concat((string.IsNullOrWhiteSpace(name) ? "Iris 体检卡片" : name).Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        using var dlg = new SaveFileDialog
+        string? file = null;
+        Invoke(() =>
         {
-            Title = "保存分享卡片", Filter = "PNG 图片|*.png", FileName = safe + ".png",
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-        };
-        if (dlg.ShowDialog(this) != DialogResult.OK) return new JsonObject { ["ok"] = false };
-        File.WriteAllBytes(dlg.FileName, bytes);
+            using var dlg = new SaveFileDialog
+            {
+                Title = "保存分享卡片", Filter = "PNG 图片|*.png", FileName = safe + ".png",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            };
+            if (dlg.ShowDialog(this) == DialogResult.OK) file = dlg.FileName;
+        });
+        if (file == null) return new JsonObject { ["ok"] = false };
+        File.WriteAllBytes(file, bytes);
         return new JsonObject { ["ok"] = true };
     }
 }

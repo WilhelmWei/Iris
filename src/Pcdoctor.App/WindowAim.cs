@@ -34,49 +34,75 @@ static class WindowAim
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szExeFile;
     }
 
-    /// <summary>让用户点一下要查的窗口；取消返回 IntPtr.Zero。</summary>
+    static bool busy;
+
+    /// <summary>让用户点一下要查的窗口；取消返回 IntPtr.Zero。必须在界面线程上调用。
+    /// 每个显示器各盖一层遮罩（不同缩放比例的显示器上，一整块遮罩会被系统按 DPI 改尺寸，露出的地方点下去会真的点到弹窗）。</summary>
     public static Task<IntPtr> Pick(Form owner)
     {
-        var tcs = new TaskCompletionSource<IntPtr>();
+        var tcs = new TaskCompletionSource<IntPtr>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (busy) { tcs.SetResult(IntPtr.Zero); return tcs.Task; }
+        busy = true;
         var before = owner.WindowState == FormWindowState.Minimized ? FormWindowState.Normal : owner.WindowState;
         owner.WindowState = FormWindowState.Minimized;
-        var vs = SystemInformation.VirtualScreen;
-        var ov = new Form
-        {
-            FormBorderStyle = FormBorderStyle.None, StartPosition = FormStartPosition.Manual, Bounds = vs, TopMost = true,
-            ShowInTaskbar = false, BackColor = Color.Black, Opacity = 0.35, Cursor = Cursors.Cross, KeyPreview = true, Text = "Iris 窗口瞄准器",
-        };
-        var ps = Screen.PrimaryScreen?.Bounds ?? vs;
-        var tip = new Label
-        {
-            AutoSize = false, Size = new Size(560, 64), Text = "点一下那个弹窗　·　按 Esc 取消", ForeColor = Color.White,
-            BackColor = Color.FromArgb(24, 24, 24), Font = new Font("Microsoft YaHei UI", 16f), TextAlign = ContentAlignment.MiddleCenter,
-            Location = new Point(ps.Left - vs.Left + (ps.Width - 560) / 2, ps.Top - vs.Top + 48), Cursor = Cursors.Cross,
-        };
-        ov.Controls.Add(tip);
+        var overlays = new List<Form>();
         var timeout = new System.Windows.Forms.Timer { Interval = 60_000 };
         void Done(IntPtr h)
         {
             if (tcs.Task.IsCompleted) return;
-            timeout.Stop(); timeout.Dispose();
-            ov.Close(); ov.Dispose();
-            owner.WindowState = before;
-            owner.Activate();
+            timeout.Stop();
+            foreach (var o in overlays) o.Hide();
+            // 在事件处理完之后再关闭、释放遮罩，不在它自己的鼠标事件里释放
+            owner.BeginInvoke(() =>
+            {
+                timeout.Dispose();
+                foreach (var o in overlays) { o.Close(); o.Dispose(); }
+                owner.WindowState = before;
+                owner.Activate();
+                busy = false;
+            });
             tcs.TrySetResult(h);
         }
         void Click(object? s, MouseEventArgs e)
         {
             var pt = Cursor.Position;
-            ov.Hide();  // 先藏起遮罩，才能读到它下面的窗口
+            foreach (var o in overlays) o.Hide();  // 先藏起遮罩，才能读到它下面的窗口
             Done(WindowFromPoint(new POINT { X = pt.X, Y = pt.Y }));
         }
-        ov.MouseDown += Click;
-        tip.MouseDown += Click;
-        ov.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) Done(IntPtr.Zero); };
+        foreach (var scr in Screen.AllScreens)
+        {
+            var b = scr.Bounds;
+            var ov = new Form
+            {
+                FormBorderStyle = FormBorderStyle.None, StartPosition = FormStartPosition.Manual, Bounds = b, TopMost = true,
+                ShowInTaskbar = false, BackColor = Color.Black, Opacity = 0.35, Cursor = Cursors.Cross, KeyPreview = true, Text = "Iris 窗口瞄准器",
+            };
+            ov.DpiChanged += (_, e) => { e.Cancel = true; ov.Bounds = b; };  // 遮罩始终盖满这个显示器
+            if (scr.Primary)
+            {
+                var tip = new Label
+                {
+                    AutoSize = true, Padding = new Padding(24, 14, 24, 14), Text = "点一下那个弹窗　·　按 Esc 取消", ForeColor = Color.White,
+                    BackColor = Color.FromArgb(24, 24, 24), Font = new Font("Microsoft YaHei UI", 16f), Cursor = Cursors.Cross,
+                };
+                ov.Controls.Add(tip);
+                ov.Shown += (_, _) => tip.Location = new Point(Math.Max(0, (ov.ClientSize.Width - tip.Width) / 2), 48);
+                tip.MouseDown += Click;
+            }
+            ov.MouseDown += Click;
+            ov.KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) Done(IntPtr.Zero); };
+            overlays.Add(ov);
+        }
         timeout.Tick += (_, _) => Done(IntPtr.Zero);
         // 等 Iris 最小化的动画走完再盖遮罩
         var show = new System.Windows.Forms.Timer { Interval = 350 };
-        show.Tick += (_, _) => { show.Stop(); show.Dispose(); ov.Show(); ov.Activate(); timeout.Start(); };
+        show.Tick += (_, _) =>
+        {
+            show.Stop(); show.Dispose();
+            foreach (var o in overlays) o.Show();
+            overlays.FirstOrDefault()?.Activate();
+            timeout.Start();
+        };
         show.Start();
         return tcs.Task;
     }
@@ -89,6 +115,7 @@ static class WindowAim
         if (root == IntPtr.Zero) root = hwnd;
         GetWindowThreadProcessId(root, out var pid);
         if (pid == 0 || pid == Environment.ProcessId) return null;
+        pid = StoreAppPid(root, pid);
         var sb = new StringBuilder(256);
         GetWindowText(root, sb, sb.Capacity);
         string name;
@@ -107,6 +134,34 @@ static class WindowAim
             signer = Signer(path);
         }
         return (new WindowFacts(name, path, company, product, signer, ParentName(pid)), sb.ToString());
+    }
+
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr l);
+    [DllImport("kernel32.dll")] static extern bool GetProcessTimes(IntPtr h, out long creation, out long exit, out long kernel, out long user);
+
+    /// <summary>商店应用的窗口外框属于 ApplicationFrameHost，真正的程序是里面另一个进程的子窗口。</summary>
+    static uint StoreAppPid(IntPtr root, uint framePid)
+    {
+        string name;
+        try { name = Process.GetProcessById((int)framePid).ProcessName; } catch { return framePid; }
+        if (!name.Equals("ApplicationFrameHost", StringComparison.OrdinalIgnoreCase)) return framePid;
+        uint inner = 0;
+        EnumChildWindows(root, (h, _) =>
+        {
+            GetWindowThreadProcessId(h, out var p);
+            if (p != 0 && p != framePid) { inner = p; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return inner != 0 ? inner : framePid;
+    }
+
+    static long? CreationTime(uint pid)
+    {
+        var h = OpenProcess(0x1000, false, pid);
+        if (h == IntPtr.Zero) return null;
+        try { return GetProcessTimes(h, out var c, out _, out _, out _) ? c : null; }
+        finally { CloseHandle(h); }
     }
 
     static string? ImagePath(uint pid)
@@ -151,7 +206,10 @@ static class WindowAim
                 all[e.th32ProcessID] = e.szExeFile;
                 if (e.th32ProcessID == pid) parent = e.th32ParentProcessID;
             } while (Process32NextW(snap, ref e));
-            return parent != 0 && all.TryGetValue(parent, out var n) ? n : null;
+            if (parent == 0 || !all.TryGetValue(parent, out var n)) return null;
+            // 父进程早就退出、编号被别的程序复用时，"父进程"其实比它晚启动：这时不报
+            var pc = CreationTime(parent); var cc = CreationTime(pid);
+            return pc != null && cc != null && pc > cc ? null : n;
         }
         finally { CloseHandle(snap); }
     }

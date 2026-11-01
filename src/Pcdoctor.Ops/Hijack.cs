@@ -8,7 +8,8 @@ public static class Hijack
 {
     static readonly Regex BrowserExe = new(@"^(msedge|msedge_proxy|chrome|chrome_proxy|firefox|iexplore|brave|360se|360chrome|360chromex|qqbrowser|sogouexplorer|2345explorer|opera|vivaldi)\.exe$",
         RegexOptions.IgnoreCase);
-    static readonly Regex Url = new(@"""?(https?://|www\.)[^\s""]+""?", RegexOptions.IgnoreCase);
+    /// <summary>单独作为一个参数的网址（--proxy-server=http://… 这类参数里的网址不算）。</summary>
+    static readonly Regex Url = new(@"(?<=^|\s)""?(https?://|www\.)[^\s""]+""?(?=\s|$)", RegexOptions.IgnoreCase);
     static readonly Regex App = new(@"--app(-id)?=", RegexOptions.IgnoreCase);
 
     public static bool IsBrowser(string? target) => !string.IsNullOrEmpty(target) && BrowserExe.IsMatch(target.Split('\\', '/')[^1]);  // 不用 Path.GetFileName：测试在 Linux 上跑
@@ -93,10 +94,20 @@ public sealed class BrowserStartPolicyOp : Operation
     public override string Id => "browser.remove_start_policy";
     const string Urls = "RestoreOnStartupURLs";
 
+    const string OtherAccountMessage = "以管理员身份运行时用的是另一个账户，改不到你这个账户的设置。请用这个账户的管理员身份运行 Iris，或在浏览器设置里手动改";
+
+    /// <summary>HKCU 的策略：辅助进程的账户和建方案时的账户不同，就不碰（否则改的、恢复的都是别的账户）。</summary>
+    static bool OtherAccount(PlanStep s, OpContext c) =>
+        T(s, "hive") == "HKCU" && (string.IsNullOrEmpty(T(s, "sid")) || T(s, "sid") != c.Sys.UserSid());
+
+    public override Outcome Undo(JournalEntry e, OpContext ctx) =>
+        OtherAccount(new PlanStep { Op = e.Op, Target = e.Target }, ctx) ? Outcome.Fail(OtherAccountMessage) : base.Undo(e, ctx);
+
     static (Hive hive, string key) Where(PlanStep s) => (Operations.ParseHive(T(s, "hive")), Hijack.PolicyKeys[T(s, "browser")]);
 
     protected override string? Precheck(PlanStep s, OpContext c)
     {
+        if (OtherAccount(s, c)) return OtherAccountMessage;
         var (h, k) = Where(s);
         var any = Hijack.StartPolicyValues.Any(n => c.Sys.ReadValue(h, k, n) != null) || UrlNames(c, h, k).Count > 0;
         return any ? null : "这些策略已经不在了，不需要处理";

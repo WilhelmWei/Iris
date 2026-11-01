@@ -198,6 +198,8 @@ public sealed class FakeWinSystem : IWinSystem
     }
     public List<DriveFact> DriveList { get; } = [];
     public IReadOnlyList<DriveFact> Drives() => DriveList;
+    public string? Sid { get; set; } = "S-1-5-21-1-2-3-1001";
+    public string? UserSid() => Sid;
 
     /// <summary>快捷方式：路径 → (指向的程序, 参数)。文件内容用"程序|参数"的字节模拟。</summary>
     public Dictionary<string, (string Target, string Arguments)> Shortcuts { get; } = new(StringComparer.OrdinalIgnoreCase);

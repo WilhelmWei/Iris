@@ -12,8 +12,9 @@ public class WindowSourceTests
               {"id":"F009","section":"startup","rule":"seed-bundle","object":"Other","evidence":"x"}],
      "sections":{
       "startup":{"items":[{"name":"QNews","exe":"C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe","enabled":true}]},
-      "scheduledTasks":{"items":[{"name":"QuickVPN News","state":"Ready","actions":[{"execute":"\"C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe\"","arguments":"/tip"}]}]},
-      "services":{"items":[]},
+      "scheduledTasks":{"items":[{"name":"QuickVPN News","state":"Ready","actions":[{"execute":"\"C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe\"","arguments":"/tip"}]},
+                                 {"name":"Other Vendor","state":"Ready","actions":[{"execute":"C:\\Program Files\\Other\\qnews.exe"}]}]},
+      "services":{"items":[{"name":"QNewsSvc","displayName":"QuickVPN News Service","exe":"C:\\Program Files (x86)\\QuickVPN\\news\\qnews.exe"}]},
       "software":{"items":[{"name":"QuickVPN","publisher":"QuickVPN Ltd","location":"C:\\Program Files (x86)\\QuickVPN\\"},
                            {"name":"Other","location":"C:\\Program Files"}]}}}
     """)!;
@@ -25,7 +26,7 @@ public class WindowSourceTests
         Assert.Equal("app", r["kind"]!.ToString());
         Assert.Equal("QuickVPN", r["software"]!.ToString());   // 最长的安装目录
         var kinds = r["launchedBy"]!.AsArray().Select(x => x!["kind"]!.ToString()).ToList();
-        Assert.Equal(["startup", "task"], kinds);              // explorer 不算启动者
+        Assert.Equal(["startup", "task", "service"], kinds);   // explorer 不算启动者；别的厂商同名程序的任务不算
         Assert.Equal(["F003"], r["flagIds"]!.AsArray().Select(x => x!.ToString()));
         Assert.Contains("计划任务「QuickVPN News」", r["advice"]!.ToString());
 

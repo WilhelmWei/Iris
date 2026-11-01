@@ -24,6 +24,14 @@ public static class WindowSource
     static string NoExe(string p) => p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? p[..^4] : p;
     static bool Same(string? a, string? b) => !string.IsNullOrEmpty(a) && string.Equals(a.Trim('"'), b?.Trim('"'), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>计划任务的程序是不是这个窗口的程序：写了完整路径的比完整路径（展开 %ProgramFiles% 这类变量），
+    /// 只写了文件名的才按文件名比（不同厂商都可能叫 updater.exe）。</summary>
+    static bool TaskRuns(string execute, string path, string leaf)
+    {
+        var x = Environment.ExpandEnvironmentVariables(execute.Trim().Trim('"'));
+        return x.Contains('\\') || x.Contains('/') ? Same(x, path) : x.Equals(leaf, StringComparison.OrdinalIgnoreCase) || (x + ".exe").Equals(leaf, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string KindOf(WindowFacts w) =>
         Shell.Contains(w.Process) ? "system" : Hijack.IsBrowser(w.Path ?? w.Process + ".exe") ? "browser" : "app";
 
@@ -45,13 +53,13 @@ public static class WindowSource
                     names.Add(("startup", it["name"]?.ToString() ?? ""));
                 }
             foreach (var it in (S["scheduledTasks"]?["items"] as JsonArray ?? []).OfType<JsonObject>())
-                if ((it["actions"] as JsonArray ?? []).Any(a => a?["execute"]?.ToString() is { } x && Leaf(x.Trim('"')).Equals(leaf, StringComparison.OrdinalIgnoreCase)))
+                if ((it["actions"] as JsonArray ?? []).Any(a => a?["execute"]?.ToString() is { } x && TaskRuns(x, w.Path, leaf)))
                 {
                     launched.Add(new JsonObject { ["kind"] = "task", ["name"] = it["name"]?.ToString(), ["state"] = it["state"]?.DeepClone() });
                     names.Add(("scheduledTasks", it["name"]?.ToString() ?? ""));
                 }
             foreach (var it in (S["services"]?["items"] as JsonArray ?? []).OfType<JsonObject>())
-                if (Same(it["path"]?.ToString(), w.Path))
+                if (Same(it["exe"]?.ToString(), w.Path) || Same(it["serviceDll"]?.ToString(), w.Path))
                 {
                     launched.Add(new JsonObject { ["kind"] = "service", ["name"] = (it["displayName"] ?? it["name"])?.ToString() });
                     names.Add(("services", it["name"]?.ToString() ?? ""));

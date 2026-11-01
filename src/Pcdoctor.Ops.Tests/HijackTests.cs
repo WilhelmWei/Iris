@@ -32,6 +32,8 @@ public class HijackTests
         Assert.False(Hijack.HasUrl(Chrome, "--profile-directory=Default"));
         Assert.False(Hijack.HasUrl(@"C:\x\msedge_proxy.exe", "--app-id=abc --app-url=https://mail.example.com/"));
         Assert.False(Hijack.HasUrl(@"C:\Tools\notes.exe", "https://x.test"));
+        Assert.False(Hijack.HasUrl(Chrome, "--proxy-server=http://127.0.0.1:8080"));
+        Assert.False(Hijack.HasUrl(Chrome, "--user-data-dir=\"D:\\www.bak\""));
     }
 
     [Fact]
@@ -91,6 +93,20 @@ public class HijackTests
         Assert.Equal("http://nav.example.com/", sys.ReadValue(Hive.LocalMachine, Pol, "HomepageLocation")!.AsStrings()[0]);
         Assert.Equal(4, sys.ReadValue(Hive.LocalMachine, Pol, "RestoreOnStartup")!.AsInt());
         Assert.Equal("http://nav.example.com/", sys.ReadValue(Hive.LocalMachine, Pol + @"\RestoreOnStartupURLs", "1")!.AsStrings()[0]);
+    }
+
+    [Fact]
+    public void Current_user_policy_is_left_alone_when_the_helper_runs_as_another_account()
+    {
+        sys.Set(Hive.CurrentUser, Pol, "HomepageLocation", FakeWinSystem.Str("http://nav.example.com/"));
+        var step = Step("browser.remove_start_policy", new JsonObject { ["browser"] = "chrome", ["hive"] = "HKCU", ["sid"] = "S-1-5-21-9-9-9-1001" });
+        Assert.Equal(Status.Failed, Executor.RunStep(step, Ctx).Status);
+        Assert.NotNull(sys.ReadValue(Hive.CurrentUser, Pol, "HomepageLocation"));
+        var ok = Executor.RunStep(Step("browser.remove_start_policy", new JsonObject { ["browser"] = "chrome", ["hive"] = "HKCU", ["sid"] = sys.Sid }), Ctx);
+        Assert.Equal(Status.Done, ok.Status);
+        sys.Sid = "S-1-5-21-9-9-9-500";   // 换了账户撤销：不动
+        Assert.Equal(Status.Failed, Executor.Undo(ok, Ctx).Status);
+        Assert.Null(sys.ReadValue(Hive.CurrentUser, Pol, "HomepageLocation"));
     }
 
     [Fact]

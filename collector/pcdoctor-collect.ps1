@@ -47,7 +47,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.7'
+$ScriptVersion = '0.3.8'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -563,9 +563,14 @@ function Get-ReliabilitySummary([object[]]$Metrics, [object[]]$Records) {
     foreach ($r in @($Records | Where-Object { $_ -and $_.TimeGenerated } | Sort-Object TimeGenerated)) {
         $d = ([datetime]$r.TimeGenerated).ToString('yyyy-MM-dd'); $src = [string]$r.SourceName; $id = [int]$r.EventIdentifier
         $name = [string]$r.ProductName; if ($name.Length -gt 80) { $name = $name.Substring(0, 80) }
-        if ($src -eq 'MsiInstaller' -and $id -in 1033, 11707 -and $name) { [void]$installs.Add([ordered]@{ date = $d; name = $name; kind = 'app' }) }
-        elseif ($src -eq 'Microsoft-Windows-WindowsUpdateClient' -and $id -eq 19 -and $name) { [void]$installs.Add([ordered]@{ date = $d; name = $name; kind = 'update' }) }
-        elseif ($src -in 'Application Error', 'Application Hang', 'Windows Error Reporting' -or $id -in 1000, 1002) {
+        $kind = $null
+        if ($src -eq 'MsiInstaller' -and $id -in 1033, 11707 -and $name) { $kind = 'app' }
+        elseif ($src -eq 'Microsoft-Windows-WindowsUpdateClient' -and $id -eq 19 -and $name) { $kind = 'update' }
+        if ($kind) {
+            # 同一次安装会同时记 1033 和 11707：按日期 + 名字去重
+            if (-not @($installs | Where-Object { $_.date -eq $d -and $_.name -eq $name }).Count) { [void]$installs.Add([ordered]@{ date = $d; name = $name; kind = $kind }) }
+        }
+        elseif (($src -eq 'Application Error' -and $id -eq 1000) -or ($src -eq 'Application Hang' -and $id -eq 1002)) {   # 只数程序自己的错误记录，不重复数错误报告
             if ($failures.Contains($d)) { $failures[$d]++ } else { $failures[$d] = 1 }
         }
     }
@@ -613,7 +618,7 @@ function Get-ShortcutIssue([string]$Name, [string]$Target, [string]$Arguments) {
     $isBrowser = $leaf -match '^(?i)(msedge|msedge_proxy|chrome|chrome_proxy|firefox|iexplore|brave|360se|360chrome|360chromex|qqbrowser|sogouexplorer|2345explorer|opera|vivaldi)\.exe$'
     if ($isBrowser) {
         if ($Arguments -match '(?i)--app(-id)?=') { return $null }   # 网页应用（PWA）的快捷方式本来就带网址
-        if ($Arguments -match '(?i)(https?://|www\.)\S+') { return 'shortcut-url' }
+        if ($Arguments -match '(?i)(^|\s)"?(https?://|www\.)[^\s"]+"?(\s|$)') { return 'shortcut-url' }   # 单独作为一个参数的网址
         return $null
     }
     $base = $Name -replace '(?i)\.lnk$', ''

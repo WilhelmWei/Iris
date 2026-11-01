@@ -214,6 +214,7 @@ $pc += ,@('lnk www', (Get-ShortcutIssue 'Microsoft Edge.lnk' 'C:\Program Files (
 $pc += ,@('lnk normal', (Get-ShortcutIssue 'Google Chrome.lnk' 'C:\Program Files\Google\Chrome\Application\chrome.exe' ''), $null)
 $pc += ,@('lnk pwa', (Get-ShortcutIssue 'Outlook.lnk' 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge_proxy.exe' '--profile-directory=Default --app-id=abc --app-url=https://outlook.example.com/'), $null)
 $pc += ,@('lnk fake', (Get-ShortcutIssue 'Internet Explorer.lnk' 'C:\Program Files\FakeBrowser\fb.exe' ''), 'shortcut-fake-browser')
+$pc += ,@('lnk proxy arg', (Get-ShortcutIssue 'Google Chrome.lnk' 'C:\Program Files\Google\Chrome\Application\chrome.exe' '--proxy-server=http://127.0.0.1:8080'), $null)
 $pc += ,@('lnk other', (Get-ShortcutIssue 'Notes.lnk' 'C:\Tools\notes.exe' 'https://x.test'), $null)
 $p10 = 0; foreach ($c in $pc) { if ($c[1] -eq $c[2]) { $p10++ } else { "FAIL popup $($c[0]): [$($c[1])] expected [$($c[2])]" } }
 "popup: $p10/$($pc.Count) passed"
@@ -223,6 +224,8 @@ $m = @(); $d0 = Get-Date '2026-10-01 08:00'
 foreach ($i in 0..9) { $v = 9.5; if ($i -ge 6) { $v = 5.2 }; $m += [pscustomobject]@{ TimeGenerated = $d0.AddDays($i); SystemStabilityIndex = $v }; $m += [pscustomobject]@{ TimeGenerated = $d0.AddDays($i).AddHours(5); SystemStabilityIndex = $v + 0.3 } }
 $r = @(
  [pscustomobject]@{ TimeGenerated = $d0.AddDays(5); SourceName = 'MsiInstaller'; EventIdentifier = 11707; ProductName = 'QuickVPN 3.0' },
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(5); SourceName = 'MsiInstaller'; EventIdentifier = 1033; ProductName = 'QuickVPN 3.0' },
+ [pscustomobject]@{ TimeGenerated = $d0.AddDays(7); SourceName = 'Windows Error Reporting'; EventIdentifier = 1001; ProductName = 'app.exe' },
  [pscustomobject]@{ TimeGenerated = $d0.AddDays(6); SourceName = 'Microsoft-Windows-WindowsUpdateClient'; EventIdentifier = 19; ProductName = 'KB5099999' },
  [pscustomobject]@{ TimeGenerated = $d0.AddDays(7); SourceName = 'Application Error'; EventIdentifier = 1000; ProductName = 'app.exe' },
  [pscustomobject]@{ TimeGenerated = $d0.AddDays(7).AddHours(1); SourceName = 'Application Error'; EventIdentifier = 1000; ProductName = 'app.exe' })

@@ -13,6 +13,7 @@ public sealed class WindowsSystem(string tempDir) : IWinSystem
 {
     public DateTime UtcNow => DateTime.UtcNow;
     public string WindowsDir => Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+    public string? UserSid() { try { return System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value; } catch { return null; } }
     public string? Env(string name) => Environment.GetEnvironmentVariable(name);
     public string Expand(string text) => Environment.ExpandEnvironmentVariables(text);
     public void Sleep(int milliseconds) => Thread.Sleep(milliseconds);
