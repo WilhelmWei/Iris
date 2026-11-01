@@ -6,7 +6,9 @@
 
 固定代码只读地采集信息 → 规则预筛 → 知识库匹配 → AI（或纯规则）研判，讲清楚每个问题是什么、为什么这么判断 → 要不要处理由你决定 → 只从测试过的操作库里执行 → 重新检测确认生效，没生效自动恢复 → 每一步都能撤销。
 
-**当前阶段：桌面版 1.0 内测（1.0.0-beta.5）**
+**当前阶段：桌面版 1.0 内测（1.0.0-beta.12）**
+
+> **2026 年 11 月起暂停开发**：作者这段时间专心学业，项目先告一段落，以后会回来继续完善。内测版可以照常下载使用，问题和建议欢迎提 issue，回复会比较慢。恢复开发时从 [docs/HANDOFF.md](docs/HANDOFF.md) 开始。
 
 ## 和"电脑管家"有什么不一样
 
@@ -39,8 +41,9 @@
 
 ## 下载（内测版）
 
-- 下载：<https://iris-download-4rxytw.oss-cn-hongkong.aliyuncs.com/releases/Iris-1.0.0-beta.5-win-x64.zip>
-- SHA-256：`0E7AFBD228772168BBBF98E2AB723B3D4E60496780074288FDED909C1125DE27`
+- 下载：<https://iris-download-4rxytw.oss-cn-hongkong.aliyuncs.com/releases/Iris-1.0.0-beta.12-win-x64.zip>
+- SHA-256：`853696C2F7A8A31858B686D310F6300E05EE7BB863A2F08FF7305094787B3F0E`
+- beta.6 起加的功能（清理空间、搬文件夹、弹窗来源、问卷、一键更新等）还没在多台真实电脑上完整验证过，遇到问题请用 Iris 里的「这条判断不对」「Iris 漏掉了什么」或提 issue 告诉作者
 - 解压到任意文件夹，双击 `Iris.exe`。需要 Windows 10 / 11（64 位）
 - 给内测用户的说明：[docs/beta/内测说明.txt](docs/beta/内测说明.txt)（也在压缩包里）；可以发朋友圈的海报：[docs/beta/iris-beta4-poster.png](docs/beta/iris-beta4-poster.png)
 
