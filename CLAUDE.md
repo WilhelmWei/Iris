@@ -158,6 +158,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\collector\pcdoctor-collect
 ## 下一步
 
 1. 作者：提交代码签名申请（`docs/signing-application.md`）；看「家人的电脑」设计稿（`docs/design/family.md` 第 11 节 5 个问题），点头后再写代码
-2. beta.11 在真实 Windows 上完整跑一遍（见上面未验证的清单），没问题再发布到 OSS
+2. beta.12（= beta.11 + 问卷写清每题问的是哪一项）在真实 Windows 上完整跑一遍（见上面未验证的清单），没问题再发布到 OSS
 3. 用反馈控制台看内测反馈：误判的改规则 / 知识库 / 提示词，漏报的补采集规则
 4. 候选版：LOLDrivers 哈希比对（先确认协议）、远控"无人值守"规则、"系统被优化工具改过"规则、健康分封顶、代码签名（SignPath）
