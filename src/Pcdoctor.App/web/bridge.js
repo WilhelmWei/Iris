@@ -183,6 +183,14 @@
         sizeKB: 38, server: M.settings.feedbackServer ? 'Iris 作者的服务器（阿里云中国香港）' : null,
         excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '你自己建的文件夹名和文件名（C 盘空间只发系统已知位置的大小）', '文档、照片、聊天记录、浏览记录、密码'] };
       case 'openUpdate': return {};
+      case 'updateInfo': return { current: '1.0.0-rc.1', update: M.update || null, rollback: /[?&]update\b/.test(location.search) ? '1.0.0-beta.9' : null, justUpdatedFrom: null };
+      case 'startUpdate': {
+        if (!await nativeConfirm(`更新到 Iris ${M.update.version}？`, ['下载新版，核对校验码后替换 Iris.exe，然后自动重新打开。体检报告、操作记录和设置都不受影响'])) return { cancelled: true };
+        for (let i = 1; i <= 10; i++) { await sleep(180); emit('updateProgress', { got: i * 4.4 * 1048576, total: 44 * 1048576 }); }
+        emit('updateProgress', { stage: 'verify' }); await sleep(600);
+        return { ok: true };
+      }
+      case 'rollbackUpdate': return { cancelled: !await nativeConfirm('换回 Iris 1.0.0-beta.9？', ['把 Iris.exe 换成保留的那一版，然后自动重新打开']) };
       case 'startCheckup': M.scanned = !!p.scan; runCheckup(p); return { started: true };
       case 'cancel': M.cancel = true; return {};
       case 'answer': M.answers[p.key] = { answer: p.answer, note: p.note || '' }; return { saved: true };
@@ -338,6 +346,7 @@
     return out;
   }
   if (/[?&]carried\b/.test(location.search)) { M.selected = ['F012', 'F017']; M.carried = 2; }
+  if (/[?&]update\b/.test(location.search)) M.update = { version: '1.0.0-beta.10', url: 'https://example.invalid/Iris.zip', notes: '「家人的电脑」和 AI 问卷', sha256: 'X', size: 44 * 1048576 };
   if (/[?&]p3\b/.test(location.search)) M.selected = ['F051', 'F052', 'F053'];
 
   // 搬到其他盘：?nodrive 模拟只有一个盘

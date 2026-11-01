@@ -10,6 +10,14 @@ static class Program
         // 管理员辅助进程：不显示窗口，做完就退出
         if (args.Length > 0 && args[0] == "--helper") return Helper.Run(args);
 
+        // 一键更新后由旧版启动：先等旧版退出，再记下"刚从哪个版本更新过来"
+        for (var i = 0; i + 1 < args.Length; i++)
+        {
+            if (args[i] == "--wait" && int.TryParse(args[i + 1], out var pid))
+                try { using var old = System.Diagnostics.Process.GetProcessById(pid); old.WaitForExit(15000); } catch { /* 已经退出 */ }
+            if (args[i] == "--after-update") Services.JustUpdatedFrom = args[i + 1];
+        }
+
         ApplicationConfiguration.Initialize();
         Application.ThreadException += (_, e) => ShowError(e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => ShowError(e.ExceptionObject as Exception);

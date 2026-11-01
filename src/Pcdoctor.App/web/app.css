@@ -1021,3 +1021,4 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 .fl-row .num { text-align: right; }
 .modal-body > .btn { margin-top: 12px; }
 .fl-groups .st-chip { height: 28px; padding: 0 10px; font-size: 12px; cursor: default; }
+.up-progress { display: grid; gap: 8px; margin-top: 14px; }

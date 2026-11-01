@@ -105,6 +105,32 @@ public static class Cloud
         catch { return ""; }
     }
 
+    // ------------------------------------------------------------------ 下载新版
+    /// <summary>下载新版安装包（只接受 https，最大 200 MB），每下载 1% 报一次进度。</summary>
+    public static async Task<byte[]> Download(string url, Action<long, long> progress, CancellationToken ct = default)
+    {
+        if (!url.StartsWith("https://", StringComparison.Ordinal)) throw new InvalidOperationException("下载地址不是 https，不下载");
+        using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(20) };
+        using var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        resp.EnsureSuccessStatusCode();
+        var total = resp.Content.Headers.ContentLength ?? 0;
+        if (total > 200L << 20) throw new InvalidOperationException("下载的文件太大，不像是 Iris 的安装包");
+        await using var s = await resp.Content.ReadAsStreamAsync(ct);
+        using var ms = new MemoryStream();
+        var buf = new byte[81920];
+        long got = 0, lastPct = -1;
+        int n;
+        while ((n = await s.ReadAsync(buf, ct)) > 0)
+        {
+            ms.Write(buf, 0, n);
+            got += n;
+            if (got > 200L << 20) throw new InvalidOperationException("下载的文件太大，不像是 Iris 的安装包");
+            var pct = total > 0 ? got * 100 / total : -1;
+            if (pct != lastPct) { lastPct = pct; progress(got, total); }
+        }
+        return ms.ToArray();
+    }
+
     // ------------------------------------------------------------------ 检查更新
     public static async Task<JsonObject?> CheckUpdate(CancellationToken ct = default)
     {
@@ -118,7 +144,8 @@ public static class Cloud
             var url = j?["url"]?.ToString();
             if (v == null || url == null || !url.StartsWith("https://", StringComparison.Ordinal)) return null;
             return Pcdoctor.Core.Insights.CompareVersions(v, AppData.Version) > 0
-                ? new JsonObject { ["version"] = v, ["url"] = url, ["notes"] = j!["notes"]?.ToString() ?? "", ["sha256"] = j["sha256"]?.ToString() ?? "" }
+                ? new JsonObject { ["version"] = v, ["url"] = url, ["notes"] = j!["notes"]?.ToString() ?? "", ["sha256"] = j["sha256"]?.ToString() ?? "",
+                                   ["size"] = j["size"]?.DeepClone() }
                 : null;
         }
         catch { return null; }  // 检查更新失败不打扰用户

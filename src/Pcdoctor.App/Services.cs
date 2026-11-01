@@ -131,6 +131,99 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         if (update?["url"]?.ToString() is { } url && url.StartsWith("https://", StringComparison.Ordinal)) OpenUri(url);
     }
 
+    // ================================================================== 一键更新
+    // 只在用户点了「更新」、并在原生确认框里同意后才下载和替换；不在后台偷偷下载。旧版本留一份，可以回到上一版
+    /// <summary>主窗口提供：关掉自己（换上新版后由新版接着运行）。</summary>
+    public Action Exit { get; set; } = () => { };
+    /// <summary>这次是不是刚更新或刚换回来（命令行 --after-update 旧版本号），概览页提示一次。</summary>
+    public static string? JustUpdatedFrom { get; set; }
+    volatile bool updating;
+    static string ExeDir => Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+
+    static string? OldVersion()
+    {
+        var old = Path.Combine(ExeDir, Updater.Old);
+        if (!File.Exists(old)) return null;
+        try { return System.Diagnostics.FileVersionInfo.GetVersionInfo(old).ProductVersion?.Split('+')[0]; } catch { return "上一版"; }
+    }
+
+    public JsonObject UpdateInfo() => new()
+    {
+        ["current"] = AppData.Version, ["update"] = update?.DeepClone(), ["updating"] = updating,
+        ["rollback"] = Updater.CanRollback(ExeDir) ? OldVersion() : null, ["justUpdatedFrom"] = JustUpdatedFrom,
+    };
+
+    volatile bool executingPlan;
+
+    public async Task<JsonObject> StartUpdate()
+    {
+        var u = update ?? throw new InvalidOperationException("没有可以更新的新版本");
+        if (updating) throw new InvalidOperationException("正在更新");
+        if (executingPlan || moveRunning) throw new InvalidOperationException("正在执行处理，等做完再更新");
+        var v = u["version"]!.ToString();
+        var size = u["size"] is JsonValue sv && sv.TryGetValue<long>(out var sz) ? $"约 {sz / 1048576.0:0} MB，" : "";
+        if (!Confirm($"更新到 Iris {v}？", [new ChangeItem($"更新到 {v}",
+                $"下载新版（{size}从 Iris 的下载服务器），核对校验码后替换 Iris.exe，然后自动重新打开。体检报告、操作记录和设置都不受影响",
+                true, "旧版本会留一份，在「设置」里可以回到上一版", false)]))
+            return new JsonObject { ["cancelled"] = true };
+        updating = true;
+        try
+        {
+            var zip = await Cloud.Download(u["url"]!.ToString(), (got, total) =>
+                emit("updateProgress", new JsonObject { ["got"] = got, ["total"] = total }));
+            emit("updateProgress", new JsonObject { ["stage"] = "verify" });
+            var pkg = Updater.Open(zip, u["sha256"]?.ToString() ?? "", v);
+            try { Updater.Install(ExeDir, pkg); }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                // 文件夹不能写（例如放在 Program Files 里）：退回到打开下载页
+                AppData.LogError("一键更新", ex);
+                OpenUpdate();
+                throw new InvalidOperationException("Iris 所在的文件夹不能写入，已打开下载页，请手动下载新版");
+            }
+            UpdateUninstallVersion(v);
+            Relaunch("--after-update", AppData.Version);
+            return new JsonObject { ["ok"] = true };
+        }
+        finally { updating = false; }
+    }
+
+    public JsonObject RollbackUpdate()
+    {
+        var other = OldVersion() ?? "上一版";
+        if (!Updater.CanRollback(ExeDir)) throw new InvalidOperationException("没有上一版可以回去");
+        if (executingPlan || moveRunning) throw new InvalidOperationException("正在执行处理，等做完再换");
+        if (!Confirm($"换回 Iris {other}？", [new ChangeItem($"换回 {other}", "把 Iris.exe 换成保留的那一版，然后自动重新打开。体检报告、操作记录和设置都不受影响",
+                true, "换回以后，现在这一版也会留着，可以再换回来", false)]))
+            return new JsonObject { ["cancelled"] = true };
+        Updater.Rollback(ExeDir);
+        UpdateUninstallVersion(other);
+        Relaunch("--after-update", AppData.Version);
+        return new JsonObject { ["ok"] = true };
+    }
+
+    /// <summary>启动新的 Iris.exe（等这个进程退出后再初始化），然后关掉自己。</summary>
+    void Relaunch(string flag, string from)
+    {
+        var psi = new ProcessStartInfo(Path.Combine(ExeDir, Updater.Exe)) { UseShellExecute = false, WorkingDirectory = ExeDir };
+        psi.ArgumentList.Add("--wait"); psi.ArgumentList.Add(Environment.ProcessId.ToString());
+        psi.ArgumentList.Add(flag); psi.ArgumentList.Add(from);
+        Process.Start(psi);
+        Exit();
+    }
+
+    /// <summary>安装版：把「设置 → 应用」里显示的版本号也改过来（免安装版没有这一项，跳过）。</summary>
+    static void UpdateUninstallVersion(string version)
+    {
+        try
+        {
+            using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{6F2B8C1E-4A7D-4E59-9B3F-1C8D2E7A5B40}_is1", true);
+            if (k?.GetValue("InstallLocation") is string loc && Path.GetFullPath(loc).TrimEnd('\\').Equals(ExeDir.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                k.SetValue("DisplayVersion", version);
+        }
+        catch { }
+    }
+
     // ================================================================== 体检
     public JsonObject StartCheckup(string mode, bool scan)
     {
@@ -734,6 +827,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
     async Task RunSteps(List<PlanStep> steps, string reportId, string batch)
     {
         var freeBefore = SystemFree();
+        executingPlan = true;
         var moving = steps.Any(s => s.Op == "folder.move");
         if (moving) moveRunning = true;
         try
@@ -770,6 +864,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         catch (Exception ex) { AppData.LogError("执行", ex); emit("planError", new JsonObject { ["message"] = "执行时出错：" + ex.Message }); }
         finally
         {
+            executingPlan = false;
             moveRunning = false;
             if (moving) lock (moveLock) moveCache = null;
             emit("planDone", new JsonObject { ["batchId"] = batch, ["freeBefore"] = freeBefore, ["freeAfter"] = SystemFree() });

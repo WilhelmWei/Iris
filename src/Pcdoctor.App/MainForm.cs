@@ -24,6 +24,7 @@ public sealed class MainForm : Form
         try { Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!); } catch { }
         Controls.Add(web);
         services = new Services(Emit, () => hwnd) { Confirm = ConfirmChanges, Foreground = BringBack };
+        services.Exit = () => BeginInvoke(Close);
         Load += async (_, _) => await InitWeb();
     }
 
@@ -245,6 +246,9 @@ public sealed class MainForm : Form
                 if (Uri.TryCreate(S("url"), UriKind.Absolute, out var u) && u.Scheme == "https" && AllowedHosts.Contains(u.Host)) Services.OpenUri(u.AbsoluteUri);
                 return new JsonObject();
             case "openUpdate": services.OpenUpdate(); return new JsonObject();
+            case "updateInfo": return services.UpdateInfo();
+            case "startUpdate": return await services.StartUpdate();
+            case "rollbackUpdate": return services.RollbackUpdate();
             case "setWindowTheme": SetTitleBar(p["dark"]?.GetValue<bool>() == true); return new JsonObject();
             case "markFinding": return services.MarkFinding(S("reportId"), S("key"), S("kind"), S("note"));
             case "storageInfo": return services.StorageInfo();

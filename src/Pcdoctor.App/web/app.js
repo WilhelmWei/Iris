@@ -387,7 +387,7 @@
     const handledRow = hb ? `<li><span class="k ${hb.still ? '' : 'fix'}">${hb.still ? '!' : '✓'}</span><span>你上次处理的 ${hb.total} 项，这次${hb.still ? `还有 ${hb.still} 项又出现了` : '都没有再出现'}</span>
       <span class="why">${hb.still ? '可能是软件更新或重新安装后又加了回去，报告里会再次列出' : '处理确实生效了'}</span></li>` : '';
     return `<div class="page">
-      ${up ? `<button class="update-pill" data-act="open-update">${icon('spark')}有新版本 ${esc(up.version)}<span>${esc(up.notes || '点这里下载')}</span>${icon('arrow')}</button>` : ''}
+      ${up ? `<button class="update-pill" data-act="open-update">${icon('spark')}有新版本 ${esc(up.version)}<span>${esc(up.notes || '点这里更新')}</span>${icon('arrow')}</button>` : ''}
       ${hero}
       ${next}
       <section class="card start">
@@ -1338,6 +1338,8 @@
 
       <section class="set-group"><h2>关于</h2><div class="card set-card">
         ${btnRow('code', `Iris ${esc(state.app.version)}`, '以 AGPL-3.0 协议开源。不常驻、不弹窗、不捆绑；查病毒交给 Microsoft Defender。', '<button class="btn" data-act="open-repo">源码</button>')}
+        ${state.updateInfo && state.updateInfo.update ? btnRow('spark', `有新版本 ${esc(state.updateInfo.update.version)}`, esc(state.updateInfo.update.notes || '下载、核对后替换，自动重新打开；报告和设置都不受影响。'), '<button class="btn primary" data-act="open-update">更新</button>') : ''}
+        ${state.updateInfo && state.updateInfo.rollback ? btnRow('undo', `换回 ${esc(state.updateInfo.rollback)}`, '更新时保留了上一版。新版有问题的话可以换回去，换回以后现在这一版也会留着。', '<button class="btn" data-act="rollback-update">换回</button>') : ''}
       </div></section>
     </div>`;
   }
@@ -1403,6 +1405,43 @@
       box.remove(); resolve();
     }));
   }
+  /** 一键更新：说清楚改了什么、多大，点了再下载；进度在同一个窗口里 */
+  function openUpdate() {
+    const up = state.app.update || (state.updateInfo && state.updateInfo.update);
+    if (!up) return;
+    const size = up.size ? `约 ${fmtSize(up.size)}` : '';
+    const box = modal(`更新到 ${up.version}`, `现在是 ${esc(state.app.version)}${size ? ' · ' + size : ''}`,
+      `<p>${esc(up.notes || '这一版的改动见下载页。')}</p>
+       <ul class="mv-notes muted small"><li>点「更新」后会先弹 Windows 确认框；下载完核对校验码，再替换 Iris.exe 并自动重新打开。</li>
+         <li>体检报告、操作记录、设置都不受影响；旧版本会留一份，在「设置」里可以换回去。</li>
+         <li>不会在后台偷偷下载，也不会自动安装。</li></ul>
+       <div class="up-progress" hidden><div class="sp-progress"><i style="width:0%"></i></div><span class="muted small">正在下载…</span></div>`,
+      '<button class="btn ghost" data-m="page">去下载页</button><button class="btn ghost" data-m="close">以后再说</button><button class="btn primary" data-m="go">更新</button>');
+    state.updateBox = box;
+    box.addEventListener('click', async e => {
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      if (b.dataset.m === 'close') { box.remove(); state.updateBox = null; }
+      else if (b.dataset.m === 'page') { quiet('openUpdate'); }
+      else if (b.dataset.m === 'go') {
+        b.disabled = true;
+        try {
+          const r = await call('startUpdate');
+          if (r && r.cancelled) { b.disabled = false; return; }
+          const p = box.querySelector('.up-progress span'); if (p) p.textContent = '已经换好，正在重新打开…';
+        } catch (err) { b.disabled = false; const pr = box.querySelector('.up-progress'); if (pr) pr.hidden = true; }
+      }
+    });
+  }
+  api.on('updateProgress', d => {
+    const box = state.updateBox; if (!box) return;
+    const pr = box.querySelector('.up-progress'); if (!pr) return;
+    pr.hidden = false;
+    const bar = pr.querySelector('i'), txt = pr.querySelector('span');
+    if (d.stage === 'verify') { bar.style.width = '100%'; txt.textContent = '下载完了，正在核对校验码…'; return; }
+    const pct = d.total ? Math.round(d.got / d.total * 100) : 0;
+    bar.style.width = pct + '%'; txt.textContent = d.total ? `正在下载 ${fmtSize(d.got)} / ${fmtSize(d.total)}` : `正在下载 ${fmtSize(d.got)}`;
+  });
+
   async function previewFeedback() {
     const id = state.report && state.report.meta.source === 'local' ? state.report.id : (state.app.lastReport && state.app.lastReport.id);
     const p = await call('previewFeedback', { reportId: id || null });
@@ -1659,7 +1698,7 @@
   api.on('spaceUpdated', spaceReload);
   api.on('spaceDone', d => { delete state.spaceProg[d.id]; spaceReload(d); });
   api.on('feedbackSent', d => { if (d && d.id) state.fb[d.id] = d; if (state.view === 'report') render(); });
-  api.on('update', d => { state.app.update = d; if (state.view === 'home') render(); });
+  api.on('update', d => { state.app.update = d; state.updateInfo = Object.assign(state.updateInfo || {}, { update: d }); if (state.view === 'home' || state.view === 'settings') render(); });
   api.on('checkupDone', d => {
     state.running = false;
     if (state.view !== 'running') { openReport(d.id); return; }
@@ -1778,7 +1817,8 @@
       case 'defender': await call('openDefender'); toast('已打开 Windows 安全中心'); break;
       case 'toggle-demo': setSetting('demoMode', !S().demoMode); break;
       case 'tips-off': setSetting('showTips', false); break;
-      case 'open-update': quiet('openUpdate'); break;
+      case 'open-update': openUpdate(); break;
+      case 'rollback-update': { try { await call('rollbackUpdate'); } catch (e) {} break; }
       case 'fb-preview': previewFeedback(); break;
       case 'fb-send': el.disabled = true; await sendFeedback(state.report.id); break;
       case 'fb-export': await sendFeedback(state.report.id, true); break;
@@ -1992,6 +2032,12 @@
     else if (initial === 'settings') state.view = initial;
     render();
     if (initial === 'plan' || initial === 'journal') go('plan');
+    quiet('updateInfo').then(u => {
+      if (!u) return;
+      state.updateInfo = u;
+      if (u.justUpdatedFrom) setTimeout(() => toast(u.justUpdatedFrom === state.app.version ? `已换到 Iris ${state.app.version}` : `已更新到 Iris ${state.app.version}（原来是 ${u.justUpdatedFrom}）。不满意可以在「设置」里换回去`), 900);
+      if (state.view === 'settings') render();
+    });
     if (!s.onboarded) openOnboarding(0);  // 第一次运行：快速设定（里面包括隐私政策和内测反馈的同意）
     else if (state.app.privacy && !state.app.privacy.accepted) await showPrivacy(true);  // 政策更新后重新展示
   })();
