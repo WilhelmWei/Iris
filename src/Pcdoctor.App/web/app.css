@@ -1140,3 +1140,9 @@ svg.trend .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
 .changed-row { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; }
 .changed-row .chip { justify-self: start; }
 .changed-row .row { border-radius: 10px; }
+
+/* 问卷：问的是哪一项 */
+.quiz-about { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px 2px 12px; margin-bottom: 6px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--accent-soft, transparent); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; max-width: 100%; width: fit-content; justify-self: start; }
+.quiz-about .ico { opacity: .6; }
+.quiz-about:hover .ico { opacity: 1; }

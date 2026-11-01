@@ -239,11 +239,17 @@ public static class Validation
             {
                 if (qs.Count >= MaxQuestions) break;
                 if (f["needsUser"]?.GetValue<bool>() == true && Py.S(f["questionForUser"]) is { Length: > 0 } question)
+                {
+                    // 写清问的是哪一项：规则模式的问题是通用句子，不带对象名就分不清
+                    var obj = Py.Head(Py.S(f["object"]) ?? "", 30);
+                    var text = Py.Head(obj.Length > 0 ? $"「{obj}」{question}" : question, 120);
+                    var why = Py.Head(Py.Strip(Py.S(f["userExplanation"]) ?? ""), 80);
                     qs.Add(new JsonObject
                     {
-                        ["id"] = $"Q{qs.Count + 1}", ["text"] = Py.Head(question, 80), ["why"] = "回答以后，Iris 才能决定这一项该怎么处理",
+                        ["id"] = $"Q{qs.Count + 1}", ["text"] = text, ["why"] = why.Length > 0 ? why : "回答以后，Iris 才能决定这一项该怎么处理",
                         ["options"] = Py.StrList(["是", "不是", "不确定"]), ["flagIds"] = f["flagIds"]!.DeepClone(),
                     });
+                }
             }
         return qs;
     }

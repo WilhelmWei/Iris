@@ -168,8 +168,11 @@ def _questions(output, findings, items_by_id, issues):
             if len(qs) >= MAX_QUESTIONS:
                 break
             if f['needsUser'] and f['questionForUser']:
-                qs.append({'id': f'Q{len(qs) + 1}', 'text': f['questionForUser'][:80],
-                           'why': '回答以后，Iris 才能决定这一项该怎么处理',
+                # 写清问的是哪一项：规则模式的问题是通用句子，不带对象名就分不清
+                obj = str(f.get('object') or '')[:30]
+                text = (f'「{obj}」{f["questionForUser"]}' if obj else f['questionForUser'])[:120]
+                why = str(f.get('userExplanation') or '').strip()[:80] or '回答以后，Iris 才能决定这一项该怎么处理'
+                qs.append({'id': f'Q{len(qs) + 1}', 'text': text, 'why': why,
                            'options': ['是', '不是', '不确定'], 'flagIds': f['flagIds']})
     return qs
 

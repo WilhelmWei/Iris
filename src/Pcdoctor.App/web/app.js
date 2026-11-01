@@ -1672,7 +1672,12 @@
         <div><b>回答 ${qs.length} 个问题，让建议更准</b><p>大约 1 分钟。不答也没关系，报告和处理照常能用；答完 Iris 会按你的回答重新研判${R.result.offline ? '' : '（会再调用一次 AI，通常只要几分钱）'}，以后也不再问同样的事。</p></div>
         <button class="icon-btn" data-act="quiz-hide" aria-label="先不答">${icon('x')}</button></div>
       <ol class="quiz-qs">${qs.map(q => { const a = A[q.id] || {};
-        return `<li><b>${esc(pii(q.text))}</b>${q.why ? `<i class="muted small">${esc(q.why)}</i>` : ''}
+        // 问的是哪一项：题目里没写对象名时（旧报告的通用问题），从对应的结论里补上，并可以点开看详情
+        const f = (q.flagIds || []).length ? R.result.judgement.findings.find(x => x.flagIds.some(id => q.flagIds.includes(id))) : null;
+        const about = f && !String(q.text).includes(f.object) ? f : null;
+        const why = about && (!q.why || q.why === '回答以后，Iris 才能决定这一项该怎么处理') ? f.userExplanation : q.why;
+        return `<li>${about ? `<button class="quiz-about" data-act="open" data-k="${esc(keyOf(f))}">${esc(pii(f.object))}${icon('chev')}</button>` : ''}
+          <b>${esc(pii(q.text))}</b>${why ? `<i class="muted small">${esc(pii(why))}</i>` : ''}
           <div class="choices">${q.options.map(o => `<button data-act="quiz-opt" data-q="${esc(q.id)}" data-v="${esc(o)}" aria-pressed="${a.opt === o}" ${sending ? 'disabled' : ''}>${esc(o)}</button>`).join('')}
             <button data-act="quiz-opt" data-q="${esc(q.id)}" data-v="__other" aria-pressed="${a.opt === '__other'}" ${sending ? 'disabled' : ''}>其他</button></div>
           ${a.opt === '__other' ? `<input class="quiz-other" data-q="${esc(q.id)}" maxlength="200" placeholder="自己写一句" value="${esc(a.other || '')}">` : ''}</li>`; }).join('')}</ol>
