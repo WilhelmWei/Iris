@@ -14,7 +14,7 @@ public static class Updater
     public const string Old = "Iris.exe.old";
 
     /// <summary>跟着 Iris.exe 一起放在免安装版文件夹里的说明文件：文件夹里原来有才更新。</summary>
-    static readonly string[] Extras = ["LICENSE.txt", "PRIVACY.md", "使用说明.txt", "内测说明.txt"];
+    static readonly string[] Extras = ["LICENSE.txt", "PRIVACY.md", "使用说明.txt", "内测说明.txt", "THIRD-PARTY-NOTICES.txt"];
 
     public sealed record Package(string Version, byte[] ExeBytes, IReadOnlyDictionary<string, byte[]> ExtraFiles);
 

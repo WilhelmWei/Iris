@@ -68,6 +68,7 @@ Source: "{#StageDir}\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\PRIVACY.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\使用说明.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

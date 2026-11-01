@@ -12,6 +12,7 @@
     <EmbeddedResource Include="..\..\kb\seed.json" LogicalName="seed.json" Link="Resources\seed.json" />
     <EmbeddedResource Include="..\..\prompts\judge-prompt.md" LogicalName="judge-prompt.md" Link="Resources\judge-prompt.md" />
     <EmbeddedResource Include="..\..\collector\pcdoctor-collect.ps1" LogicalName="pcdoctor-collect.ps1" Link="Resources\pcdoctor-collect.ps1" />
+    <EmbeddedResource Include="..\..\kb\loldrivers.json" LogicalName="loldrivers.json" Link="Resources\loldrivers.json" />
   </ItemGroup>
 
   <ItemGroup>

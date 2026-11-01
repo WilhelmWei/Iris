@@ -145,6 +145,8 @@ def _context_for(flag, S):
         filters = [f for f in d.get('classFilters', []) if f.get('driver') == obj]
         if filters:
             ctx['classFilters'] = [{'className': f.get('className'), 'kind': f.get('kind')} for f in filters]
+        if rule in ('byovd-driver', 'known-malicious-driver'):
+            ctx['vulnerableDriverBlocklist'] = S.get('security', {}).get('vulnerableDriverBlocklist')
         return ctx or None
     if sec == 'software':
         sw = S.get('software', {})

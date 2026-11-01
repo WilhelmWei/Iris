@@ -19,6 +19,8 @@ FILES = [  # (源文件, 包内文件名)
     ('remote/README.txt', 'README.txt'),
     ('collector/pcdoctor-collect.ps1', 'pcdoctor-collect.ps1'),
     ('kb/junk.json', 'junk.json'),  # 清理目录表：采集脚本按它测量各类缓存
+    ('kb/loldrivers.json', 'loldrivers.json'),  # 驱动指纹名单（LOLDrivers，Apache-2.0）：采集脚本按它比对第三方驱动
+    ('kb/loldrivers.LICENSE.txt', 'THIRD-PARTY-NOTICES.txt'),
 ]
 BOM = b'\xef\xbb\xbf'
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)  # 固定时间戳，保证可复现

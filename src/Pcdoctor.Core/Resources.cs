@@ -8,6 +8,7 @@ public static class Resources
     public const string SeedJson = "seed.json";
     public const string JudgePrompt = "judge-prompt.md";
     public const string CollectorScript = "pcdoctor-collect.ps1";
+    public const string DriverHashes = "loldrivers.json";
 
     public static string ReadText(string logicalName)
     {
@@ -21,10 +22,15 @@ public static class Resources
     public static string CollectorScriptText() => ReadText(CollectorScript);
 
     /// <summary>采集脚本原始字节（保留 UTF-8 BOM：Windows PowerShell 5.1 靠它识别编码）。</summary>
-    public static byte[] CollectorScriptBytes()
+    public static byte[] CollectorScriptBytes() => Bytes(CollectorScript);
+
+    /// <summary>驱动指纹名单（kb/loldrivers.json，来自 LOLDrivers）：采集脚本按它比对第三方驱动。</summary>
+    public static byte[] DriverHashesBytes() => Bytes(DriverHashes);
+
+    static byte[] Bytes(string logicalName)
     {
-        using var s = typeof(Resources).Assembly.GetManifestResourceStream(CollectorScript)
-                      ?? throw new FileNotFoundException($"找不到嵌入资源 {CollectorScript}");
+        using var s = typeof(Resources).Assembly.GetManifestResourceStream(logicalName)
+                      ?? throw new FileNotFoundException($"找不到嵌入资源 {logicalName}");
         using var ms = new MemoryStream();
         s.CopyTo(ms);
         return ms.ToArray();

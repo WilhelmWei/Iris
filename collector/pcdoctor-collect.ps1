@@ -21,6 +21,9 @@
 .PARAMETER CheckUpdates
     额外查询待安装的 Windows 更新（可能需要 1–3 分钟）。
 
+.PARAMETER DriverHashes
+    驱动指纹名单 loldrivers.json 的位置（来自 LOLDrivers，Apache-2.0）。第三方驱动的 SHA-256 和它比对，只认指纹。
+    默认找脚本旁边的 loldrivers.json 或仓库里的 kb\loldrivers.json；找不到就跳过比对。
 .PARAMETER JunkCatalog
     清理目录表 junk.json 的位置（按它测量各类缓存的大小）。默认找脚本旁边的 junk.json 或仓库里的 kb\junk.json。
 
@@ -38,12 +41,13 @@ param(
     [switch]$NoRedact,
     [switch]$Quick,
     [switch]$CheckUpdates,
-    [string]$JunkCatalog = ''
+    [string]$JunkCatalog = '',
+    [string]$DriverHashes = ''
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.3'
+$ScriptVersion = '0.3.4'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -51,6 +55,17 @@ if (-not $JunkCatalog -and $PSScriptRoot) {
     foreach ($c in @("$PSScriptRoot\junk.json", "$PSScriptRoot\..\kb\junk.json")) { if (Test-Path -LiteralPath $c) { $JunkCatalog = $c; break } }
 }
 $Junk = $null
+if (-not $DriverHashes -and $PSScriptRoot) {
+    foreach ($c in @("$PSScriptRoot\loldrivers.json", "$PSScriptRoot\..\kb\loldrivers.json")) { if (Test-Path -LiteralPath $c) { $DriverHashes = $c; break } }
+}
+$KnownDrivers = $null
+if ($DriverHashes -and (Test-Path -LiteralPath $DriverHashes)) {
+    try {
+        $hj = Get-Content -LiteralPath $DriverHashes -Raw -Encoding UTF8 | ConvertFrom-Json
+        $KnownDrivers = @{}
+        foreach ($pr in $hj.hashes.PSObject.Properties) { $KnownDrivers[$pr.Name] = $pr.Value }
+    } catch { $KnownDrivers = $null }
+}
 if ($JunkCatalog -and (Test-Path -LiteralPath $JunkCatalog)) { try { $Junk = Get-Content -LiteralPath $JunkCatalog -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $Junk = $null } }
 
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -923,6 +938,22 @@ $Sections['drivers'] = Invoke-Section 'drivers' '驱动（较慢）' {
         if ((Test-InboxFile $facts) -or (Test-MicrosoftFile $facts)) { continue }
         $item = [ordered]@{ name = $s.Name; state = $s.State; startMode = $s.StartMode; path = $exe; exists = $facts.exists
                             company = $facts.company; signer = $facts.signer; signature = $facts.signature }
+        # 和 LOLDrivers 名单比对文件指纹（只认 SHA-256，不认文件名）
+        if ($KnownDrivers -and $facts.exists) {
+            $sha = Safe "Get-FileHash $($s.Name)" { (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() }
+            if ($sha) {
+                $item.sha256 = $sha
+                $hit = $KnownDrivers[$sha]
+                if ($hit) {
+                    $item.knownDriver = [ordered]@{ category = [string]$hit[0]; listedName = [string]$hit[1] }
+                    if ([string]$hit[0] -eq 'malicious') {
+                        Add-Flag 'drivers' 'known-malicious-driver' 'high' $s.Name "文件指纹和公开名单（LOLDrivers）里的恶意驱动一致（$([string]$hit[1])，SHA-256 $($sha.Substring(0, 12))…）：$exe"
+                    } else {
+                        Add-Flag 'drivers' 'byovd-driver' 'medium' $s.Name "文件指纹在公开名单（LOLDrivers）里：这个版本的驱动被恶意软件利用过（$([string]$hit[1])，$($s.State)，签名者：$($facts.signer)）"
+                    }
+                }
+            }
+        }
         [void]$kd.Add($item)
         $label = "$($s.Name) $exe"
         if ($exe -and -not $facts.exists) {
@@ -1350,7 +1381,8 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
         }
     }
 
-    [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb; updatePolicy = $updatePolicy }
+    [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb; updatePolicy = $updatePolicy
+                vulnerableDriverBlocklist = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' 'VulnerableDriverBlocklistEnable' }
 }
 
 # 11. 浏览器与网络 -------------------------------------------------------------

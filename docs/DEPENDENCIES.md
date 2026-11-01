@@ -12,6 +12,8 @@
 | 字体 Inter（拉丁字母 400 / 500 / 600，界面正文）、Barlow Semi Condensed（500 / 600，大号数字） | Inter 4.x、Barlow 1.4（取自 npm 包 @fontsource 5.1.0） | SIL Open Font License 1.1（`src/Pcdoctor.App/web/fonts/OFL-*.txt`） | 是（rsms/inter、jpt/barlow） | 兼容（OFL 允许随软件再分发，只要求字体不单独出售、保留协议） | 中文用系统自带的微软雅黑，不打包 |
 | Microsoft.Web.WebView2（SDK：`Microsoft.Web.WebView2.Core.dll`、`.WinForms.dll`、原生 `WebView2Loader.dll`） | 1.0.3485.44 | BSD-3-Clause（包内 `LICENSE.txt`） | **否**：只发布二进制，微软没有公开这几个文件的源码 | 协议兼容；**是否算"闭源组件"不明确**，见下文 | 界面的承载控件 |
 
+| LOLDrivers 驱动指纹（`kb/loldrivers.json`，由 `tools/update_loldrivers.py` 从 github.com/magicsword-io/LOLDrivers 生成，只取 SHA-256、类别和文件名） | 2026-11-01 取的数据 | Apache-2.0（`kb/loldrivers.LICENSE.txt`，打包时作为 `THIRD-PARTY-NOTICES.txt` 放进免安装版、安装版和远程体检包） | 是 | 兼容（Apache-2.0 可以并入 AGPL-3.0 作品） | 采集脚本把第三方驱动的指纹和它比对，只当"被恶意软件利用过的驱动"痕迹报告，不做漏洞扫描 |
+
 不打包、由系统提供：**Microsoft Edge WebView2 运行时**（Windows 11 自带，属于操作系统组件，AGPL-3.0 第 1 条"系统库"例外适用）、Windows PowerShell 5.1、任务计划程序等系统组件。
 
 ## 只在开发和测试时使用（不进安装包）

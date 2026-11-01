@@ -20,6 +20,7 @@ SECTION_CATEGORY = {
 SECURITY_RULES = {
     'system-name-outside-windows', 'unsigned-user-folder', 'script-engine',
     'proxy-remote', 'proxy-pac', 'hosts-custom', 'svchost-third-party-dll', 'remote-unattended',
+    'byovd-driver', 'known-malicious-driver',
 }
 
 # 研判为"正常"时可以免扣分的规则：只限"这个程序 / 驱动是什么、是否可信"这类识别问题。

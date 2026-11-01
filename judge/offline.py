@@ -21,6 +21,8 @@ RULES = {
     'runs-from-user-folder':   UNSURE + ('{object} 从用户目录运行。很多正规软件也这样安装，需要你确认是不是自己装的',),
     'unsigned':                UNSURE + ('{object} 没有有效的数字签名，需要你确认是不是自己装的、来源可靠的软件',),
     'system-name-outside-windows': ('suspicious', 0.7, 'defender.scan', '{object} 用了系统程序的名字，却不在 Windows 目录里，这是恶意程序常用的伪装手法，建议交给 Defender 扫描'),
+    'byovd-driver':            ('problem', 0.75, 'none', '{object} 在公开的被恶意软件利用过的驱动名单里（按文件指纹比对）。它多半是某个硬件工具、超频软件或游戏装的正规驱动，但这个版本有漏洞，恶意软件会借它关掉杀毒软件。把装它的软件更新到最新版，不用了就卸载'),
+    'known-malicious-driver':  ('suspicious', 0.85, 'defender.scan', '{object} 的文件指纹和公开名单里的恶意驱动完全一致。建议马上交给 Defender 扫描，并想想最近装过什么来路不明的软件'),
     # 自启动 / 计划任务 / 服务
     'unsigned-user-folder':    UNSURE + ('{object} 开机自启动、在用户目录里且没有有效签名，需要你确认是不是自己装的',),
     'target-missing':          ('leftover', 0.85, None, '{object} 指向的程序已经不存在，是软件卸载后留下的残留'),
@@ -116,7 +118,7 @@ QUESTIONS = {
     'update-policy-off': '这台电脑归公司或学校管理吗？自动更新是你自己关的吗？',
 }
 
-MALWARE_RULES = {'active-threat', 'detection-not-remediated', 'system-name-outside-windows'}
+MALWARE_RULES = {'active-threat', 'detection-not-remediated', 'system-name-outside-windows', 'known-malicious-driver'}
 
 # 信息差小知识：和这台电脑命中的规则相关才给
 TIPS = [
@@ -136,6 +138,8 @@ TIPS = [
      '很多浏览器为了"秒开"，开机就在后台预加载，即使你从来不点它。只关掉不用的那几个的后台运行就好，常用的浏览器不用动。'),
     ({'web-notify-allowed'}, '"点允许，证明你不是机器人"是个圈套',
      '很多网页弹出"点允许继续观看""点允许证明你不是机器人"，点了以后这个网站就能一直给你发通知，哪怕你没打开它。右下角的广告、"中奖""中毒"提醒多半来自这里。'),
+    ({'byovd-driver', 'known-malicious-driver'}, '正规驱动也可能被坏人借用',
+     '有些硬件工具、超频软件、游戏反作弊的旧版驱动有漏洞，恶意软件会自己带上它们来关掉杀毒软件。Windows 安全中心 → 设备安全性 → 内核隔离里的"Microsoft 易受攻击的驱动程序阻止列表"打开后，系统会拦住其中大部分；软件保持最新版也能避开。'),
     ({'remote-unattended'}, '远程软件本身没问题，骗子却最爱它',
      '向日葵、ToDesk、AnyDesk 这类正规软件，骗子常冒充客服或公检法让人安装，再要验证码连进电脑。陌生人让你装远程软件、报验证码，立刻挂断；拿不准可以打 96110 反诈专线问问。'),
     ({'system-service-disabled', 'update-policy-off'}, '"关掉没用的服务"多半是伪优化',

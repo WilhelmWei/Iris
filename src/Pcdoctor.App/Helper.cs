@@ -112,9 +112,11 @@ public static class Helper
             File.WriteAllBytes(script, Pcdoctor.Core.Resources.CollectorScriptBytes());
             var junk = Path.Combine(work, "junk.json");
             File.WriteAllBytes(junk, Pcdoctor.Ops.Junk.CatalogBytes());
+            var hashes = Path.Combine(work, "loldrivers.json");
+            File.WriteAllBytes(hashes, Pcdoctor.Core.Resources.DriverHashesBytes());
             // 以文本方式运行脚本块：组策略强制的执行策略管不到它；本机采集不打码（报告只存在本机），发给模型前由主程序打码
             static string Q(string s) => "'" + s.Replace("'", "''") + "'";
-            var cmd = $"& ([scriptblock]::Create([IO.File]::ReadAllText({Q(script)}, [Text.Encoding]::UTF8))) -OutDir {Q(work)} -NoRedact -JunkCatalog {Q(junk)}";
+            var cmd = $"& ([scriptblock]::Create([IO.File]::ReadAllText({Q(script)}, [Text.Encoding]::UTF8))) -OutDir {Q(work)} -NoRedact -JunkCatalog {Q(junk)} -DriverHashes {Q(hashes)}";
             var exit = RunPowerShell(dir, cmd, line =>
             {
                 var i = line.IndexOf("采集：", StringComparison.Ordinal);
@@ -141,7 +143,7 @@ public static class Helper
         finally
         {
             if (elevated) try { Directory.Delete(work, true); } catch { }
-            else try { File.Delete(Path.Combine(work, "pcdoctor-collect.ps1")); File.Delete(Path.Combine(work, "junk.json")); } catch { }
+            else try { File.Delete(Path.Combine(work, "pcdoctor-collect.ps1")); File.Delete(Path.Combine(work, "junk.json")); File.Delete(Path.Combine(work, "loldrivers.json")); } catch { }
         }
     }
 

@@ -30,6 +30,7 @@ PROJ = os.path.join(ROOT, 'src', 'Pcdoctor.App', 'Pcdoctor.App.csproj')
 README = os.path.join(ROOT, 'src', 'Pcdoctor.App', '使用说明.txt')
 BETA = os.path.join(ROOT, 'docs', 'beta', '内测说明.txt')
 ISS = os.path.join(ROOT, 'installer', 'Iris.iss')
+NOTICES = os.path.join(ROOT, 'kb', 'loldrivers.LICENSE.txt')  # 第三方数据的许可（驱动指纹来自 LOLDrivers，Apache-2.0）
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)
 BOM = b'\xef\xbb\xbf'
 
@@ -74,6 +75,7 @@ def build_zip(version, exe_path, out_dir):
         'LICENSE.txt': text_for_windows(os.path.join(ROOT, 'LICENSE')),
         'PRIVACY.md': text_for_windows(os.path.join(ROOT, 'PRIVACY.md')),
         '使用说明.txt': text_for_windows(README),
+        'THIRD-PARTY-NOTICES.txt': text_for_windows(NOTICES),
     }
     if '-' in version and os.path.isfile(BETA):  # 预发布版（beta、rc）附上内测说明
         files['内测说明.txt'] = text_for_windows(BETA)
@@ -109,7 +111,7 @@ def build_installer(version, exe_path, out_dir):
     with tempfile.TemporaryDirectory() as stage:
         # 安装程序里要显示的协议和隐私政策：转成带 BOM 的 Windows 文本
         for src, name in ((os.path.join(ROOT, 'LICENSE'), 'LICENSE.txt'), (os.path.join(ROOT, 'PRIVACY.md'), 'PRIVACY.txt'),
-                          (README, '使用说明.txt')):
+                          (README, '使用说明.txt'), (NOTICES, 'THIRD-PARTY-NOTICES.txt')):
             with open(os.path.join(stage, name), 'wb') as fh:
                 fh.write(text_for_windows(src))
         shutil.copy2(exe_path, os.path.join(stage, 'Iris.exe'))

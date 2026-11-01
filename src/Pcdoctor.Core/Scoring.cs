@@ -29,6 +29,7 @@ public static class Scoring
     {
         "system-name-outside-windows", "unsigned-user-folder", "script-engine",
         "proxy-remote", "proxy-pac", "hosts-custom", "svchost-third-party-dll", "remote-unattended",
+        "byovd-driver", "known-malicious-driver",
     };
 
     /// <summary>研判为"正常"时可以免扣分的规则：只限识别问题；状态问题是客观事实，照样扣分</summary>

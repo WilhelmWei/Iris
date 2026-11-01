@@ -17,7 +17,7 @@
 体检只读，不修改任何东西。读取的内容：
 
 - 系统和硬件概况：Windows 版本、电脑型号、CPU、内存、硬盘型号和类型（SSD / 机械硬盘）、各磁盘空间、开机时长、电池状态
-- 正在运行的程序、开机自启动、服务、计划任务、驱动的名称、路径、厂商和数字签名状态
+- 正在运行的程序、开机自启动、服务、计划任务、驱动的名称、路径、厂商和数字签名状态；第三方驱动文件的 SHA-256 指纹（在本机和内置的公开名单 LOLDrivers 比对，不上传到任何地方查询）
 - 已装软件的名称和厂商；Program Files 下面里面已经没有程序文件、也没有已装软件和服务用到的文件夹（卸载残留）的位置和大小
 - 安全设置的状态：Microsoft Defender（含排除项、被允许的威胁、近期检测记录）、防火墙是否开启、UAC、安全启动、内存完整性、Windows 更新有没有被策略关闭、Windows 自带的几个常用服务（更新、搜索、打印、蓝牙等）是否被禁用、有没有在等重启的更新、系统还原点的数量
 - 网络设置：系统代理、hosts 文件中的自定义条目、DNS 服务器地址；浏览器扩展的名称和权限
@@ -93,7 +93,7 @@ Your check-up data stays on your computer. Data leaves it in only two cases: whe
 The check-up is read-only and changes nothing. It reads:
 
 - System and hardware overview: Windows version, device model, CPU, memory, disk model and type (SSD / HDD), disk space, uptime, battery status
-- Names, paths, vendors and digital-signature status of running programs, startup entries, services, scheduled tasks and drivers
+- Names, paths, vendors and digital-signature status of running programs, startup entries, services, scheduled tasks and drivers; SHA-256 fingerprints of third-party driver files (compared on this computer with the built-in public LOLDrivers list — nothing is uploaded for lookup)
 - Names and publishers of installed software; location and size of folders under Program Files that no longer contain any program files and are not used by any installed software or service (uninstall leftovers)
 - Status of security settings: Microsoft Defender (including exclusions, allowed threats and recent detections), whether the firewall is on, UAC, Secure Boot, Memory Integrity, whether Windows Update is turned off by policy, whether a few common built-in Windows services (update, search, printing, Bluetooth, etc.) are disabled, whether updates are waiting for a restart, the number of system restore points
 - Network settings: system proxy, custom entries in the hosts file, DNS server addresses; names and permissions of browser extensions

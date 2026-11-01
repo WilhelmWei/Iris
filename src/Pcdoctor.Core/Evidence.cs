@@ -194,6 +194,8 @@ public static class Evidence
                         ["className"] = Py.Clone(Py.Get(f, "className")),
                         ["kind"] = Py.Clone(Py.Get(f, "kind")),
                     }));
+                if (rule is "byovd-driver" or "known-malicious-driver")
+                    ctx["vulnerableDriverBlocklist"] = Py.Clone(Py.Get(Py.Get(S, "security"), "vulnerableDriverBlocklist"));
                 return ctx.Count > 0 ? ctx : null;
             }
             case "software":
