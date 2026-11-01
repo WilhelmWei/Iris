@@ -19,7 +19,7 @@ SECTION_CATEGORY = {
 # 虽然落在其他节、但本质是安全问题的规则
 SECURITY_RULES = {
     'system-name-outside-windows', 'unsigned-user-folder', 'script-engine',
-    'proxy-remote', 'proxy-pac', 'hosts-custom', 'svchost-third-party-dll',
+    'proxy-remote', 'proxy-pac', 'hosts-custom', 'svchost-third-party-dll', 'remote-unattended',
 }
 
 # 研判为"正常"时可以免扣分的规则：只限"这个程序 / 驱动是什么、是否可信"这类识别问题。
@@ -33,7 +33,7 @@ CLEARABLE_RULES = {
 }
 
 # 用户确认后可以免扣分的规则：识别类规则，加上用户自己做的 Defender 设置（排除项、允许的威胁）
-USER_CLEARABLE_RULES = CLEARABLE_RULES | {'defender-allowed-threat', 'defender-exclusion'}
+USER_CLEARABLE_RULES = CLEARABLE_RULES | {'defender-allowed-threat', 'defender-exclusion', 'remote-unattended', 'update-policy-off'}
 
 PENALTY = {'high': 30, 'medium': 10, 'low': 3, 'info': 0}
 EXTRA_SHARE = 1 / 3   # 同一规则的第二条起，每条只扣自身分值的三分之一

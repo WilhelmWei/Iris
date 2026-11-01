@@ -44,6 +44,10 @@ RULES = {
     'slow-charging':           ('problem', 0.6, 'none', '充电功率偏低，可以检查充电器和数据线'),
     'bsod':                    ('problem', 0.8, 'none', '最近出现过蓝屏'),
     'bsod-repeated':           ('problem', 0.9, 'none', '最近反复蓝屏，需要尽快排查'),
+    'system-service-disabled': ('problem', 0.7, 'none', '{object} 是 Windows 自带的服务，被设成了禁用。这多半是优化软件或网上教程关的：省不了多少资源，却可能让更新、搜索、打印或蓝牙出问题。如果不是你特意关的，可以在「服务」里把它改回默认的启动方式'),
+    'remote-unattended':       ('uncertain', 0.5, 'ask_user', '{object} 是远程控制软件，开机就以服务方式运行，别人随时可以连进来。你自己用来远程办公或帮家人的可以保留；不常用的话改成手动启动更安全'),
+    'update-policy-off':       ('uncertain', 0.5, 'ask_user', '有设置用组织策略关掉了 Windows 自动更新。公司管理的电脑可能是管理员设的；个人电脑多半是优化工具关的，长期不更新会缺安全补丁'),
+    'pending-reboot':          ('problem', 0.8, 'none', '有系统更新已经装好，在等你重启才能完成。点「重启」（不是关机再开机）一次就好'),
     'boot-degraded-by':        ('problem', 0.6, 'none', '{object} 拖慢了开机。如果它在开机自启动里、平时又不常用，可以关掉它的自启动'),
     'boot-slow':               ('problem', 0.7, 'none', '最近开机比较慢。下面列出了 Windows 记下的拖慢开机的程序和驱动，关掉它们的开机自启动通常最有效'),
     # 软件
@@ -108,6 +112,8 @@ QUESTIONS = {
     'proxy-remote': '你现在开着 VPN 或代理软件吗？',
     'proxy-pac': '你现在开着 VPN 或代理软件吗？',
     'browser-homepage-nav': '这个导航网站是你自己设成主页的吗？',
+    'remote-unattended': '这个远程软件是你自己装、现在还在用的吗？',
+    'update-policy-off': '这台电脑归公司或学校管理吗？自动更新是你自己关的吗？',
 }
 
 MALWARE_RULES = {'active-threat', 'detection-not-remediated', 'system-name-outside-windows'}
@@ -116,7 +122,7 @@ MALWARE_RULES = {'active-threat', 'detection-not-remediated', 'system-name-outsi
 TIPS = [
     ({'defender-exclusion', 'defender-exclusion-orphan'}, '卸载软件后，Defender 排除项不会自动删除',
      '有些软件安装时会让 Defender 不扫描自己的目录或进程名，卸载后这些排除项还在。按进程名的排除（比如 Update.exe）对任何同名程序都生效，等于留了一个口子。'),
-    ({'long-uptime', 'fast-startup-on'}, '点"关机"不等于重启',
+    ({'long-uptime', 'fast-startup-on', 'pending-reboot'}, '点"关机"不等于重启',
      'Windows 默认开着快速启动，关机时把系统内核存进休眠文件，下次开机直接恢复。所以长期"关机"也会积累内存占用和小毛病，真正清空要点"重启"。'),
     ({'chat-cache-large'}, '微信、QQ 的聊天文件默认存在 C 盘',
      '聊天里收到的图片、视频、文件默认存在 C 盘"文档"里，几年下来几十 GB 很常见。可以在微信 / QQ 的设置里把文件位置改到其他盘。'),
@@ -130,6 +136,10 @@ TIPS = [
      '很多浏览器为了"秒开"，开机就在后台预加载，即使你从来不点它。只关掉不用的那几个的后台运行就好，常用的浏览器不用动。'),
     ({'web-notify-allowed'}, '"点允许，证明你不是机器人"是个圈套',
      '很多网页弹出"点允许继续观看""点允许证明你不是机器人"，点了以后这个网站就能一直给你发通知，哪怕你没打开它。右下角的广告、"中奖""中毒"提醒多半来自这里。'),
+    ({'remote-unattended'}, '远程软件本身没问题，骗子却最爱它',
+     '向日葵、ToDesk、AnyDesk 这类正规软件，骗子常冒充客服或公检法让人安装，再要验证码连进电脑。陌生人让你装远程软件、报验证码，立刻挂断；拿不准可以打 96110 反诈专线问问。'),
+    ({'system-service-disabled', 'update-policy-off'}, '"关掉没用的服务"多半是伪优化',
+     'Windows 自带的服务大多平时不占资源，用到才启动。网上流传的"禁用这些服务让电脑飞起来"省不了多少内存，却常让系统更新、搜索、打印、蓝牙莫名其妙地坏掉。'),
     ({'shortcut-url', 'browser-policy-start', 'browser-homepage-nav', 'shortcut-fake-browser'}, '主页改不回来？先看快捷方式和策略',
      '有的软件不改浏览器设置，而是在桌面快捷方式后面加一个网址，或者用"组织策略"锁定主页，所以在浏览器设置里怎么改都没用。Iris 会把这两处都查一遍。'),
     ({'boot-slow', 'boot-degraded-by'}, '开机慢，先看是谁拖的',

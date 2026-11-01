@@ -128,6 +128,8 @@ def _context_for(flag, S):
     if sec == 'processes':
         return _find(S.get('processes', {}).get('items'), 'name', obj)
     if sec == 'services':
+        if rule == 'system-service-disabled':
+            return _find(S.get('services', {}).get('systemDisabled'), 'displayName', obj)
         return _find(S.get('services', {}).get('items'), 'name', obj)
     if sec == 'scheduledTasks':
         return _find(S.get('scheduledTasks', {}).get('items'), 'name', obj)
@@ -159,6 +161,8 @@ def _context_for(flag, S):
             return {'allowedThreats': sc.get('allowedThreats')}
         if rule == 'detection-not-remediated':
             return {'recentDetections': sc.get('recentDetections')}
+        if rule == 'update-policy-off':
+            return {'updatePolicy': sc.get('updatePolicy')}
         return {'defender': sc.get('defender')}
     if sec == 'storage':
         st = S.get('storage', {})

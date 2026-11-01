@@ -163,7 +163,7 @@
         const r = await load();
         const h = r ? r.history : [];
         return { version: '1.0.0-rc.1', isAdmin: false, identity: ['Alice', 'LAPTOP-TEST01'], settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review', 'browser.review'],
-                 privacy: { version: '2026-11-01.2', accepted: M.privacyAccepted },
+                 privacy: { version: '2026-11-01.3', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
@@ -271,7 +271,7 @@
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-11-01.2', text };
+        return { version: '2026-11-01.3', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};

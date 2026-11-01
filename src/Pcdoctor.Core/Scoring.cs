@@ -28,7 +28,7 @@ public static class Scoring
     public static readonly IReadOnlySet<string> SecurityRules = new HashSet<string>
     {
         "system-name-outside-windows", "unsigned-user-folder", "script-engine",
-        "proxy-remote", "proxy-pac", "hosts-custom", "svchost-third-party-dll",
+        "proxy-remote", "proxy-pac", "hosts-custom", "svchost-third-party-dll", "remote-unattended",
     };
 
     /// <summary>研判为"正常"时可以免扣分的规则：只限识别问题；状态问题是客观事实，照样扣分</summary>
@@ -43,7 +43,7 @@ public static class Scoring
 
     /// <summary>用户确认后可以免扣分的规则：识别类规则，加上用户自己做的 Defender 设置</summary>
     public static readonly IReadOnlySet<string> UserClearableRules =
-        new HashSet<string>(ClearableRules) { "defender-allowed-threat", "defender-exclusion" };
+        new HashSet<string>(ClearableRules) { "defender-allowed-threat", "defender-exclusion", "remote-unattended", "update-policy-off" };
 
     public static readonly IReadOnlyDictionary<string, int> Penalty = new Dictionary<string, int>
         { ["high"] = 30, ["medium"] = 10, ["low"] = 3, ["info"] = 0 };

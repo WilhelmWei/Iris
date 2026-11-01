@@ -43,7 +43,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.2'
+$ScriptVersion = '0.3.3'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -777,7 +777,15 @@ $Sections['startup'] = Invoke-Section 'startup' '开机自启动' {
 # 4. 服务 ----------------------------------------------------------------------
 $Sections['services'] = Invoke-Section 'services' '服务' {
     $out = New-Object System.Collections.ArrayList
+    # Windows 自带、常被"优化"软件或网上教程禁用的服务：名称 -> 严重程度（影响更新和安全的为 medium）
+    $watch = @{ wuauserv = 'medium'; UsoSvc = 'medium'; BITS = 'low'; wscsvc = 'medium'; EventLog = 'medium'
+                WSearch = 'low'; Spooler = 'low'; bthserv = 'low'; SysMain = 'low'; W32Time = 'low' }
+    $sysDisabled = New-Object System.Collections.ArrayList
     foreach ($s in (Get-Cim Win32_Service)) {
+        if ($watch.ContainsKey([string]$s.Name) -and $s.StartMode -eq 'Disabled') {
+            [void]$sysDisabled.Add([ordered]@{ name = $s.Name; displayName = $s.DisplayName; startMode = $s.StartMode; state = $s.State })
+            Add-Flag 'services' 'system-service-disabled' $watch[[string]$s.Name] $s.DisplayName "Windows 自带的服务被设成了禁用（$($s.Name)，默认是手动或自动启动）"
+        }
         $exe = Resolve-ExePath $s.PathName
         # 寄宿在 svchost 里的服务，真正的代码在 ServiceDll；只看 svchost.exe 会把第三方 DLL 当成微软服务跳过
         $dll = $null
@@ -811,9 +819,12 @@ $Sections['services'] = Invoke-Section 'services' '服务' {
         }
         if ("$($s.Name) $($s.DisplayName) $exe" -match $Seeds.leftoverOrBundle) { Add-Flag 'services' 'seed-bundle' 'medium' $s.Name '命中常见捆绑/残留软件种子名单' }
         if ("$($s.Name) $exe" -match $Seeds.antiCheatOrAccel) { Add-Flag 'services' 'seed-anticheat-accel' 'medium' $s.Name '疑似游戏反作弊或加速器组件' }
+        if ($s.StartMode -eq 'Auto' -and "$($s.Name) $($s.DisplayName) $exe" -match $Categories['远程控制']) {
+            Add-Flag 'services' 'remote-unattended' 'medium' $s.Name "远程控制软件「$($s.DisplayName)」以服务方式开机自动运行：电脑一开机就能被远程连接，不需要打开软件"
+        }
     }
     $auto = @($out | Where-Object { $_.startMode -eq 'Auto' })
-    [ordered]@{ thirdPartyCount = $out.Count; thirdPartyAutoCount = $auto.Count; items = @($out | Sort-Object { $_.startMode }, { $_.name }) }
+    [ordered]@{ thirdPartyCount = $out.Count; thirdPartyAutoCount = $auto.Count; items = @($out | Sort-Object { $_.startMode }, { $_.name }); systemDisabled = @($sysDisabled) }
 }
 
 # 5. 计划任务 ------------------------------------------------------------------
@@ -1273,6 +1284,13 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
     foreach ($p in $fw) { if (-not $p.enabled) { Add-Flag 'security' 'firewall-off' 'medium' "防火墙 $($p.profile)" '该网络类型的防火墙已关闭' } }
 
     $uac = Get-RegValue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' 'EnableLUA'
+    $wuPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+    $updatePolicy = [ordered]@{ noAutoUpdate = Get-RegValue "$wuPol\AU" 'NoAutoUpdate'; disableAccess = Get-RegValue $wuPol 'DisableWindowsUpdateAccess'
+                                wsus = [bool](Get-RegValue $wuPol 'WUServer') }
+    if ($updatePolicy.noAutoUpdate -eq 1 -or $updatePolicy.disableAccess -eq 1) {
+        $what = @(); if ($updatePolicy.noAutoUpdate -eq 1) { $what += '关闭自动更新' }; if ($updatePolicy.disableAccess -eq 1) { $what += '禁止使用 Windows 更新' }
+        Add-Flag 'security' 'update-policy-off' 'medium' 'Windows 更新' ("用组织策略" + ($what -join '、') + "（公司电脑可能是管理员设的，个人电脑多半是优化工具改的）")
+    }
     if ($uac -eq 0) { Add-Flag 'security' 'uac-off' 'high' 'UAC' '用户账户控制已关闭' }
 
     $bl = $null
@@ -1332,7 +1350,7 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
         }
     }
 
-    [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb }
+    [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb; updatePolicy = $updatePolicy }
 }
 
 # 11. 浏览器与网络 -------------------------------------------------------------
@@ -1606,9 +1624,18 @@ $Sections['stability'] = Invoke-Section 'stability' '稳定性' {
     foreach ($x in @($boot.slowItems | Where-Object { $_.times -ge 2 -and $_.avgSec -ge 3 } | Select-Object -First 5)) {
         Add-Flag 'stability' 'boot-degraded-by' 'low' $x.name "最近 $($x.times) 次开机里，这个$($x.kind)平均拖慢 $($x.avgSec) 秒"
     }
+    $pending = [ordered]@{
+        servicing = Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'
+        windowsUpdate = Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
+        fileRename = [bool](Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' 'PendingFileRenameOperations')
+    }
+    if ($pending.servicing -or $pending.windowsUpdate) { Add-Flag 'stability' 'pending-reboot' 'low' '待重启' '有系统更新已经装好，在等重启才能完成' }
+    $rp = @((Safe 'Get-ComputerRestorePoint' { Get-ComputerRestorePoint }) | Where-Object { $_ })
+    $restore = [ordered]@{ count = $rp.Count; newest = $null }
+    if ($rp.Count) { $restore.newest = Safe 'restore point time' { ([Management.ManagementDateTimeConverter]::ToDateTime(($rp | Sort-Object SequenceNumber | Select-Object -Last 1).CreationTime)).ToString('yyyy-MM-dd HH:mm') } }
     if ($bsod.Count -ge 3) { Add-Flag 'stability' 'bsod-repeated' 'high' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次" }
     elseif ($bsod.Count -ge 1) { Add-Flag 'stability' 'bsod' 'medium' '蓝屏' "30 天内蓝屏 $($bsod.Count) 次，最近一次：$($bsod[0].time)" }
-    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes; boot = $boot }
+    [ordered]@{ bugChecks30d = $bsod; unexpectedShutdowns30d = $unexpected; minidumps = $dumps; appCrashes7d = $crashes; boot = $boot; pendingReboot = $pending; restorePoints = $restore }
 }
 
 # ---------------------------------------------------------------------------

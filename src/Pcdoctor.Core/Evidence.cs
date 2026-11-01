@@ -167,6 +167,8 @@ public static class Evidence
         var objKey = Py.S(obj);
         switch (sec)
         {
+            case "services" when rule == "system-service-disabled":
+                return Find(Py.Get(Py.Get(S, "services"), "systemDisabled"), "displayName", obj);
             case "processes":
             case "services":
             case "scheduledTasks":
@@ -212,6 +214,8 @@ public static class Evidence
                     return new JsonObject { ["allowedThreats"] = Py.Clone(Py.Get(sc, "allowedThreats")) };
                 if (rule == "detection-not-remediated")
                     return new JsonObject { ["recentDetections"] = Py.Clone(Py.Get(sc, "recentDetections")) };
+                if (rule == "update-policy-off")
+                    return new JsonObject { ["updatePolicy"] = Py.Clone(Py.Get(sc, "updatePolicy")) };
                 return new JsonObject { ["defender"] = Py.Clone(Py.Get(sc, "defender")) };
             }
             case "storage":
