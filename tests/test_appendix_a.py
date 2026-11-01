@@ -21,11 +21,10 @@ from run_judge import judge, load_system_prompt, prepare  # noqa: E402
 from validate import validate  # noqa: E402
 
 KB = load_kb()
-COVERED = 12
+COVERED = 13
 NOT_COVERED = {
     '24 个服务批量改手动，第一版命令把失败也打印成成功': '属于执行阶段（阶段 3 操作库执行器：执行后必须重新检测验证），MVP 只出报告',
     '设置窗口被管理员窗口遮挡，点击失败': '属于执行架构（后台服务执行、不模拟点击），阶段 3',
-    '华为电脑管家累计 1400 多秒 CPU': '缺规则：采集了 topByCpuSec，但没有"单个第三方进程累计 CPU 很高"的预筛规则（待补）',
 }
 
 
@@ -89,7 +88,18 @@ class AppendixATest(unittest.TestCase):
         self.assertIn('没有发现中毒迹象', result['judgement']['malwareReasoning'])
         self.assertNotEqual(f['F001']['verdict'], 'suspicious')
 
-    # 3 附带（第 3 行本身未覆盖）：华为电脑管家的 dokan 驱动是 OEM 组件，启动早期加载，不能直接删
+    # 3. 电脑管家累计 1400 多秒 CPU：单个第三方程序长期占 CPU 是"性能"问题，不是中毒；建议关自启动而不是删
+    def test_03_third_party_cpu_hog(self):
+        r = make_report([flag(1, 'resources', 'process-cpu-heavy', 'low', 'HwMdcUI', '开机以来累计 1432 秒 CPU，平均一直占着约 0.4 个核心')],
+                        {'resources': {'topByCpuSec': [{'name': 'HwMdcUI', 'processes': 3, 'memoryMB': 210, 'cpuSec': 1432}]}},
+                        software=['华为电脑管家'])
+        result, f = run_offline(r)
+        self.assertFalse(result['judgement']['malwareSuspected'])
+        self.assertEqual(f['F001']['verdict'], 'problem')
+        self.assertIn('开机自启动', f['F001']['userExplanation'])
+        self.assertLess(result['score']['categories']['性能与后台']['score'], 100)
+
+    # 3 附带：华为电脑管家的 dokan 驱动是 OEM 组件，启动早期加载，不能直接删
     def test_03b_oem_manager_driver(self):
         sections = {'drivers': {'kernelDrivers': {'items': [
             {'name': 'dokan2a', 'state': 'Running', 'startMode': 'System', 'path': 'C:\\Program Files\\Huawei\\PCManager\\dokan2a.sys',

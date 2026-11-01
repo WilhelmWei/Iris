@@ -47,7 +47,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.6'
+$ScriptVersion = '0.3.7'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -695,6 +695,23 @@ $Sections['resources'] = Invoke-Section 'resources' '资源占用' {
         if ($upSec -ge 600) {
             $cores = [math]::Round($msmp.CPU / $upSec, 1)
             if ($cores -ge 1) { Add-Flag 'resources' 'defender-cpu-heavy' 'low' 'Microsoft Defender' "开机以来平均一直占用约 $cores 个 CPU 核心（累计 $([int]$msmp.CPU) 秒），可能有扫描正在进行或卡住；持续这样电脑会发热、变慢" }
+        }
+    }
+    # 单个第三方程序开机以来累计 CPU 很高（附录 A：电脑管家累计 1400 多秒）：平均一直占着 0.25 个核心以上
+    if ($os -and $os.LastBootUpTime) {
+        $upSec2 = ((Get-Date) - $os.LastBootUpTime).TotalSeconds
+        $skip = '^(?i)(Idle|System|Registry|Memory Compression|MsMpEng|svchost|csrss|dwm|explorer|audiodg|lsass|services|wininit|smss|Secure System|Iris|powershell|pwsh)$'
+        if ($upSec2 -ge 1800) {
+            foreach ($t in @($topByCpu | Select-Object -First 8)) {
+                if ($t.name -match $skip -or $t.cpuSec -lt 600) { continue }
+                $cores2 = [math]::Round($t.cpuSec / $upSec2, 2)
+                if ($cores2 -lt 0.25) { continue }
+                $p1 = $procs | Where-Object { $_.ProcessName -eq $t.name } | Select-Object -First 1
+                $co = ''; if ($p1) { $co = [string]$p1.Company }
+                if ($co -match '(?i)^Microsoft') { continue }
+                $sev = 'low'; if ($cores2 -ge 1) { $sev = 'medium' }
+                Add-Flag 'resources' 'process-cpu-heavy' $sev $t.name "开机以来累计 $($t.cpuSec) 秒 CPU，平均一直占着约 $cores2 个核心（厂商：$co）"
+            }
         }
     }
     if ($uptimeDays -ne $null -and $uptimeDays -ge 7) { Add-Flag 'resources' 'long-uptime' 'low' '系统运行时间' "已 $uptimeDays 天没有真正重启（快速启动下'关机'不算重启）" }

@@ -211,6 +211,7 @@ BROAD = {
         flag(65, 'security', 'win10-eol', 'medium', 'Windows 10', 'Windows 10 已在 2025 年 10 月停止免费安全更新'),
         flag(66, 'security', 'bitlocker-on', 'info', 'BitLocker 恢复密钥', '系统盘开着加密'),
         flag(67, 'startup', 'script-engine', 'high', 'QuickVPN Helper', '开机自启动运行脚本：wscript.exe C:\\Users\\[用户]\\AppData\\q.vbs'),
+        flag(68, 'resources', 'process-cpu-heavy', 'low', 'QuickVPNTray', '开机以来累计 1432 秒 CPU，平均一直占着约 0.4 个核心'),
         flag(58, 'browserNetwork', 'shortcut-fake-browser', 'medium', 'Internet Explorer（桌面）', '名字是浏览器，打开的却是：C:\\Program Files\\QuickVPN\\qb.exe'),
     ],
     'sections': {

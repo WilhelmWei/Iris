@@ -22,6 +22,7 @@ public static class Offline
         ["cpu-busy-idle"] = R("problem", 0.7, "none", "采集时 CPU 一直很忙。可以打开任务管理器按 CPU 排序，看看是谁在占用"),
         ["gpu-busy-idle"] = R("problem", 0.6, "none", "没开游戏和视频时显卡也很忙，值得看看是哪个程序（挖矿程序也会这样，但更常见的是浏览器或壁纸软件）"),
         ["defender-cpu-heavy"] = R("problem", 0.7, "none", "Defender 开机以来一直占用大量 CPU，可能有扫描卡住了。可以在「Windows 安全中心 → 病毒和威胁防护」看看是否有扫描在进行"),
+        ["process-cpu-heavy"] = R("problem", 0.6, "none", "{object} 开机以来一直在占 CPU，比大多数程序都多。如果它是你没在用的后台程序（例如电脑管家、更新程序），可以关掉它的开机自启动；正在用的大型软件或游戏属于正常"),
         ["long-uptime"] = R("problem", 0.8, "power.disable_fast_startup", "很久没有真正重启过。开着快速启动时，点\"关机\"再开机并不等于重启，建议定期\"重启\"一次"),
         ["memory-compression-busy"] = R("problem", 0.7, "none", "内存压缩一直在忙，说明内存不够用了。卡顿、发热时先考虑内存不足，而不是中毒"),
         ["memory-high"] = R("problem", 0.7, "none", "内存占用很高。关掉不用的程序和浏览器标签页，比任何\"内存加速球\"都有效"),
