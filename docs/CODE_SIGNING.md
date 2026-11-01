@@ -1,6 +1,6 @@
 # Code signing policy / 代码签名政策
 
-> **状态：申请中。** Iris 正在申请 SignPath Foundation 的免费开源代码签名。获批之前发布的版本没有签名；获批后，下面的政策适用于所有发布的 Windows 程序。
+> **状态：计划申请（材料已备好，还没提交；项目 2026 年 11 月起暂停开发）。** Iris 计划申请 SignPath Foundation 的免费开源代码签名。获批之前发布的版本没有签名；获批后，下面的政策适用于所有发布的 Windows 程序。
 >
 > **Status: applying.** Iris has applied for free open-source code signing from SignPath Foundation. Releases published before approval are unsigned; once approved, this policy applies to every released Windows binary.
 
