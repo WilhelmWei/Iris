@@ -1129,3 +1129,14 @@ svg.trend .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
 /* 健康分封顶说明 */
 .cap-note { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; font-size: 13px; color: var(--text-2); }
 .cap-note .ico { color: var(--accent); }
+
+/* 这台电脑被改过的地方 */
+.card.changed { padding: 20px 22px; display: grid; gap: 14px; margin-top: 14px; }
+.changed-head { display: flex; gap: 14px; align-items: flex-start; }
+.changed-head h3 { margin: 0 0 4px; }
+.changed-head p { margin: 0; max-width: 680px; }
+.changed-head .glyph { color: var(--accent); flex: none; margin-top: 2px; }
+.changed-list { display: grid; gap: 2px; }
+.changed-row { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; }
+.changed-row .chip { justify-self: start; }
+.changed-row .row { border-radius: 10px; }

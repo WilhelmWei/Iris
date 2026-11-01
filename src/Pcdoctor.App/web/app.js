@@ -600,8 +600,9 @@
         <div class="card list" style="margin-top:14px">${list.map(rowHtml).join('') || '<div class="empty">这一类没有项目</div>'}</div>
         ${R.meta.source === 'local' ? '<button class="missed" data-act="missed">Iris 漏掉了什么？告诉我们</button>' : ''}
       </div>
-      ${!alarm || R.storage ? `<div class="section-head" id="sec-topics"><h2>专题</h2><span class="more muted hint" style="cursor:default">安全和空间的完整说明</span></div>` : ''}
+      ${!alarm || R.storage || changedFindings().length ? `<div class="section-head" id="sec-topics"><h2>专题</h2><span class="more muted hint" style="cursor:default">安全、被改过的地方和空间的完整说明</span></div>` : ''}
       ${alarm ? '' : verdictCard(j)}
+      ${changedCard()}
       ${spaceCard()}
       ${s.showTips !== false && j.tips && j.tips.length ? `<div class="section-head"><h2>小知识</h2><button class="more" data-act="tips-off">不再显示</button></div>
         <div class="tips">${j.tips.map(t => `<div class="card tip"><span class="tag">小知识</span><b>${esc(t.title)}</b><p>${esc(t.body)}</p></div>`).join('')}${managerNote()}</div>` : ''}
@@ -646,6 +647,29 @@
     return `<div class="r-status">${chips.join('')}</div>`;
   }
   /** "有没有中毒"：分清这次有没有让 Defender 扫描，不把"Iris 没看到"说成"没有病毒" */
+  /** 「这台电脑被改过的地方」：不是 Windows 默认样子的设置，汇总在一处（规则编号从健康分的扣分明细里取） */
+  const CHANGED = {
+    'shortcut-url': '浏览器', 'shortcut-fake-browser': '浏览器', 'browser-policy-start': '浏览器', 'browser-homepage-nav': '浏览器',
+    'system-service-disabled': '系统设置', 'update-policy-off': '系统设置', 'uac-off': '系统设置', 'firewall-off': '系统设置',
+    'defender-exclusion': '安全中心', 'defender-exclusion-orphan': '安全中心', 'defender-allowed-threat': '安全中心',
+    'hosts-custom': '网络', 'proxy-remote': '网络', 'proxy-pac': '网络', 'remote-unattended': '远程控制',
+  };
+  function changedFindings() {
+    const R = state.report, rules = {};
+    Object.values(R.result.score.categories || {}).forEach(c => (c.deductions || []).forEach(d => (d.flagIds || []).forEach(id => { rules[id] = d.rule; })));
+    return R.result.judgement.findings.map(f => ({ f, kind: f.flagIds.map(id => CHANGED[rules[id]]).find(Boolean) })).filter(x => x.kind);
+  }
+  function changedCard() {
+    const list = changedFindings();
+    if (!list.length) return '';
+    const order = ['安全中心', '系统设置', '浏览器', '网络', '远程控制'];
+    list.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+    return `<section class="card changed" id="changed-card">
+      <div class="changed-head"><span class="glyph">${icon('layers')}</span><div><h3>这台电脑被改过的地方 · ${list.length} 处</h3>
+        <p class="muted small">这些设置不是 Windows 默认的样子：可能是你自己改的，也可能是装软件、"优化"工具或别人改的。普通电脑管家一般不会告诉你这些。认识的留着，不认识的点开处理。</p></div></div>
+      <div class="changed-list">${list.map(({ f, kind }) => `<div class="changed-row"><span class="chip src">${esc(kind)}</span>${rowHtml(f)}</div>`).join('')}</div>
+    </section>`;
+  }
   function verdictCard(j) {
     const R = state.report, D = R.defender || null, sus = j.malwareSuspected, scanned = !!(D && D.scanned);
     const ago = n => n == null ? null : n >= 10000 ? '没有记录' : n < 1 ? '今天' : `${Math.round(n)} 天前`;
@@ -952,6 +976,8 @@
     const box = $main.querySelector('.list'); if (!box) return;
     box.innerHTML = visible().map(rowHtml).join('') || '<div class="empty">这一类没有项目</div>';
     hydrate(box);
+    const ch = $main.querySelector('#changed-card');
+    if (ch) { const t = document.createElement('div'); t.innerHTML = changedCard(); const n = t.firstElementChild; if (n) { ch.replaceWith(n); hydrate(n); } }
     const a = box.querySelector('.row.active'); if (a) a.scrollIntoView({ block: 'nearest' });
   }
 
