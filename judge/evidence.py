@@ -165,6 +165,10 @@ def _context_for(flag, S):
             return {'recentDetections': sc.get('recentDetections')}
         if rule == 'update-policy-off':
             return {'updatePolicy': sc.get('updatePolicy')}
+        if rule in ('updates-stale', 'win10-eol'):
+            return {'updates': sc.get('updates'), 'updatePolicy': sc.get('updatePolicy')}
+        if rule == 'bitlocker-on':
+            return {'bitlockerSystemDrive': sc.get('bitlockerSystemDrive')}
         return {'defender': sc.get('defender')}
     if sec == 'storage':
         st = S.get('storage', {})

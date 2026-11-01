@@ -47,7 +47,7 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference    = 'SilentlyContinue'
-$ScriptVersion = '0.3.4'
+$ScriptVersion = '0.3.5'
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 # 清理目录表（kb/junk.json）：桌面版把它写在脚本旁边并用 -JunkCatalog 传进来；远程体检包里和脚本放在一起
@@ -785,6 +785,11 @@ $Sections['startup'] = Invoke-Section 'startup' '开机自启动' {
             Add-Flag 'startup' 'unsigned-user-folder' 'high' $it.name "从用户目录自启动且无有效签名：$($it.exe)"
         }
         if ("$($it.name) $($it.exe)" -match $Seeds.leftoverOrBundle) { Add-Flag 'startup' 'seed-bundle' 'medium' $it.name '命中常见捆绑/残留软件种子名单' }
+        # 开机就跑脚本（.vbs / .js / PowerShell）：正规软件少见，也是恶意软件常用手法；VBScript 以后会被 Windows 默认关闭
+        if ($it.enabled -and "$($it.command)" -match $Seeds.scriptEngines) {
+            $sev = 'medium'; if ((Test-UserWritablePath "$($it.command)") -or "$($it.command)" -match '(?i)\s-e(nc|ncodedcommand)?\s|-w(indowstyle)?\s+hidden') { $sev = 'high' }
+            Add-Flag 'startup' 'script-engine' $sev $it.name "开机自启动运行脚本：$($it.command)"
+        }
     }
     [ordered]@{ total = $items.Count; enabledCount = @($items | Where-Object { $_.enabled }).Count; items = @($items) }
 }
@@ -1322,10 +1327,26 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
         $what = @(); if ($updatePolicy.noAutoUpdate -eq 1) { $what += '关闭自动更新' }; if ($updatePolicy.disableAccess -eq 1) { $what += '禁止使用 Windows 更新' }
         Add-Flag 'security' 'update-policy-off' 'medium' 'Windows 更新' ("用组织策略" + ($what -join '、') + "（公司电脑可能是管理员设的，个人电脑多半是优化工具改的）")
     }
+    # 最近一次装系统更新是哪天（Win32_QuickFixEngineering，只看日期）；Windows 10 已在 2025-10-14 停止免费安全更新
+    $hf = @((Safe 'Get-HotFix' { Get-HotFix }) | Where-Object { $_ -and $_.InstalledOn } | Sort-Object InstalledOn -Descending)
+    $updates = [ordered]@{ lastInstalled = $null; daysSince = $null; count = $hf.Count }
+    if ($hf.Count) {
+        $updates.lastInstalled = ([datetime]$hf[0].InstalledOn).ToString('yyyy-MM-dd')
+        $updates.daysSince = [int]((Get-Date) - [datetime]$hf[0].InstalledOn).TotalDays
+    }
+    $build = 0; if ($Sections['resources'] -and $Sections['resources'].os) { [void][int]::TryParse([string]$Sections['resources'].os.build, [ref]$build) }
+    if ($null -ne $updates.daysSince) {
+        if ($build -gt 0 -and $build -lt 22000 -and $updates.daysSince -gt 60) {
+            Add-Flag 'security' 'win10-eol' 'medium' 'Windows 10' "Windows 10 已在 2025 年 10 月停止免费安全更新；这台电脑最近一次装更新是 $($updates.lastInstalled)（$($updates.daysSince) 天前）"
+        } elseif ($updates.daysSince -gt 90) {
+            Add-Flag 'security' 'updates-stale' 'medium' 'Windows 更新' "最近一次装系统更新是 $($updates.lastInstalled)，已经 $($updates.daysSince) 天"
+        }
+    }
     if ($uac -eq 0) { Add-Flag 'security' 'uac-off' 'high' 'UAC' '用户账户控制已关闭' }
 
     $bl = $null
     if ($IsAdmin) { $v = Safe 'Get-BitLockerVolume' { Get-BitLockerVolume -MountPoint $env:SystemDrive }; if ($v) { $bl = [string]$v.ProtectionStatus } }
+    if ($bl -eq 'On') { Add-Flag 'security' 'bitlocker-on' 'info' 'BitLocker 恢复密钥' '系统盘开着加密（BitLocker 或设备加密）；换主板、重置 BIOS 或大版本升级后，可能要输入恢复密钥' }
     $sb = $null
     if ($IsAdmin) { try { $sb = Confirm-SecureBootUEFI -ErrorAction Stop } catch { $sb = $null } }
 
@@ -1382,7 +1403,7 @@ $Sections['security'] = Invoke-Section 'security' '安全设置' {
     }
 
     [ordered]@{ defender = $def; defenderExclusions = $excl; allowedThreats = @($allowed); recentDetections = $recentDetections; threatHistory = $threats; firewall = $fw; uacEnabled = $uac; bitlockerSystemDrive = $bl; secureBoot = $sb; updatePolicy = $updatePolicy
-                vulnerableDriverBlocklist = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' 'VulnerableDriverBlocklistEnable' }
+                updates = $updates; vulnerableDriverBlocklist = Get-RegValue 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' 'VulnerableDriverBlocklistEnable' }
 }
 
 # 11. 浏览器与网络 -------------------------------------------------------------

@@ -218,6 +218,10 @@ public static class Evidence
                     return new JsonObject { ["recentDetections"] = Py.Clone(Py.Get(sc, "recentDetections")) };
                 if (rule == "update-policy-off")
                     return new JsonObject { ["updatePolicy"] = Py.Clone(Py.Get(sc, "updatePolicy")) };
+                if (rule is "updates-stale" or "win10-eol")
+                    return new JsonObject { ["updates"] = Py.Clone(Py.Get(sc, "updates")), ["updatePolicy"] = Py.Clone(Py.Get(sc, "updatePolicy")) };
+                if (rule == "bitlocker-on")
+                    return new JsonObject { ["bitlockerSystemDrive"] = Py.Clone(Py.Get(sc, "bitlockerSystemDrive")) };
                 return new JsonObject { ["defender"] = Py.Clone(Py.Get(sc, "defender")) };
             }
             case "storage":

@@ -59,6 +59,9 @@ public static class Offline
         ["system-service-disabled"] = R("problem", 0.7, "none", "{object} 是 Windows 自带的服务，被设成了禁用。这多半是优化软件或网上教程关的：省不了多少资源，却可能让更新、搜索、打印或蓝牙出问题。如果不是你特意关的，可以在「服务」里把它改回默认的启动方式"),
         ["remote-unattended"] = R("uncertain", 0.5, "ask_user", "{object} 是远程控制软件，开机就以服务方式运行，别人随时可以连进来。你自己用来远程办公或帮家人的可以保留；不常用的话改成手动启动更安全"),
         ["update-policy-off"] = R("uncertain", 0.5, "ask_user", "有设置用组织策略关掉了 Windows 自动更新。公司管理的电脑可能是管理员设的；个人电脑多半是优化工具关的，长期不更新会缺安全补丁"),
+        ["updates-stale"] = R("problem", 0.75, "none", "这台电脑很久没装系统更新了，会缺安全补丁。打开「设置 → Windows 更新」检查一下；如果更新一直失败，把报错代码发给帮你看电脑的人"),
+        ["win10-eol"] = R("problem", 0.8, "none", "Windows 10 已在 2025 年 10 月停止免费安全更新，这台电脑也有一段时间没收到更新了。硬件支持的话可以免费升级到 Windows 11；不支持的话可以考虑微软的扩展安全更新（ESU）"),
+        ["bitlocker-on"] = R("uncertain", 0.5, "ask_user", "系统盘开着加密，这是好事。但要确认你知道恢复密钥在哪：换主板、重置 BIOS 或大版本升级后，电脑可能要你输入它，找不到就再也打不开盘里的文件"),
         ["pending-reboot"] = R("problem", 0.8, "none", "有系统更新已经装好，在等你重启才能完成。点「重启」（不是关机再开机）一次就好"),
         ["boot-degraded-by"] = R("problem", 0.6, "none", "{object} 拖慢了开机。如果它在开机自启动里、平时又不常用，可以关掉它的自启动"),
         ["boot-slow"] = R("problem", 0.7, "none", "最近开机比较慢。下面列出了 Windows 记下的拖慢开机的程序和驱动，关掉它们的开机自启动通常最有效"),
@@ -129,6 +132,7 @@ public static class Offline
         ["browser-homepage-nav"] = "这个导航网站是你自己设成主页的吗？",
         ["remote-unattended"] = "这个远程软件是你自己装、现在还在用的吗？",
         ["update-policy-off"] = "这台电脑归公司或学校管理吗？自动更新是你自己关的吗？",
+        ["bitlocker-on"] = "你知道这台电脑的恢复密钥存在哪吗？（用微软账户登录过的，一般在 account.microsoft.com/devices/recoverykey）",
     };
 
     public const string DefaultQuestion = "这是你自己安装或设置的吗？现在还在用吗？";
@@ -154,6 +158,10 @@ public static class Offline
             "很多浏览器为了\"秒开\"，开机就在后台预加载，即使你从来不点它。只关掉不用的那几个的后台运行就好，常用的浏览器不用动。"),
         (new HashSet<string> { "web-notify-allowed" }, "\"点允许，证明你不是机器人\"是个圈套",
             "很多网页弹出\"点允许继续观看\"\"点允许证明你不是机器人\"，点了以后这个网站就能一直给你发通知，哪怕你没打开它。右下角的广告、\"中奖\"\"中毒\"提醒多半来自这里。"),
+        (new HashSet<string> { "updates-stale", "win10-eol", "update-policy-off" }, "系统更新不是可有可无",
+            "大部分电脑中毒，利用的都是早就修好的漏洞。觉得更新打扰你，可以在设置里改\"活动时间\"、暂停一两周，而不是一直关着。"),
+        (new HashSet<string> { "bitlocker-on" }, "加密的电脑，先把恢复密钥找好",
+            "Windows 11 很多电脑出厂就开着设备加密。平时感觉不到，可一旦换主板、重置 BIOS，开机就会要一串 48 位的恢复密钥。用微软账户登录过的，可以在 account.microsoft.com/devices/recoverykey 找到；最好拍照或打印一份放好。"),
         (new HashSet<string> { "byovd-driver", "known-malicious-driver" }, "正规驱动也可能被坏人借用",
             "有些硬件工具、超频软件、游戏反作弊的旧版驱动有漏洞，恶意软件会自己带上它们来关掉杀毒软件。Windows 安全中心 → 设备安全性 → 内核隔离里的\"Microsoft 易受攻击的驱动程序阻止列表\"打开后，系统会拦住其中大部分；软件保持最新版也能避开。"),
         (new HashSet<string> { "remote-unattended" }, "远程软件本身没问题，骗子却最爱它",
