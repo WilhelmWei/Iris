@@ -23,6 +23,8 @@ public static class AppData
     public static string Outbox => Dir("outbox");
     public static string ErrorLog => Path.Combine(Root, "error.log");
     public static string KnownFile => Path.Combine(Root, "known.json");
+    /// <summary>「关于这台电脑」和问卷回答（只用于这台电脑自己的体检）。</summary>
+    public static string ProfileFile => Path.Combine(Root, "profile.json");
     static string SettingsFile => Path.Combine(Root, "settings.json");
 
     static string Dir(string name)

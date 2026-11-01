@@ -223,6 +223,10 @@ public sealed class MainForm : Form
             case "getReport": return services.GetReport(S("id"));
             case "rejudge": return await services.Rejudge(S("id"), S("mode"));
             case "answer": return services.Answer(S("reportId"), S("key"), S("answer"), S("note"));
+            case "getProfile": return services.GetProfile();
+            case "saveProfile": return services.SaveProfile(p);
+            case "answerQuestions": return await services.AnswerQuestions(S("reportId"), p["answers"]!.AsArray());
+            case "forget": return services.Forget(S("kind"), I("index", -1));
             case "buildPlan": return services.BuildPlan(S("reportId"), p["keys"]!.AsArray().Select(x => x!.ToString()));
             case "executePlan": return services.ExecutePlan(S("planId"), S("reportId"), p["steps"]!.AsArray());
             case "getJournal": return services.GetJournal();

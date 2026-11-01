@@ -104,7 +104,7 @@
     view: 'home', app: null, report: null, loading: false, filter: 'todo', cat: null,
     selected: new Set(), dismissed: new Set(), pro: false, mode: 'offline', scan: false,
     progress: null, stream: [], streamFresh: 0, sectionEvents: false, runStart: 0, running: false,
-    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, moveDrive: {}, openDetail: new Set(), executing: false, lastRun: null, carried: null,
+    plan: null, planKeys: '', planStatus: {}, cacheChoice: {}, spaceProg: {}, spaceOpen: new Set(), move: null, moveDrive: {}, openDetail: new Set(), quiz: {}, quizHidden: new Set(), quizSending: false, profileData: null, profileDraft: null, executing: false, lastRun: null, carried: null,
     journal: [], sheet: null, tip: 0, lessonConfirm: false, enter: true,
     markOpen: null, markKind: 'wrong', fb: {}, ob: null, seed: Math.floor(Math.random() * 1000),
   };
@@ -355,6 +355,7 @@
     }
     if (view === 'plan') { state.journal = await call('getJournal'); ensurePlan(); }
     if (view === 'report' || view === 'plan') loadMove();
+    if (view === 'settings' || view === 'report') loadProfile().then(() => { if (state.view === 'settings') render(); else refreshQuiz(); });
     const changed = state.view !== view;
     state.enter = changed || state.enter; state.view = view;
     pageSwap(changed, () => { render(); $main.scrollTop = 0; });
@@ -582,6 +583,7 @@
         <ol class="top3">${j.top3.map(t => { const f = findingForText(t);
           return f ? `<li class="card link" data-act="open" data-k="${esc(keyOf(f))}" tabindex="0" role="button">${esc(pii(t))}<span class="go">查看 ${icon('arrow')}</span></li>`
                    : `<li class="card">${esc(pii(t))}</li>`; }).join('')}</ol>` : ''}
+      ${quizCard()}
       <div class="section-head" id="sec-list"><h2>逐项结论</h2>${state.cat ? `<button class="chip" data-act="cat-clear" style="cursor:pointer">只看：${esc(state.cat.name)} ${icon('x')}</button>` : ''}
         <span class="more muted hint" style="cursor:default">点一条看详情 · <kbd>↑</kbd><kbd>↓</kbd> 切换</span></div>
       <div>
@@ -1306,6 +1308,15 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn solid" data-act="save-settings">保存</button><button class="btn" data-act="test-conn">测试连接</button></div>
         </div></div></section>
 
+      <section class="set-group"><h2>关于这台电脑</h2><div class="card set-card pad">
+        <p class="muted small" style="margin:0 0 12px">Iris 按这些排轻重、决定建议有多稳妥。只用于这台电脑自己的体检；用 AI 研判时会随精简证据包一起发给你选的模型。</p>
+        ${state.profileDraft ? profileForm() : '<div class="skel" style="height:120px"></div>'}
+        <div style="margin-top:12px"><button class="btn primary" data-act="pf-save">保存</button></div></div></section>
+
+      <section class="set-group"><h2>Iris 记得的事</h2><div class="card set-card pad">
+        <p class="muted small" style="margin:0 0 12px">你确认过的事和问卷回答。Iris 下次研判时会按这些下结论、不再重复问；觉得不对可以随时忘掉。</p>
+        ${state.profileData ? memoriesHtml() : '<div class="skel" style="height:60px"></div>'}</div></section>
+
       <section class="set-group"><h2>体检</h2><div class="card set-card">
         ${swRow('scan', '默认先用 Defender 快速扫描', '体检前让 Windows 自带的 Microsoft Defender 快速扫描一遍，多 1–5 分钟。', 'defaultScan')}
       </div></section>
@@ -1405,6 +1416,74 @@
       box.remove(); resolve();
     }));
   }
+  // ------------------------------------------------------------------ 关于这台电脑、问卷、Iris 记得的事
+  const PROFILE = {
+    uses: ['办公学习', '打游戏', '设计剪辑', '写代码', '看剧上网', '长辈日常用'],
+    pains: ['卡顿', '发热、风扇响', '开机慢', 'C 盘空间不够', '弹窗广告', '担心中毒', '没什么特别的'],
+    who: ['我自己', '家里长辈', '孩子', '好几个人一起用'],
+  };
+  async function loadProfile() {
+    const d = await quiet('getProfile');
+    if (d) { state.profileData = d; state.profileDraft = JSON.parse(JSON.stringify(d.profile)); }
+    return d;
+  }
+  function profileForm() {
+    const p = state.profileDraft || { uses: [], pains: [] };
+    const multi = (field, v) => `<button data-act="pf-pick" data-f="${field}" data-v="${esc(v)}" aria-pressed="${(p[field] || []).includes(v)}">${esc(v)}</button>`;
+    const one = (field, v, label) => `<button data-act="pf-pick" data-f="${field}" data-v="${esc(String(v))}" aria-pressed="${p[field] === v}">${esc(label || v)}</button>`;
+    return `<div class="pf">
+      <div class="pf-q"><b>主要用来做什么？</b><span class="muted small">可以多选</span><div class="choices">${PROFILE.uses.map(v => multi('uses', v)).join('')}</div></div>
+      <div class="pf-q"><b>现在最烦的是什么？</b><span class="muted small">可以多选，报告会先说这些</span><div class="choices">${PROFILE.pains.map(v => multi('pains', v)).join('')}</div></div>
+      <div class="pf-q"><b>笔记本经常带出门吗？</b><div class="choices">${one('portable', true, '常带出门')}${one('portable', false, '基本不带（或者是台式机）')}</div></div>
+      <div class="pf-q"><b>主要谁在用？</b><div class="choices">${PROFILE.who.map(v => one('who', v)).join('')}</div></div>
+      <div class="pf-q"><b>还有什么想让 Iris 知道的？</b><span class="muted small">可以不填</span>
+        <textarea class="pf-note" maxlength="300" rows="2" placeholder="例如：公司电脑，IT 装的软件别动">${esc(p.note || '')}</textarea></div>
+    </div>`;
+  }
+  function memoriesHtml() {
+    const m = (state.profileData && state.profileData.memories) || [];
+    if (!m.length) return '<p class="muted small" style="margin:0">还没有。你在报告里回答"是我自己装的"、或者回答问卷后，Iris 会记在这里，下次不再问。</p>';
+    return `<ul class="mem-list">${m.map(x => `<li><div><b>${esc(pii(x.object || ''))}</b><span class="muted small">${esc(pii(x.note || ''))}${x.date ? ' · ' + esc(x.date) : ''}</span></div>
+      <button class="btn ghost" data-act="forget" data-kind="${esc(x.kind)}" data-index="${x.index}">忘掉</button></li>`).join('')}</ul>`;
+  }
+  function quizCard() {
+    const R = state.report, qs = (R.result.judgement.questions || []);
+    if (!qs.length || R.canExecute === false || R.meta.source !== 'local' || state.quizHidden.has(R.id)) return '';
+    const A = state.quiz[R.id] = state.quiz[R.id] || {};
+    const ok = q => A[q.id] && (A[q.id].opt && A[q.id].opt !== '__other' || (A[q.id].other || '').trim());
+    const done = qs.filter(ok).length, sending = state.quizSending;
+    return `<section class="card quiz" id="quiz">
+      <div class="quiz-head"><span class="glyph">${icon('spark')}</span>
+        <div><b>回答 ${qs.length} 个问题，让建议更准</b><p>大约 1 分钟。不答也没关系，报告和处理照常能用；答完 Iris 会按你的回答重新研判${R.result.offline ? '' : '（会再调用一次 AI，通常只要几分钱）'}，以后也不再问同样的事。</p></div>
+        <button class="icon-btn" data-act="quiz-hide" aria-label="先不答">${icon('x')}</button></div>
+      <ol class="quiz-qs">${qs.map(q => { const a = A[q.id] || {};
+        return `<li><b>${esc(pii(q.text))}</b>${q.why ? `<i class="muted small">${esc(q.why)}</i>` : ''}
+          <div class="choices">${q.options.map(o => `<button data-act="quiz-opt" data-q="${esc(q.id)}" data-v="${esc(o)}" aria-pressed="${a.opt === o}" ${sending ? 'disabled' : ''}>${esc(o)}</button>`).join('')}
+            <button data-act="quiz-opt" data-q="${esc(q.id)}" data-v="__other" aria-pressed="${a.opt === '__other'}" ${sending ? 'disabled' : ''}>其他</button></div>
+          ${a.opt === '__other' ? `<input class="quiz-other" data-q="${esc(q.id)}" maxlength="200" placeholder="自己写一句" value="${esc(a.other || '')}">` : ''}</li>`; }).join('')}</ol>
+      <div class="quiz-foot"><span class="muted small">已回答 <span id="quiz-done">${done}</span> / ${qs.length}${state.profileData && !(state.profileData.profile.uses || []).length && !(state.profileData.profile.pains || []).length
+          ? ' · 还可以在「设置 → 关于这台电脑」里告诉 Iris 这台电脑怎么用' : ''}</span>
+        <button class="btn primary" data-act="quiz-send" ${!done || sending ? 'disabled' : ''}>${sending ? icon('spinner') + '正在按你的回答重新研判…' : '提交，重新研判'}</button></div></section>`;
+  }
+  function refreshQuiz() {
+    const el = document.getElementById('quiz'); if (!el) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = quizCard();
+    if (!tmp.firstElementChild) { el.remove(); return; }
+    el.replaceWith(tmp.firstElementChild); hydrate(document.getElementById('quiz'));
+  }
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.classList && t.classList.contains('quiz-other') && state.report) {
+      const A = state.quiz[state.report.id] = state.quiz[state.report.id] || {};
+      A[t.dataset.q] = Object.assign(A[t.dataset.q] || {}, { other: t.value });
+      const qs = state.report.result.judgement.questions || [];
+      const n = qs.filter(q => A[q.id] && (A[q.id].opt && A[q.id].opt !== '__other' || (A[q.id].other || '').trim())).length;
+      const d = document.getElementById('quiz-done'); if (d) d.textContent = n;
+      const b = document.querySelector('[data-act=quiz-send]'); if (b && !state.quizSending) b.disabled = !n;
+    }
+    if (t.classList && t.classList.contains('pf-note') && state.profileDraft) state.profileDraft.note = t.value;
+  });
+
   /** 一键更新：说清楚改了什么、多大，点了再下载；进度在同一个窗口里 */
   function openUpdate() {
     const up = state.app.update || (state.updateInfo && state.updateInfo.update);
@@ -1460,8 +1539,9 @@
 
   // ------------------------------------------------------------------ 首次使用的快速设定
   // 开场 → 怎么做 → 隐私（必须） → 内测反馈（必须选，同意 / 不同意都有 2 秒倒计时） → AI（可跳过） → 外观（可跳过） → 完成
-  const OB = ['hello', 'promise', 'privacy', 'consent', 'ai', 'look', 'done'];
+  const OB = ['hello', 'promise', 'privacy', 'consent', 'ai', 'about', 'look', 'done'];
   function openOnboarding(step) {
+    loadProfile().then(() => { if (state.ob && OB[state.ob.step] === 'about') obRender(false); });
     closeSheet();
     state.ob = { step: step || 0, provider: S().hasKey ? S().provider : null, count: 0, timer: null, testing: false, ok: S().hasKey, msg: '' };
     let el = document.getElementById('ob');
@@ -1481,7 +1561,7 @@
   /** 跳过时也要经过必须的两步：隐私、内测反馈 */
   function obSkipTarget() {
     const st = state.ob.step;
-    if (st < 2) return !state.app.privacy.accepted ? 2 : S().betaConsent == null ? 3 : 6;
+    if (st < 2) return !state.app.privacy.accepted ? 2 : S().betaConsent == null ? 3 : OB.indexOf('done');
     return st + 1;
   }
   function obLogo(size) {
@@ -1492,10 +1572,10 @@
   function obRender(animate) {
     const el = document.getElementById('ob'); if (!el || !state.ob) return;
     const name = OB[state.ob.step], st = state.ob.step;
-    const canSkip = (st < 2 && name !== 'done') || name === 'ai' || name === 'look';
+    const canSkip = (st < 2 && name !== 'done') || name === 'ai' || name === 'about' || name === 'look';
     el.innerHTML = `<div class="ob-top">
         ${st > 0 && name !== 'done' ? `<button class="icon-btn" data-act="ob-back" aria-label="上一步">${icon('chev')}</button>` : '<span></span>'}
-        <div class="ob-dots">${OB.slice(1, 6).map((_, i) => `<i ${i + 1 === st ? 'class="on"' : i + 1 < st ? 'class="done"' : ''}></i>`).join('')}</div>
+        <div class="ob-dots">${OB.slice(1, OB.length - 1).map((_, i) => `<i ${i + 1 === st ? 'class="on"' : i + 1 < st ? 'class="done"' : ''}></i>`).join('')}</div>
         ${canSkip ? '<button class="linkish" data-act="ob-skip">跳过</button>' : '<span></span>'}</div>
       <div class="ob-body ${animate ? 'in ' + (state.ob.dir || '') : ''}">${obStep(name)}</div>`;
     hydrate(el);
@@ -1563,6 +1643,10 @@
           ${state.ob.msg ? `<div class="ob-msg ${state.ob.ok ? 'ok' : 'bad'}">${icon(state.ob.ok ? 'check' : 'alert')}<span>${esc(state.ob.msg)}</span></div>` : ''}</div>` : ''}
         <div class="ob-acts"><button class="btn primary big" data-act="ob-next" ${g && !state.ob.ok ? 'disabled' : ''}>${pv === 'none' || !pv ? '先用纯规则，下一步' : '下一步'} <span class="arrow">${icon('arrow')}</span></button></div></div>`;
       }
+      case 'about': return `<div class="ob-page"><div class="eyebrow">关于这台电脑 · 可跳过</div><h2>告诉 Iris 这台电脑怎么用</h2>
+        <p class="ob-sub" style="text-align:left;margin:0">Iris 会按你的回答排轻重：你最烦的事先说，常带出门的笔记本不建议关休眠。以后在「设置」里随时能改。</p>
+        ${profileForm()}
+        <div class="ob-acts"><button class="btn primary big" data-act="pf-save" data-then="next">下一步 <span class="arrow">${icon('arrow')}</span></button></div></div>`;
       case 'look': return `<div class="ob-page"><div class="eyebrow">外观 · 可跳过</div><h2>选一个你喜欢的样子</h2>
         <div class="themes ob-themes">${THEMES.map(([k, n, pv]) => `<button class="theme-pick" data-act="theme" data-v="${k}" aria-pressed="${(s.theme || 'dark') === k}">
           <span class="pv ${pv}"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></span>${n}</button>`).join('')}</div>
@@ -1861,6 +1945,50 @@
       }
       case 'ob-start': openOnboarding(0); break;
       case 'ob-next': obGo(state.ob.step + 1); break;
+      case 'pf-pick': {
+        const p = state.profileDraft = state.profileDraft || { uses: [], pains: [] }, f = el.dataset.f, v = el.dataset.v;
+        if (f === 'uses' || f === 'pains') { const a = p[f] = p[f] || []; p[f] = a.includes(v) ? a.filter(x => x !== v) : a.concat(v); }
+        else if (f === 'portable') { const b = v === 'true'; p.portable = p.portable === b ? null : b; }
+        else p[f] = p[f] === v ? null : v;
+        const ta = document.querySelector('.pf-note'); if (ta) p.note = ta.value;
+        if (state.ob) obRender(false); else render();
+        break;
+      }
+      case 'pf-save': {
+        const ta = document.querySelector('.pf-note'); if (ta && state.profileDraft) state.profileDraft.note = ta.value;
+        const d = await call('saveProfile', state.profileDraft || {});
+        state.profileData = d; state.profileDraft = JSON.parse(JSON.stringify(d.profile));
+        if (el.dataset.then === 'next') obGo(state.ob.step + 1);
+        else { toast('已保存。下次体检（或重新研判）时生效'); render(); }
+        break;
+      }
+      case 'forget': {
+        state.profileData = await call('forget', { kind: el.dataset.kind, index: +el.dataset.index });
+        toast('已忘掉。下次遇到会再问你'); render(); break;
+      }
+      case 'quiz-hide': state.quizHidden.add(state.report.id); refreshQuiz(); toast('好的，先不答。报告和处理照常能用'); break;
+      case 'quiz-opt': {
+        const A = state.quiz[state.report.id] = state.quiz[state.report.id] || {}, q = el.dataset.q;
+        A[q] = Object.assign(A[q] || {}, { opt: A[q] && A[q].opt === el.dataset.v ? null : el.dataset.v });
+        refreshQuiz();
+        if (A[q].opt === '__other') { const i = document.querySelector(`.quiz-other[data-q="${q}"]`); if (i) i.focus(); }
+        break;
+      }
+      case 'quiz-send': {
+        const R = state.report, A = state.quiz[R.id] || {};
+        const answers = (R.result.judgement.questions || []).map(q => { const a = A[q.id] || {};
+          const v = a.opt === '__other' ? (a.other || '').trim() : a.opt;
+          return v ? { question: q.text, answer: v, flagIds: q.flagIds || [] } : null; }).filter(Boolean);
+        if (!answers.length) break;
+        state.quizSending = true; refreshQuiz();
+        try {
+          await call('answerQuestions', { reportId: R.id, answers });
+          delete state.quiz[R.id];
+          await loadReport(R.id); render();
+          toast('已按你的回答重新研判。这些回答记在「设置 → Iris 记得的事」里');
+        } catch (e) {} finally { state.quizSending = false; refreshQuiz(); }
+        break;
+      }
       case 'ob-back': obGo(Math.max(0, state.ob.step - 1)); break;
       case 'ob-skip': obGo(obSkipTarget()); break;
       case 'ob-privacy-full': showPrivacy(false); break;

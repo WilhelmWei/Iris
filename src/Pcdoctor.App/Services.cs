@@ -500,6 +500,8 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var report = Redacted(AppData.ReadJson(Path.Combine(dir, "report.json"))!);
         var known = KnownStore.Load(KnownPath(id, meta));
         var kb = Kb.LoadEmbedded();
+        // 「关于这台电脑」只用于这台电脑自己的报告；朋友发来的报告不带
+        var profile = meta["source"]?.ToString() == "local" ? AppData.ReadJson(AppData.ProfileFile) : null;
         var s = AppData.LoadSettings();
         var key = AppData.GetApiKey(s);
         if (s.Provider == "hosted" && (!s.AllowHosted || AppData.HostedBaseUrl == null)) key = null;  // 没有打开"允许发送到托管服务"：不发送
@@ -508,15 +510,15 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         if (mode != "ai" || key == null)
         {
             emit("progress", new JsonObject { ["phase"] = "judge", ["mode"] = "offline", ["elapsed"] = 0 });
-            result = Judge.RunOffline(report, known, kb);
+            result = Judge.RunOffline(report, known, kb, profile: profile);
         }
         else
         {
-            var p = Judge.Prepare(report, known, kb);
+            var p = Judge.Prepare(report, known, kb, profile);
             AppData.WriteJson(Path.Combine(dir, "evidence.json"), p.ModelEvidence);  // 发给模型的全部内容，留档可查
             using var tick = new System.Threading.Timer(_ => emit("progress", new JsonObject { ["phase"] = "judge", ["mode"] = "ai", ["elapsed"] = sw.Elapsed.TotalSeconds }), null, 0, 1000);
             var llm = await LlmClient.CallAsync(Prompt.LoadSystemPrompt(), p.ModelEvidence, s.Model, s.BaseUrl, key, ct: ct);
-            result = Judge.Run(report, llm.Output, s.Model, known, kb);
+            result = Judge.Run(report, llm.Output, s.Model, known, kb, profile: profile);
             result["usage"] = new JsonArray(llm.Usage.Select(u => u?.DeepClone()).ToArray());
             result["elapsedSec"] = Math.Round(sw.Elapsed.TotalSeconds, 1);
         }
@@ -525,7 +527,7 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         // 交叉校验：AI 研判时同时跑一遍纯规则，结论不一致的地方在界面上标出来
         var cross = Path.Combine(dir, "crosscheck.json");
         if (result["offline"]?.GetValue<bool>() == true) File.Delete(cross);
-        else try { AppData.WriteJson(cross, Insights.CrossCheck(result, Judge.RunOffline(report, known, kb))); } catch { }
+        else try { AppData.WriteJson(cross, Insights.CrossCheck(result, Judge.RunOffline(report, known, kb, profile: profile))); } catch { }
 
         // 用时记进 meta.json（重新研判时覆盖上一次的研判用时）
         var label = result["offline"]?.GetValue<bool>() == true ? "规则研判" : "AI 研判";
@@ -698,6 +700,90 @@ public sealed class Services(Action<string, JsonNode?> emit, Func<IntPtr> owner)
         var s = AppData.LoadSettings();
         await JudgeReport(id, AppData.GetApiKey(s) != null ? s.Mode : "offline", CancellationToken.None);
         return new JsonObject { ["id"] = id };
+    }
+
+    // ================================================================== 关于这台电脑、问卷、Iris 记得的事
+    /// <summary>「关于这台电脑」的回答和 Iris 记住的事（确认记录 + 问卷回答），只在本机界面上显示。</summary>
+    public JsonObject GetProfile()
+    {
+        var p = AppData.ReadJson(AppData.ProfileFile) as JsonObject ?? new JsonObject();
+        var known = KnownStore.Load(AppData.KnownFile);
+        return new JsonObject
+        {
+            ["profile"] = new JsonObject
+            {
+                ["uses"] = p["uses"]?.DeepClone() ?? new JsonArray(), ["pains"] = p["pains"]?.DeepClone() ?? new JsonArray(),
+                ["portable"] = p["portable"]?.DeepClone(), ["who"] = p["who"]?.DeepClone(), ["note"] = p["note"]?.DeepClone(),
+            },
+            ["memories"] = new JsonArray(
+                known.Select((k, i) => (JsonNode)new JsonObject
+                {
+                    ["kind"] = "known", ["index"] = i, ["object"] = k["object"]?.DeepClone(), ["note"] = k["note"]?.DeepClone(), ["date"] = k["confirmedAt"]?.DeepClone(),
+                }).Concat((p["answers"] as JsonArray ?? []).Select((a, i) => (JsonNode)new JsonObject
+                {
+                    ["kind"] = "answer", ["index"] = i, ["object"] = a?["question"]?.DeepClone(), ["note"] = a?["answer"]?.DeepClone(), ["date"] = a?["date"]?.DeepClone(),
+                })).ToArray()),
+        };
+    }
+
+    /// <summary>保存「关于这台电脑」：只收这几项，长度和条数和研判时的清洗一致。问卷回答另外保存，不在这里改。</summary>
+    public JsonObject SaveProfile(JsonNode p)
+    {
+        var current = AppData.ReadJson(AppData.ProfileFile) as JsonObject ?? new JsonObject();
+        var clean = UserProfile.Clean(new JsonObject
+        {
+            ["uses"] = p["uses"]?.DeepClone(), ["pains"] = p["pains"]?.DeepClone(), ["portable"] = p["portable"]?.DeepClone(),
+            ["who"] = p["who"]?.DeepClone(), ["note"] = p["note"]?.DeepClone(),
+        }) ?? new JsonObject();
+        if (current["answers"] is JsonArray ans) clean["answers"] = ans.DeepClone();
+        AppData.WriteJson(AppData.ProfileFile, clean);
+        return GetProfile();
+    }
+
+    /// <summary>提交问卷：回答记进画像（下次研判时模型能看到）；"是 / 不是"这类和某条结论相关的回答，
+    /// 同时按原来的"回答问题"处理（"是"记进确认记录，"不是"可以用可撤销的替代操作）。然后按回答重新研判。</summary>
+    public async Task<JsonObject> AnswerQuestions(string id, JsonArray answers)
+    {
+        var dir = AppData.ReportDir(id) ?? throw new ArgumentException("报告编号不对");
+        var meta = AppData.ReadJson(Path.Combine(dir, "meta.json"))!;
+        if (meta["source"]?.ToString() != "local") throw new InvalidOperationException("朋友的报告不能在这里回答");
+        var p = AppData.ReadJson(AppData.ProfileFile) as JsonObject ?? new JsonObject();
+        var list = (p["answers"] as JsonArray)?.OfType<JsonObject>().Select(x => (JsonObject)x.DeepClone()).ToList() ?? [];
+        foreach (var a in answers.OfType<JsonObject>())
+        {
+            var q = a["question"]?.ToString()?.Trim() ?? "";
+            var ans = a["answer"]?.ToString()?.Trim() ?? "";
+            if (q.Length == 0 || ans.Length == 0) continue;
+            var ids = (a["flagIds"] as JsonArray ?? []).Select(x => x?.ToString() ?? "").Where(x => x.Length is > 0 and <= 10).Take(10).ToList();
+            list.RemoveAll(x => x["question"]?.ToString() == q);
+            list.Add(new JsonObject
+            {
+                ["question"] = q.Length > 120 ? q[..120] : q, ["answer"] = ans.Length > 200 ? ans[..200] : ans,
+                ["flagIds"] = new JsonArray(ids.Select(x => (JsonNode?)x).ToArray()), ["date"] = DateTime.Now.ToString("yyyy-MM-dd"),
+            });
+            if (ids.Count > 0 && ans is "是" or "不是") Answer(id, string.Join("+", ids), ans == "是" ? "yes" : "no", "");
+        }
+        p["answers"] = new JsonArray(list.TakeLast(20).Select(x => (JsonNode?)x).ToArray());
+        AppData.WriteJson(AppData.ProfileFile, p);
+        var s = AppData.LoadSettings();
+        await JudgeReport(id, AppData.GetApiKey(s) != null ? s.Mode : "offline", CancellationToken.None);
+        return new JsonObject { ["id"] = id };
+    }
+
+    /// <summary>「Iris 记得的事」里删掉一条：确认记录（下次又会问）或问卷回答。</summary>
+    public JsonObject Forget(string kind, int index)
+    {
+        if (kind == "known")
+        {
+            var known = KnownStore.Load(AppData.KnownFile);
+            if (index >= 0 && index < known.Count) { known.RemoveAt(index); KnownStore.Save(AppData.KnownFile, known); }
+        }
+        else if (kind == "answer" && AppData.ReadJson(AppData.ProfileFile) is JsonObject p && p["answers"] is JsonArray a && index >= 0 && index < a.Count)
+        {
+            a.RemoveAt(index);
+            AppData.WriteJson(AppData.ProfileFile, p);
+        }
+        return GetProfile();
     }
 
     // ================================================================== 回答问题

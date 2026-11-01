@@ -1,6 +1,6 @@
 # 隐私政策 / Privacy Policy
 
-**Iris · AI 电脑体检 · 版本 2026-10-31.1**
+**Iris · AI 电脑体检 · 版本 2026-11-01.1**
 
 [中文](#中文) · [English](#english)
 
@@ -37,7 +37,7 @@
 | **AI 研判 · Iris 托管服务**（尚未开放） | 精简证据包（见下） | Iris 托管服务器，由它转发给模型服务商。**默认关闭**，需要你在"设置"里主动打开"允许发送到托管服务"；关闭时程序只会使用你自己的 Key 或只做本地检查 |
 | **内测反馈**（只在你同意之后） | 去隐私的反馈包（见下） | Iris 作者的服务器（阿里云函数计算和对象存储，**中国香港**）。第一次打开时会问你，同意或不同意都可以；不同意照常使用全部功能。随时可以在"设置 → 内测反馈"里关掉 |
 
-**精简证据包**只包含需要判断的项目：被规则标记的程序、服务、驱动、计划任务等的名称、路径、厂商、签名状态，已装软件的名称和厂商，以及第 1 条里的系统概况和安全设置状态。发送前会把**用户名、计算机名、邮箱地址**替换成 `[用户]`、`[计算机名]`、`[邮箱]` 这样的占位符。
+**精简证据包**只包含需要判断的项目：被规则标记的程序、服务、驱动、计划任务等的名称、路径、厂商、签名状态，已装软件的名称和厂商，以及第 1 条里的系统概况和安全设置状态；如果你填了「关于这台电脑」或回答过问卷，这些回答也会带上（用来决定先说什么、建议有多稳妥）。发送前会把**用户名、计算机名、邮箱地址**替换成 `[用户]`、`[计算机名]`、`[邮箱]` 这样的占位符。
 
 每次发出去的完整内容都保存在本机（数据文件夹里对应报告的 `evidence.json`），你可以随时打开查看。
 
@@ -58,7 +58,7 @@
 
 ### 3. 其他网络访问
 
-- **检查新版本**：程序启动时读取 Iris 下载服务器上的一个版本信息文件（`latest.json`，阿里云对象存储，中国香港），不发送任何体检数据。有新版本时只在概览页提示，不会自动下载或安装。
+- **检查新版本**：程序启动时读取 Iris 下载服务器上的一个版本信息文件（`latest.json`，阿里云对象存储，中国香港），不发送任何体检数据。有新版本时只在概览页提示，不会自动下载或安装；你点「更新」并在确认框里同意后，才从同一个下载服务器下载新版安装包，下载时不发送任何体检数据。
 - 除此之外，程序没有统计、遥测、广告；错误记录只保存在本机，只有你同意内测反馈时才会随反馈包发送。
 - 校验程序的数字签名时，Windows 自己可能会联网检查证书吊销列表，这是系统行为。
 - 命令行版采集脚本有一个可选参数 `-CheckUpdates`，会让 Windows 更新服务查询待安装的更新（由 Windows 联系微软服务器）。桌面版不使用这个参数。
@@ -111,7 +111,7 @@ The check-up is read-only and changes nothing. It reads:
 | **AI · Iris hosted service** (not yet available) | The trimmed evidence package (see below) | The Iris hosted server, which forwards it to a model provider. **Off by default.** You must turn on "Allow sending to the hosted service" in Settings; while it is off, the app only uses your own key or runs local checks only |
 | **Beta feedback** (only with your consent) | The de-identified feedback package (see below) | The Iris author's server (Alibaba Cloud Function Compute and Object Storage, **Hong Kong**). You are asked on first launch; you may agree or decline, and declining does not limit any feature. You can turn it off any time in Settings → Beta feedback |
 
-The **evidence package** contains only the items that need judgement: names, paths, vendors and signature status of the programs, services, drivers and scheduled tasks flagged by the rules; names and publishers of installed software; and the system overview and security-setting status from section 1. Before sending, **user name, computer name and e-mail addresses** are replaced with placeholders such as `[用户]` (user), `[计算机名]` (computer) and `[邮箱]` (e-mail).
+The **evidence package** contains only the items that need judgement: names, paths, vendors and signature status of the programs, services, drivers and scheduled tasks flagged by the rules; names and publishers of installed software; and the system overview and security-setting status from section 1; if you filled in "About this PC" or answered the questionnaire, those answers are included too (they decide what to mention first and how cautious the advice is). Before sending, **user name, computer name and e-mail addresses** are replaced with placeholders such as `[用户]` (user), `[计算机名]` (computer) and `[邮箱]` (e-mail).
 
 The full content of every request is saved locally (`evidence.json` next to the report in the data folder) so you can inspect it at any time.
 
@@ -132,7 +132,7 @@ Packages are first written to a local outbox (see section 4) and retried later i
 
 ### 3. Other network access
 
-- **Update check**: on start-up the app reads a small version file (`latest.json`) from the Iris download server (Alibaba Cloud Object Storage, Hong Kong). No check-up data is sent. If a new version exists, a notice appears on the overview page; nothing is downloaded or installed automatically.
+- **Update check**: on start-up the app reads a small version file (`latest.json`) from the Iris download server (Alibaba Cloud Object Storage, Hong Kong). No check-up data is sent. If a new version exists, a notice appears on the overview page; nothing is downloaded or installed automatically. Only after you click "Update" and confirm does the app download the new package from the same server; no check-up data is sent.
 - Apart from that there is no analytics, telemetry or advertising; error records stay on this computer and are only sent inside a feedback package if you consented to beta feedback.
 - When verifying digital signatures, Windows itself may go online to check certificate revocation lists; this is operating-system behaviour.
 - The command-line collector has an optional `-CheckUpdates` switch that asks the Windows Update service to look for pending updates (Windows contacts Microsoft's servers). The desktop app does not use this switch.

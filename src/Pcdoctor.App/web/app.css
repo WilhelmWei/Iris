@@ -1022,3 +1022,32 @@ details.fold.kept .fold-body { animation: none; }  /* 卡片重画后恢复展�
 .modal-body > .btn { margin-top: 12px; }
 .fl-groups .st-chip { height: 28px; padding: 0 10px; font-size: 12px; cursor: default; }
 .up-progress { display: grid; gap: 8px; margin-top: 14px; }
+
+/* 关于这台电脑（快速设定和设置共用） */
+.pf { display: grid; gap: 14px; margin: 14px 0 6px; text-align: left; }
+.pf-q { display: grid; gap: 6px; }
+.pf-q > b { font-weight: 500; font-size: 14px; }
+.pf .choices, .quiz .choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf .choices button, .quiz .choices button { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: none; color: var(--text-2); cursor: pointer; font: inherit; font-size: 13px; }
+.pf .choices button[aria-pressed="true"], .quiz .choices button[aria-pressed="true"] { border-color: transparent; background: var(--btn-2); color: var(--on-btn-2); }
+.pf-note, .quiz-other { width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px; resize: vertical; }
+.set-card.pad { padding: 18px 20px; }
+.mem-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mem-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.mem-list li:last-child { border-bottom: 0; }
+.mem-list li div { display: grid; gap: 2px; min-width: 0; }
+.mem-list li b { font-weight: 500; font-size: 13.5px; }
+.mem-list .btn { height: 30px; flex: none; }
+
+/* 报告里的问卷 */
+.quiz { margin: 18px 0 6px; padding: 18px 20px; display: grid; gap: 14px; border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.quiz-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.quiz-head .glyph { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.quiz-head b { font-size: 15px; }
+.quiz-head p { margin: 4px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+.quiz-qs { margin: 0; padding-left: 20px; display: grid; gap: 14px; }
+.quiz-qs li { display: grid; gap: 6px; }
+.quiz-qs li > b { font-weight: 500; font-size: 14px; }
+.quiz-qs li > i { font-style: normal; }
+.quiz-other { max-width: 420px; }
+.quiz-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }

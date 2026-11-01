@@ -106,6 +106,15 @@
     }
   }
 
+  M.profile = { uses: [], pains: [], portable: null, who: null, note: '', answers: [] };
+  M.knownMem = [{ object: 'Defender 排除项（D:\\Tools）', note: '是我自己加的，放开发工具', confirmedAt: '2026-10-24' }];
+  function profileView() {
+    const P = M.profile;
+    return { profile: { uses: P.uses, pains: P.pains, portable: P.portable, who: P.who, note: P.note },
+             memories: M.knownMem.map((k, i) => ({ kind: 'known', index: i, object: k.object, note: k.note, date: k.confirmedAt }))
+               .concat((P.answers || []).map((a, i) => ({ kind: 'answer', index: i, object: a.question, note: a.answer, date: a.date }))) };
+  }
+
   async function load() {
     if (M.report) return M.report;
     let d = window.__DEMO__;
@@ -122,6 +131,12 @@
       altOps: { F021: { op: 'service.set_manual', name: '把 TeamViewer 服务改为手动启动', risk: 'yellow' } },
       crossCheck: x.crossCheck || {}, unknownObjects: x.unknownObjects || 0, changes: x.changes || [], history: x.history || [],
     };
+    // 演示用的问卷（真实程序里由 AI 出题，或者由需要确认的结论自动出题）
+    if (!d.result.judgement.questions) d.result.judgement.questions = [
+      { id: 'Q1', text: 'TeamViewer 是你自己装的吗？现在还用它远程别人的电脑吗？', why: '决定是保留、关掉无人值守，还是建议卸载', options: ['是，还在用', '是，但很久没用了', '不是我装的'], flagIds: ['F021'] },
+      { id: 'Q2', text: '还玩 Steam 上的游戏吗？', why: 'Steam 的游戏库在 C 盘，不玩的话可以搬走或卸载', options: ['常玩', '偶尔', '不玩了'], flagIds: [] },
+      { id: 'Q3', text: '电脑主要是在家用，还是常带出门？', why: '常带出门的笔记本不建议关休眠', options: ['在家', '常带出门'], flagIds: [] },
+    ];
     return M.report;
   }
 
@@ -148,7 +163,7 @@
         const r = await load();
         const h = r ? r.history : [];
         return { version: '1.0.0-rc.1', isAdmin: false, identity: ['Alice', 'LAPTOP-TEST01'], settings: Object.assign({}, M.settings), executableOps: EXEC, guideOps: ['defender.review'],
-                 privacy: { version: '2026-10-31.1', accepted: M.privacyAccepted },
+                 privacy: { version: '2026-11-01.1', accepted: M.privacyAccepted },
                  lastReport: r ? { id: r.id, score: r.result.score.total, headline: r.result.judgement.headline, time: r.meta.reportTime,
                                    delta: h.length > 1 ? h[h.length - 1][1] - h[h.length - 2][1] : null } : null,
                  history: h, changes: r ? r.changes : [], update: M.update || null, outbox: 0,
@@ -183,6 +198,15 @@
         sizeKB: 38, server: M.settings.feedbackServer ? 'Iris 作者的服务器（阿里云中国香港）' : null,
         excluded: ['用户名、电脑名、邮箱（换成占位符）', '代理服务器、DNS、hosts 里的地址', 'API Key', '你自己建的文件夹名和文件名（C 盘空间只发系统已知位置的大小）', '文档、照片、聊天记录、浏览记录、密码'] };
       case 'openUpdate': return {};
+      case 'getProfile': return profileView();
+      case 'saveProfile': M.profile = Object.assign({}, M.profile, { uses: p.uses || [], pains: p.pains || [], portable: p.portable, who: p.who, note: p.note }); return profileView();
+      case 'forget': (p.kind === 'known' ? M.knownMem : (M.profile.answers || [])).splice(p.index, 1); return profileView();
+      case 'answerQuestions': {
+        await sleep(1600);
+        M.profile.answers = (M.profile.answers || []).concat(p.answers.map(a => Object.assign({ date: '2026-11-01' }, a)));
+        M.report.result.judgement.questions = [];
+        return { id: p.reportId };
+      }
       case 'updateInfo': return { current: '1.0.0-rc.1', update: M.update || null, rollback: /[?&]update\b/.test(location.search) ? '1.0.0-beta.9' : null, justUpdatedFrom: null };
       case 'startUpdate': {
         if (!await nativeConfirm(`更新到 Iris ${M.update.version}？`, ['下载新版，核对校验码后替换 Iris.exe，然后自动重新打开。体检报告、操作记录和设置都不受影响'])) return { cancelled: true };
@@ -226,7 +250,7 @@
         let text = '（浏览器预览：完整的隐私政策在仓库根目录 PRIVACY.md；桌面版会在这里显示全文。）';
         if (window.__PRIVACY__) text = window.__PRIVACY__;
         else try { const r = await fetch('dev/PRIVACY.md'); if (r.ok) text = await r.text(); } catch (e) {}
-        return { version: '2026-10-31.1', text };
+        return { version: '2026-11-01.1', text };
       }
       case 'acceptPrivacy': M.privacyAccepted = true; return { accepted: true };
       case 'declinePrivacy': return {};
